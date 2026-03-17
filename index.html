@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Intel Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Rajdhani:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Rajdhani',sans-serif;background:#07080d;color:#c8ccd8;min-height:100vh;display:flex;flex-direction:column;}
+
+/* GRID BG */
+body::before{
+  content:'';position:fixed;inset:0;
+  background-image:linear-gradient(#0e1218 1px,transparent 1px),linear-gradient(90deg,#0e1218 1px,transparent 1px);
+  background-size:40px 40px;
+  opacity:0.5;pointer-events:none;z-index:0;
+}
+
+main{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;}
+
+/* HEADER */
+.hero{text-align:center;margin-bottom:52px;}
+.hero-icon{font-size:32px;margin-bottom:14px;display:block;animation:pulse 3s infinite;}
+.hero-title{font-family:'JetBrains Mono',monospace;font-size:32px;font-weight:500;letter-spacing:6px;color:#fff;text-transform:uppercase;margin-bottom:8px;}
+.hero-title span{color:#4ab8ff;}
+.hero-sub{font-family:'JetBrains Mono',monospace;font-size:11px;color:#1a3a5a;letter-spacing:3px;text-transform:uppercase;}
+.hero-line{width:60px;height:1px;background:linear-gradient(90deg,transparent,#4ab8ff,transparent);margin:18px auto 0;}
+
+/* CARDS GRID */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;width:100%;max-width:960px;}
+
+.card{background:#0d1018;border:1px solid #12151e;border-radius:8px;padding:24px;text-decoration:none;color:inherit;display:flex;flex-direction:column;gap:14px;transition:border-color 0.2s,transform 0.2s,background 0.2s;position:relative;overflow:hidden;}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;opacity:0;transition:opacity 0.2s;}
+.card:hover{transform:translateY(-3px);background:#0a0d14;}
+.card:hover::before{opacity:1;}
+
+/* per-card accent colors */
+.card-defense::before{background:linear-gradient(90deg,transparent,#5aff5a,transparent);}
+.card-defense:hover{border-color:#1e3a1e;}
+.card-defense .card-icon{color:#5aff5a;}
+.card-defense .card-tag{background:#071507;border-color:#1a3a1a;color:#5aff5a;}
+.card-defense .card-btn{border-color:#2a5a2a;color:#5aff5a;}
+.card-defense .card-btn:hover{background:#0a1a0a;border-color:#5aff5a;}
+
+.card-crypto::before{background:linear-gradient(90deg,transparent,#00d4ff,transparent);}
+.card-crypto:hover{border-color:#0e2a3a;}
+.card-crypto .card-icon{color:#00d4ff;}
+.card-crypto .card-tag{background:#06101a;border-color:#0a2a3a;color:#00d4ff;}
+.card-crypto .card-btn{border-color:#0a3a5a;color:#00d4ff;}
+.card-crypto .card-btn:hover{background:#060f18;border-color:#00d4ff;}
+
+.card-nba::before{background:linear-gradient(90deg,transparent,#c87aff,transparent);}
+.card-nba:hover{border-color:#1e0a2e;}
+.card-nba .card-icon{color:#c87aff;}
+.card-nba .card-tag{background:#0d0718;border-color:#2a1a3a;color:#c87aff;}
+.card-nba .card-btn{border-color:#3a1a5a;color:#c87aff;}
+.card-nba .card-btn:hover{background:#0d071a;border-color:#c87aff;}
+
+.card-header{display:flex;align-items:center;gap:12px;}
+.card-icon{font-size:22px;width:40px;height:40px;background:#07080d;border:1px solid #12151e;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-style:normal;}
+.card-title-wrap{}
+.card-title{font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:2px;color:#e8eaf0;text-transform:uppercase;}
+.card-subtitle{font-family:'JetBrains Mono',monospace;font-size:9px;color:#1a3a5a;letter-spacing:1px;margin-top:2px;}
+
+.card-desc{font-size:14px;color:#4a5a6a;line-height:1.6;}
+
+.card-tags{display:flex;gap:6px;flex-wrap:wrap;}
+.card-tag{font-family:'JetBrains Mono',monospace;font-size:9px;padding:3px 8px;border-radius:2px;border:1px solid;letter-spacing:1px;}
+
+.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:4px;}
+.card-btn{font-family:'JetBrains Mono',monospace;font-size:10px;padding:7px 14px;border-radius:4px;border:1px solid;background:transparent;cursor:pointer;letter-spacing:1px;transition:all 0.15s;text-decoration:none;display:inline-block;}
+.card-stat{font-family:'JetBrains Mono',monospace;font-size:9px;color:#1a2a3a;letter-spacing:1px;}
+
+/* FOOTER */
+footer{position:relative;z-index:1;text-align:center;padding:20px;border-top:1px solid #0d1018;}
+.footer-text{font-family:'JetBrains Mono',monospace;font-size:9px;color:#0e1a2a;letter-spacing:2px;}
+
+/* SCAN LINE ANIMATION */
+@keyframes pulse{0%,100%{opacity:0.7}50%{opacity:1}}
+@keyframes scandown{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+
+.scan{position:fixed;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(74,184,255,0.15),transparent);animation:scandown 8s linear infinite;pointer-events:none;z-index:0;}
+
+/* STATUS DOTS */
+.status-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px;animation:pulse 2s infinite;}
+.dot-green{background:#5aff5a;}
+.dot-blue{background:#00d4ff;}
+.dot-purple{background:#c87aff;}
+</style>
+</head>
+<body>
+
+<div class="scan"></div>
+
+<main>
+  <div class="hero">
+    <span class="hero-icon">◈</span>
+    <div class="hero-title">Intel <span>Suite</span></div>
+    <div class="hero-sub">AI-Powered Market &amp; Sports Analytics</div>
+    <div class="hero-line"></div>
+  </div>
+
+  <div class="cards">
+
+    <!-- DEFENSE -->
+    <div class="card card-defense" onclick="window.location='defense_stock_tracker.html'" style="cursor:pointer;">
+      <div class="card-header">
+        <div class="card-icon">▲</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Defense Intel</div>
+          <div class="card-subtitle">EMERGING DEFENSE STOCKS</div>
+        </div>
+      </div>
+      <div class="card-desc">Track small and mid-cap defense companies. Click-to-load cards pull live prices, 52-week range, volume signals, multi-day returns, news, and AI buy/hold/sell verdicts.</div>
+      <div class="card-tags">
+        <span class="card-tag">LIVE PRICES</span>
+        <span class="card-tag">52W RANGE</span>
+        <span class="card-tag">AI SIGNALS</span>
+        <span class="card-tag">NEWS FEED</span>
+        <span class="card-tag">PRESETS</span>
+      </div>
+      <div class="card-footer">
+        <a class="card-btn" href="defense_stock_tracker.html">OPEN →</a>
+        <span class="card-stat"><span class="status-dot dot-green"></span>LIVE</span>
+      </div>
+    </div>
+
+    <!-- CRYPTO -->
+    <div class="card card-crypto" onclick="window.location='crypto_intel_tracker.html'" style="cursor:pointer;">
+      <div class="card-header">
+        <div class="card-icon">◈</div>
+        <div class="card-title-wrap">
+          <div class="card-title">Crypto Intel</div>
+          <div class="card-subtitle">AI-POWERED MARKET TRACKER</div>
+        </div>
+      </div>
+      <div class="card-desc">Track large caps, altcoins, DeFi, and meme coins. Live CoinGecko data with 7-day sparklines, ATH distance, volume heat, sentiment scores, and AI trading signals.</div>
+      <div class="card-tags">
+        <span class="card-tag">COINGECKO</span>
+        <span class="card-tag">SPARKLINES</span>
+        <span class="card-tag">SENTIMENT</span>
+        <span class="card-tag">AI SIGNALS</span>
+        <span class="card-tag">PRESETS</span>
+      </div>
+      <div class="card-footer">
+        <a class="card-btn" href="crypto_intel_tracker.html">OPEN →</a>
+        <span class="card-stat"><span class="status-dot dot-blue"></span>LIVE</span>
+      </div>
+    </div>
+
+    <!-- NBA -->
+    <div class="card card-nba" onclick="window.location='nba_parlay_finder.html'" style="cursor:pointer;">
+      <div class="card-header">
+        <div class="card-icon">🏀</div>
+        <div class="card-title-wrap">
+          <div class="card-title">NBA Parlay Finder</div>
+          <div class="card-subtitle">PLAYER PROPS vs L5 AVERAGES</div>
+        </div>
+      </div>
+      <div class="card-desc">Today's slate loaded automatically. Compares player L5 game averages against FanDuel prop lines — flags value when avg beats the line at odds better than -400. Build and AI-analyze parlays.</div>
+      <div class="card-tags">
+        <span class="card-tag">LIVE PROPS</span>
+        <span class="card-tag">L5 AVERAGES</span>
+        <span class="card-tag">VALUE DETECT</span>
+        <span class="card-tag">PARLAY AI</span>
+        <span class="card-tag">FANDUEL</span>
+      </div>
+      <div class="card-footer">
+        <a class="card-btn" href="nba_parlay_finder.html">OPEN →</a>
+        <span class="card-stat"><span class="status-dot dot-purple"></span>LIVE</span>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<footer>
+  <div class="footer-text">INTEL SUITE // AI-POWERED // ALL DATA FOR INFORMATIONAL PURPOSES ONLY</div>
+</footer>
+
+</body>
+</html>
