@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Crypto Intel — AI-Powered Market Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#080b10;
+  color:#b8c8d8;
+  min-height:100vh;
+  padding:20px;
+}
+
+/* ── HEADER ── */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid #0e1e2e;flex-wrap:wrap;gap:8px;}
+.header-left{display:flex;align-items:center;gap:12px;}
+.header-icon{width:34px;height:34px;background:#071520;border:1px solid #0a4a7a;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.header h1{font-family:'IBM Plex Mono',monospace;font-size:14px;color:#00d4ff;letter-spacing:3px;text-transform:uppercase;}
+.header-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#1a4a6a;letter-spacing:1px;margin-top:2px;}
+.header-meta{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#1a4a6a;letter-spacing:1px;text-align:right;}
+
+/* ── SUMMARY BAR ── */
+.summary-bar{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.sum-item{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:1px;padding:4px 10px;border-radius:3px;}
+.sum-buy {background:#071a07;border:1px solid #0d3a0d;color:#00ff88;}
+.sum-hold{background:#1a1a07;border:1px solid #3a3a0d;color:#ffdd00;}
+.sum-sell{background:#1a0707;border:1px solid #3a0d0d;color:#ff4466;}
+.sum-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#1a3a5a;letter-spacing:1px;}
+
+/* ── PRESETS ── */
+.preset-strip{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
+.preset-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#1a3a5a;letter-spacing:1px;}
+.preset-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;border-radius:3px;border:1px solid #0e2030;background:#080b10;color:#1a6a9a;cursor:pointer;letter-spacing:1px;transition:all 0.15s;}
+.preset-btn:hover{border-color:#00d4ff;color:#00d4ff;}
+
+/* ── CONTROLS ── */
+.controls{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
+.add-coin{display:flex;gap:6px;flex:1;min-width:200px;}
+.add-coin input{background:#080f18;border:1px solid #0e2030;color:#b8c8d8;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:7px 10px;border-radius:4px;flex:1;outline:none;letter-spacing:1px;}
+.add-coin input:focus{border-color:#006a9a;}
+.add-coin input::placeholder{color:#0e2a3a;letter-spacing:0px;}
+
+.btn{background:#080f18;border:1px solid #0a4a7a;color:#00d4ff;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:7px 14px;border-radius:4px;cursor:pointer;letter-spacing:1px;transition:all 0.15s;white-space:nowrap;}
+.btn:hover{background:#071520;border-color:#00d4ff;}
+.btn:disabled{opacity:0.3;cursor:not-allowed;}
+.btn-green{border-color:#0a4a2a;color:#00ff88;}
+.btn-green:hover{background:#071507;border-color:#00ff88;}
+.btn-amber{border-color:#4a3a0a;color:#ffdd00;}
+.btn-amber:hover{background:#15150a;border-color:#ffdd00;}
+
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
+.filter-label{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#1a3a5a;letter-spacing:1px;margin-right:2px;}
+.filter-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 10px;border-radius:3px;border:1px solid #0e2030;background:#080b10;color:#1a6a9a;cursor:pointer;letter-spacing:1px;transition:all 0.15s;}
+.filter-btn:hover{border-color:#006a9a;color:#00d4ff;}
+.filter-btn.active{background:#071520;border-color:#00d4ff;color:#00d4ff;}
+.sort-sep{width:1px;height:18px;background:#0e2030;margin:0 4px;}
+
+/* ── STATUS ── */
+.status-bar{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#1a6a9a;margin-bottom:8px;letter-spacing:1px;min-height:16px;}
+.status-bar.loading{color:#00d4ff;animation:blink 1s infinite;}
+.status-bar.error{color:#ff4466;}
+.hint-bar{font-family:'IBM Plex Mono',monospace;font-size:10px;color:#0e2a3a;letter-spacing:1px;margin-bottom:14px;}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.35}}
+@keyframes scanh{0%{top:0;opacity:0.7}100%{top:100%;opacity:0}}
+@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
+
+/* ── GRID ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:10px;}
+
+/* ── CARD BASE ── */
+.card{background:#080f18;border:1px solid #0e1e2e;border-radius:7px;padding:14px;position:relative;transition:border-color 0.2s,background 0.2s;}
+
+/* ── DORMANT ── */
+.card.dormant{cursor:pointer;min-height:90px;display:flex;align-items:center;justify-content:space-between;}
+.card.dormant:hover{border-color:#0a4a7a;background:#080f1c;}
+.card.dormant:hover .dormant-hint{opacity:1;}
+.card.dormant.prev-up  {border-left:2px solid #0a3a1a;}
+.card.dormant.prev-down{border-left:2px solid #3a0a1a;}
+.dormant-left{display:flex;flex-direction:column;gap:4px;}
+.dormant-symbol{font-family:'IBM Plex Mono',monospace;font-size:20px;color:#1a7aaa;letter-spacing:3px;}
+.dormant-name{font-size:11px;color:#0e2a3a;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dormant-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;}
+.dormant-hint{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#1a6a9a;letter-spacing:2px;opacity:0;transition:opacity 0.2s;}
+.dormant-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.dormant-prev{font-family:'IBM Plex Mono',monospace;font-size:10px;}
+.dormant-prev.up{color:#1a7a4a;}
+.dormant-prev.down{color:#7a1a2a;}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:#0a4a7a;animation:pulse 2s infinite;}
+
+/* ── LOADED ── */
+.card.loaded{cursor:default;}
+.scan-line{position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,#00d4ff,transparent);opacity:0;pointer-events:none;}
+.card.scanning .scan-line{animation:scanh 1.5s ease-out;}
+
+.remove-btn{background:none;border:none;color:#0e2030;cursor:pointer;font-size:13px;padding:2px 4px;line-height:1;transition:color 0.15s;}
+.remove-btn:hover{color:#ff4466;}
+.refresh-btn{background:none;border:none;color:#0a3a5a;cursor:pointer;font-size:13px;padding:2px 4px;transition:color 0.15s;}
+.refresh-btn:hover{color:#00d4ff;}
+
+.card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+.coin-symbol{font-family:'IBM Plex Mono',monospace;font-size:18px;color:#00d4ff;letter-spacing:2px;}
+.coin-name{font-size:11px;color:#2a6a8a;margin-top:1px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-actions{display:flex;gap:2px;align-items:center;}
+
+/* ── BADGES ── */
+.badge-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
+.badge{display:inline-block;font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 6px;border-radius:2px;letter-spacing:1px;}
+.badge-cap{background:#0a1020;border:1px solid #1a2a4a;color:#6a9aff;}
+.badge-rank{background:#0a0a20;border:1px solid #1a1a4a;color:#aa8aff;}
+
+/* ── PRICE ── */
+.price-row{display:flex;align-items:baseline;gap:10px;margin-bottom:6px;}
+.price{font-family:'IBM Plex Mono',monospace;font-size:22px;color:#e8f4ff;}
+.change{font-family:'IBM Plex Mono',monospace;font-size:13px;}
+.change.up{color:#00ff88;}
+.change.down{color:#ff4466;}
+.change.flat{color:#4a6a8a;}
+
+/* ── SPARKLINE ── */
+.sparkline-wrap{margin-bottom:8px;}
+.sparkline-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#0a3a5a;letter-spacing:1px;margin-bottom:3px;}
+canvas.sparkline{width:100%;height:36px;display:block;}
+
+/* ── META ── */
+.meta-row{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.meta-item{display:flex;flex-direction:column;gap:1px;}
+.meta-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#0a3a5a;letter-spacing:1px;text-transform:uppercase;}
+.meta-value{font-family:'IBM Plex Mono',monospace;font-size:12px;color:#4a9abb;}
+
+/* ── MARKET CAP BAR ── */
+.mcap-bar-wrap{margin-bottom:8px;}
+.mcap-bar-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#0a3a5a;letter-spacing:1px;margin-bottom:4px;display:flex;justify-content:space-between;}
+.mcap-bar-track{height:3px;background:#0a1520;border-radius:2px;position:relative;}
+.mcap-bar-fill{height:100%;border-radius:2px;background:#0a4a7a;}
+
+/* ── RETURNS ── */
+.returns-row{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.return-item{display:flex;flex-direction:column;gap:1px;}
+
+/* ── DIVIDER ── */
+.divider{border:none;border-top:1px solid #0a1520;margin:8px 0;}
+
+/* ── NEWS ── */
+.section-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#0a3a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;}
+.news-section{margin-bottom:8px;}
+.news-item{font-size:11px;color:#3a6a8a;padding:4px 0;border-bottom:1px solid #08111a;line-height:1.4;cursor:pointer;transition:color 0.15s;}
+.news-item:last-child{border-bottom:none;}
+.news-item:hover{color:#b8c8d8;}
+.news-source{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#0a3a5a;margin-top:1px;}
+
+/* ── ON-CHAIN METRICS ── */
+.onchain-row{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap;}
+.onchain-item{display:flex;flex-direction:column;gap:1px;}
+.onchain-label{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#0a3a5a;letter-spacing:1px;text-transform:uppercase;}
+.onchain-value{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#4a7aaa;}
+.onchain-value.hot{color:#ff8844;}
+.onchain-value.cold{color:#4488ff;}
+
+/* ── VERDICT ── */
+.verdict{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:4px;margin-top:6px;}
+.verdict.buy {background:#071a07;border:1px solid #0d3a0d;}
+.verdict.sell{background:#1a0707;border:1px solid #3a0d0d;}
+.verdict.hold{background:#1a1a07;border:1px solid #3a3a0d;}
+.verdict.pending{background:#080f18;border:1px solid #0e2030;}
+.verdict-badge{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;letter-spacing:2px;min-width:36px;}
+.verdict.buy  .verdict-badge{color:#00ff88;}
+.verdict.sell .verdict-badge{color:#ff4466;}
+.verdict.hold .verdict-badge{color:#ffdd00;}
+.verdict.pending .verdict-badge{color:#1a6a9a;}
+.verdict-text{font-size:11px;line-height:1.4;flex:1;}
+.verdict.buy  .verdict-text{color:#2a9a5a;}
+.verdict.sell .verdict-text{color:#9a2a3a;}
+.verdict.hold .verdict-text{color:#8a8a2a;}
+.verdict.pending .verdict-text{color:#1a6a9a;animation:blink 1s infinite;}
+
+/* ── NOTES ── */
+.note-area{margin-top:6px;}
+.note-input{width:100%;background:#06101a;border:1px solid #0a1a2a;color:#4a8aaa;font-family:'DM Sans',sans-serif;font-size:11px;padding:5px 7px;border-radius:3px;resize:none;outline:none;}
+.note-input:focus{border-color:#0a3a5a;}
+.note-display{font-size:11px;color:#1a5a7a;font-style:italic;margin-top:4px;line-height:1.4;cursor:pointer;}
+
+/* ── LOADING ── */
+.card-loading-overlay{display:flex;align-items:center;justify-content:center;min-height:60px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#1a6a9a;letter-spacing:2px;animation:blink 1s infinite;}
+.error-state{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7a1a2a;letter-spacing:1px;padding:8px 0;}
+.timestamp{font-family:'IBM Plex Mono',monospace;font-size:9px;color:#0a2a3a;margin-top:6px;letter-spacing:1px;}
+.empty-state{grid-column:1/-1;text-align:center;padding:60px 20px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#0e2030;letter-spacing:2px;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <div class="header-left">
+      <div class="header-icon">◈</div>
+      <div>
+        <h1>Crypto Intel</h1>
+        <div class="header-sub">AI-POWERED MARKET TRACKER // ON-DEMAND</div>
+      </div>
+    </div>
+    <div class="header-meta" id="last-updated">CLICK A CARD TO LOAD</div>
+  </div>
+
+  <div class="summary-bar" id="summary-bar">
+    <span class="sum-label">SIGNALS:</span>
+    <span class="sum-item sum-buy"  id="sum-buy">0 BUY</span>
+    <span class="sum-item sum-hold" id="sum-hold">0 HOLD</span>
+    <span class="sum-item sum-sell" id="sum-sell">0 SELL</span>
+  </div>
+
+  <div class="preset-strip">
+    <span class="preset-label">PRESETS:</span>
+    <button class="preset-btn" onclick="loadPreset('large')">◈ LARGE CAP</button>
+    <button class="preset-btn" onclick="loadPreset('defi')">◈ DeFi</button>
+    <button class="preset-btn" onclick="loadPreset('layer1')">◈ LAYER 1</button>
+    <button class="preset-btn" onclick="loadPreset('meme')">◈ MEME</button>
+    <button class="preset-btn" onclick="loadPreset('emerging')">◈ EMERGING</button>
+    <button class="preset-btn" onclick="loadPreset('all')">◈ ALL DEFAULT</button>
+  </div>
+
+  <div class="controls">
+    <div class="add-coin">
+      <input type="text" id="coin-input" placeholder="add coin id (e.g. solana, pepe)" />
+      <button class="btn" onclick="addCoin()">+ ADD</button>
+    </div>
+    <button class="btn btn-green" onclick="loadAll()"     id="load-all-btn">◈ LOAD ALL</button>
+    <button class="btn btn-amber" onclick="clearLoaded()" id="clear-btn">↺ RESET</button>
+  </div>
+
+  <div class="filter-bar">
+    <span class="filter-label">SORT:</span>
+    <button class="filter-btn active" id="sort-default" onclick="setSort('default')">DEFAULT</button>
+    <button class="filter-btn" id="sort-chg"     onclick="setSort('chg')">24H %</button>
+    <button class="filter-btn" id="sort-mcap"    onclick="setSort('mcap')">MCAP</button>
+    <button class="filter-btn" id="sort-verdict" onclick="setSort('verdict')">SIGNAL</button>
+    <div class="sort-sep"></div>
+    <span class="filter-label">FILTER:</span>
+    <button class="filter-btn active" id="filter-all"    onclick="setFilter('all')">ALL</button>
+    <button class="filter-btn" id="filter-buy"    onclick="setFilter('buy')">BUY</button>
+    <button class="filter-btn" id="filter-hold"   onclick="setFilter('hold')">HOLD</button>
+    <button class="filter-btn" id="filter-sell"   onclick="setFilter('sell')">SELL</button>
+    <button class="filter-btn" id="filter-loaded" onclick="setFilter('loaded')">LOADED</button>
+  </div>
+
+  <div class="status-bar" id="status-bar">STANDING BY — CLICK ANY CARD TO ACQUIRE DATA</div>
+  <div class="hint-bar">◈ ENTER COINGECKO COIN ID (e.g. bitcoin, ethereum, solana, pepe) &nbsp;|&nbsp; CLICK CARD TO FETCH</div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+/* ─────────────────────────────────────────
+   COIN METADATA
+───────────────────────────────────────── */
+const COIN_META = {
+  bitcoin:        { symbol:'BTC',  name:'Bitcoin',         sector:'Store of Value', tier:'Mega Cap'  },
+  ethereum:       { symbol:'ETH',  name:'Ethereum',        sector:'Layer 1',        tier:'Mega Cap'  },
+  solana:         { symbol:'SOL',  name:'Solana',          sector:'Layer 1',        tier:'Large Cap' },
+  binancecoin:    { symbol:'BNB',  name:'BNB',             sector:'Exchange',       tier:'Large Cap' },
+  ripple:         { symbol:'XRP',  name:'XRP',             sector:'Payments',       tier:'Large Cap' },
+  cardano:        { symbol:'ADA',  name:'Cardano',         sector:'Layer 1',        tier:'Large Cap' },
+  avalanche:      { symbol:'AVAX', name:'Avalanche',       sector:'Layer 1',        tier:'Mid Cap'   },
+  chainlink:      { symbol:'LINK', name:'Chainlink',       sector:'Oracle',         tier:'Mid Cap'   },
+  polkadot:       { symbol:'DOT',  name:'Polkadot',        sector:'Layer 0',        tier:'Mid Cap'   },
+  uniswap:        { symbol:'UNI',  name:'Uniswap',         sector:'DeFi / DEX',     tier:'Mid Cap'   },
+  aave:           { symbol:'AAVE', name:'Aave',            sector:'DeFi / Lending', tier:'Mid Cap'   },
+  'maker':        { symbol:'MKR',  name:'Maker',           sector:'DeFi / Lending', tier:'Mid Cap'   },
+  pepe:           { symbol:'PEPE', name:'Pepe',            sector:'Meme',           tier:'Small Cap' },
+  dogecoin:       { symbol:'DOGE', name:'Dogecoin',        sector:'Meme',           tier:'Large Cap' },
+  shiba:          { symbol:'SHIB', name:'Shiba Inu',       sector:'Meme',           tier:'Mid Cap'   },
+  'floki':        { symbol:'FLOKI',name:'Floki',           sector:'Meme',           tier:'Small Cap' },
+  sui:            { symbol:'SUI',  name:'Sui',             sector:'Layer 1',        tier:'Mid Cap'   },
+  aptos:          { symbol:'APT',  name:'Aptos',           sector:'Layer 1',        tier:'Mid Cap'   },
+  arbitrum:       { symbol:'ARB',  name:'Arbitrum',        sector:'Layer 2',        tier:'Mid Cap'   },
+  optimism:       { symbol:'OP',   name:'Optimism',        sector:'Layer 2',        tier:'Small Cap' },
+  'render-token': { symbol:'RNDR', name:'Render',          sector:'AI / GPU',       tier:'Small Cap' },
+  'fetch-ai':     { symbol:'FET',  name:'Fetch.ai',        sector:'AI',             tier:'Small Cap' },
+  injective:      { symbol:'INJ',  name:'Injective',       sector:'DeFi',           tier:'Small Cap' },
+  celestia:       { symbol:'TIA',  name:'Celestia',        sector:'Data Layer',     tier:'Small Cap' },
+  worldcoin:      { symbol:'WLD',  name:'Worldcoin',       sector:'Identity / AI',  tier:'Small Cap' },
+};
+
+const PRESETS = {
+  large:    ['bitcoin','ethereum','solana','binancecoin','ripple'],
+  defi:     ['uniswap','aave','maker','injective','chainlink'],
+  layer1:   ['ethereum','solana','cardano','avalanche','sui','aptos'],
+  meme:     ['dogecoin','pepe','shiba','floki'],
+  emerging: ['render-token','fetch-ai','celestia','worldcoin','arbitrum','optimism'],
+  all:      ['bitcoin','ethereum','solana','pepe','dogecoin','uniswap','aave','chainlink','avalanche','render-token'],
+};
+
+const SECTOR_COLORS = {
+  'Store of Value':'#ffaa00','Layer 1':'#00d4ff','Layer 2':'#4488ff',
+  'Layer 0':'#aa88ff','DeFi / DEX':'#00ff88','DeFi / Lending':'#44ffaa',
+  'DeFi':'#44ffcc','Oracle':'#ff8844','Exchange':'#ffdd00',
+  'Payments':'#aaddff','Meme':'#ff44aa','AI':'#cc44ff',
+  'AI / GPU':'#ee44ff','Identity / AI':'#dd44ee','Data Layer':'#44aaff',
+};
+
+function getMeta(id) {
+  return COIN_META[id] || { symbol: id.toUpperCase().slice(0,6), name: id, sector: 'Crypto', tier: '?' };
+}
+
+/* ─────────────────────────────────────────
+   STATE
+───────────────────────────────────────── */
+let watchlist    = JSON.parse(localStorage.getItem('crypto_wl_v1') || 'null') || [...PRESETS.all];
+let coinData     = {};
+let analyses     = {};
+let loading      = {};
+let notes        = JSON.parse(localStorage.getItem('crypto_notes_v1') || '{}');
+let currentSort  = 'default';
+let currentFilter= 'all';
+
+function save() {
+  try {
+    localStorage.setItem('crypto_wl_v1',    JSON.stringify(watchlist));
+    localStorage.setItem('crypto_notes_v1', JSON.stringify(notes));
+  } catch(e) {}
+}
+
+function setStatus(msg, type='') {
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.className = 'status-bar ' + type;
+}
+
+function formatTime() {
+  return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+}
+
+function fmtPrice(p) {
+  if (!p && p !== 0) return 'N/A';
+  if (p >= 1000)  return '$' + p.toLocaleString('en-US',{maximumFractionDigits:2});
+  if (p >= 1)     return '$' + p.toFixed(4);
+  if (p >= 0.01)  return '$' + p.toFixed(5);
+  return '$' + p.toFixed(8);
+}
+
+function fmtMcap(m) {
+  if (!m) return 'N/A';
+  if (m >= 1e12) return '$' + (m/1e12).toFixed(2) + 'T';
+  if (m >= 1e9)  return '$' + (m/1e9).toFixed(2)  + 'B';
+  if (m >= 1e6)  return '$' + (m/1e6).toFixed(2)  + 'M';
+  return '$' + m.toLocaleString();
+}
+
+function fmtVol(v) {
+  if (!v) return 'N/A';
+  if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+  return '$' + v.toLocaleString();
+}
+
+/* ─────────────────────────────────────────
+   VERDICT SUMMARY
+───────────────────────────────────────── */
+function updateSummary() {
+  const vals = Object.values(analyses);
+  const buy  = vals.filter(a => a.verdict.toLowerCase().includes('buy')).length;
+  const sell = vals.filter(a => a.verdict.toLowerCase().includes('sell')).length;
+  const hold = vals.filter(a => a.verdict.toLowerCase().includes('hold')).length;
+  document.getElementById('sum-buy').textContent  = buy  + ' BUY';
+  document.getElementById('sum-hold').textContent = hold + ' HOLD';
+  document.getElementById('sum-sell').textContent = sell + ' SELL';
+}
+
+/* ─────────────────────────────────────────
+   SORT / FILTER
+───────────────────────────────────────── */
+function setSort(s) {
+  currentSort = s;
+  ['default','chg','mcap','verdict'].forEach(k => {
+    document.getElementById('sort-'+k)?.classList.toggle('active', k===s);
+  });
+  renderGrid();
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  ['all','buy','hold','sell','loaded'].forEach(k => {
+    document.getElementById('filter-'+k)?.classList.toggle('active', k===f);
+  });
+  renderGrid();
+}
+
+function verdictClass(v) {
+  if (!v) return 'hold';
+  const lv = v.toLowerCase();
+  return lv.includes('buy') ? 'buy' : lv.includes('sell') ? 'sell' : 'hold';
+}
+
+function getSortedFiltered() {
+  let list = [...watchlist];
+  if (currentFilter === 'loaded') list = list.filter(id => coinData[id]);
+  else if (currentFilter === 'buy')  list = list.filter(id => analyses[id]?.verdict?.toLowerCase().includes('buy'));
+  else if (currentFilter === 'sell') list = list.filter(id => analyses[id]?.verdict?.toLowerCase().includes('sell'));
+  else if (currentFilter === 'hold') list = list.filter(id => analyses[id]?.verdict?.toLowerCase().includes('hold'));
+
+  if (currentSort === 'chg')  list.sort((a,b) => (coinData[b]?.price_change_percentage_24h||0) - (coinData[a]?.price_change_percentage_24h||0));
+  else if (currentSort === 'mcap') list.sort((a,b) => (coinData[b]?.market_cap||0) - (coinData[a]?.market_cap||0));
+  else if (currentSort === 'verdict') {
+    const order = {buy:0,hold:1,sell:2};
+    list.sort((a,b) => (order[verdictClass(analyses[a]?.verdict)]||1) - (order[verdictClass(analyses[b]?.verdict)]||1));
+  }
+  return list;
+}
+
+/* ─────────────────────────────────────────
+   PRESETS
+───────────────────────────────────────── */
+function loadPreset(key) {
+  const ids = PRESETS[key];
+  if (!ids) return;
+  watchlist = [...new Set(ids)];
+  coinData = {}; analyses = {}; loading = {};
+  save();
+  renderGrid();
+  setStatus('PRESET: ' + key.toUpperCase() + ' — ' + watchlist.length + ' COINS LOADED');
+}
+
+/* ─────────────────────────────────────────
+   DATA FETCH — CoinGecko free API
+───────────────────────────────────────── */
+async function fetchCoinGecko(coinId) {
+  try {
+    const url = `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&market_data=true&community_data=true&developer_data=false&sparkline=true`;
+    const r   = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) return null;
+    const d   = await r.json();
+    const md  = d.market_data;
+    if (!md) return null;
+
+    return {
+      id:            d.id,
+      symbol:        d.symbol?.toUpperCase(),
+      name:          d.name,
+      price:         md.current_price?.usd,
+      price_change_24h:     md.price_change_24h || 0,
+      price_change_percentage_24h: md.price_change_percentage_24h || 0,
+      price_change_7d:  md.price_change_percentage_7d_in_currency?.usd || md.price_change_percentage_7d || 0,
+      price_change_30d: md.price_change_percentage_30d_in_currency?.usd || md.price_change_percentage_30d || 0,
+      market_cap:    md.market_cap?.usd,
+      market_cap_rank: d.market_cap_rank,
+      total_volume:  md.total_volume?.usd,
+      high_24h:      md.high_24h?.usd,
+      low_24h:       md.low_24h?.usd,
+      ath:           md.ath?.usd,
+      ath_change_pct: md.ath_change_percentage?.usd,
+      circulating_supply: md.circulating_supply,
+      max_supply:    md.max_supply,
+      sparkline:     d.market_data?.sparkline_7d?.price || [],
+      community_data: {
+        reddit_subscribers:     d.community_data?.reddit_subscribers,
+        twitter_followers:      d.community_data?.twitter_followers,
+      },
+      sentiment_up:   d.sentiment_votes_up_percentage,
+      sentiment_down: d.sentiment_votes_down_percentage,
+      description:    d.description?.en?.split('. ')[0] || '',
+    };
+  } catch(e) { return null; }
+}
+
+async function fetchNews(coinId) {
+  const meta = getMeta(coinId);
+  const q    = encodeURIComponent(`${meta.symbol} ${meta.name} crypto`);
+  try {
+    const url   = `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=US&ceid=US:en`;
+    const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+    const r     = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+    const outer = await r.json();
+    if (!outer.contents) return [];
+    const doc   = new DOMParser().parseFromString(outer.contents, 'text/xml');
+    return [...doc.querySelectorAll('item')].slice(0,3).map(item => ({
+      headline: item.querySelector('title')?.textContent?.replace(/ - .*$/,'') || '',
+      url:      item.querySelector('link')?.textContent || '#',
+      date:     item.querySelector('pubDate')?.textContent || '',
+    })).filter(n => n.headline.length > 5);
+  } catch(e) { return []; }
+}
+
+/* ─────────────────────────────────────────
+   SPARKLINE CANVAS
+───────────────────────────────────────── */
+function drawSparkline(canvasId, prices, isUp) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !prices || prices.length < 2) return;
+  const ctx    = canvas.getContext('2d');
+  const W      = canvas.offsetWidth || 260;
+  const H      = 36;
+  canvas.width  = W;
+  canvas.height = H;
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  const range = max - min || 1;
+  const pts = prices.map((p,i) => ({
+    x: (i / (prices.length-1)) * W,
+    y: H - ((p - min) / range) * (H - 4) - 2,
+  }));
+  ctx.clearRect(0,0,W,H);
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  pts.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.strokeStyle = isUp ? '#00ff88' : '#ff4466';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+  // fill under
+  ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+  ctx.fillStyle = isUp ? 'rgba(0,255,136,0.06)' : 'rgba(255,68,102,0.06)';
+  ctx.fill();
+}
+
+/* ─────────────────────────────────────────
+   AI ANALYSIS
+───────────────────────────────────────── */
+async function analyzeStock(coinId) {
+  const d    = coinData[coinId];
+  if (!d) return;
+  const meta = getMeta(coinId);
+  const news = (d.news || []).map(n => n.headline).join(' | ');
+
+  const supplyNote = d.max_supply
+    ? `Circulating: ${(d.circulating_supply/1e6).toFixed(1)}M / Max: ${(d.max_supply/1e6).toFixed(1)}M (${((d.circulating_supply/d.max_supply)*100).toFixed(1)}% issued)`
+    : `Circulating supply: ${d.circulating_supply ? (d.circulating_supply/1e6).toFixed(1)+'M' : 'unlimited'}`;
+
+  const sentNote = d.sentiment_up
+    ? `Community sentiment: ${d.sentiment_up?.toFixed(0)}% bullish / ${d.sentiment_down?.toFixed(0)}% bearish`
+    : '';
+
+  const prompt = `Crypto asset: ${d.symbol} (${d.name}) — Sector: ${meta.sector}, Tier: ${meta.tier}
+Price: ${fmtPrice(d.price)} | 24h change: ${d.price_change_percentage_24h >= 0 ? '+':''}${d.price_change_percentage_24h?.toFixed(2)}%
+7d return: ${d.price_change_7d >= 0 ? '+':''}${d.price_change_7d?.toFixed(2)}% | 30d return: ${d.price_change_30d >= 0 ? '+':''}${d.price_change_30d?.toFixed(2)}%
+24h High: ${fmtPrice(d.high_24h)} | 24h Low: ${fmtPrice(d.low_24h)}
+ATH: ${fmtPrice(d.ath)} (${d.ath_change_pct?.toFixed(1)}% from ATH)
+Market Cap: ${fmtMcap(d.market_cap)} | Rank #${d.market_cap_rank} | 24h Volume: ${fmtVol(d.total_volume)}
+${supplyNote}
+${sentNote}
+News: ${news || 'none — use technicals only'}
+
+Give a short-term crypto trading signal. Factor in price momentum, volume, ATH distance, sentiment, and news. Commit to BUY, HOLD, or SELL.`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        system: `You are a crypto market analyst giving short-term trading signals.
+Always respond with BUY, HOLD, or SELL — never say data is insufficient.
+Consider: momentum, volume, ATH distance, supply dynamics, sentiment, and news.
+Respond ONLY with valid JSON — no markdown, no extra text:
+{"verdict":"BUY"|"HOLD"|"SELL","reason":"one sharp sentence under 18 words"}`,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data   = await resp.json();
+    const text   = (data.content?.[0]?.text || '').replace(/```json|```/g,'').trim();
+    analyses[coinId] = JSON.parse(text);
+  } catch(e) {
+    const p = d.price_change_percentage_24h || 0;
+    const fv = p > 3 ? 'BUY' : p < -3 ? 'SELL' : 'HOLD';
+    const fr = p > 3  ? `Strong 24h momentum up ${p.toFixed(1)}% with elevated volume signal.`
+             : p < -3 ? `Down ${Math.abs(p).toFixed(1)}% in 24h — bearish short-term pressure.`
+             : `Consolidating — no clear directional edge at current levels.`;
+    analyses[coinId] = { verdict: fv, reason: fr };
+  }
+}
+
+/* ─────────────────────────────────────────
+   RENDER DORMANT
+───────────────────────────────────────── */
+function renderDormant(coinId) {
+  const card = document.getElementById('card-' + coinId);
+  if (!card) return;
+  const meta    = getMeta(coinId);
+  const sColor  = SECTOR_COLORS[meta.sector] || '#00d4ff';
+
+  card.className = 'card dormant';
+  card.onclick   = e => { if (!e.target.classList.contains('remove-btn')) loadCard(coinId); };
+  card.innerHTML = `
+    <div class="dormant-left">
+      <div class="dormant-symbol">${meta.symbol}</div>
+      <div class="dormant-name">${meta.name}</div>
+      <div class="dormant-tags">
+        <span class="badge" style="background:#06101a;border:1px solid ${sColor}22;color:${sColor};font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 6px;border-radius:2px;letter-spacing:1px;">${meta.sector}</span>
+        <span class="badge badge-cap">${meta.tier}</span>
+      </div>
+      <div class="dormant-hint">◈ CLICK TO FETCH</div>
+    </div>
+    <div class="dormant-right">
+      <button class="remove-btn" onclick="removeCoin('${coinId}')">✕</button>
+      <div class="pulse-dot"></div>
+    </div>
+  `;
+}
+
+/* ─────────────────────────────────────────
+   RENDER LOADING
+───────────────────────────────────────── */
+function renderCardLoading(coinId) {
+  const card = document.getElementById('card-' + coinId);
+  if (!card) return;
+  const meta = getMeta(coinId);
+  card.className = 'card loaded';
+  card.onclick   = null;
+  card.innerHTML = `
+    <div class="scan-line" style="animation:scanh 1s ease-out infinite;opacity:0.6;"></div>
+    <div class="card-header">
+      <div>
+        <div class="coin-symbol" style="color:#1a7aaa;">${meta.symbol}</div>
+        <div class="coin-name">${meta.name}</div>
+      </div>
+    </div>
+    <div class="card-loading-overlay">FETCHING MARKET DATA...</div>
+  `;
+}
+
+/* ─────────────────────────────────────────
+   RENDER LOADED
+───────────────────────────────────────── */
+function renderLoaded(coinId) {
+  const card     = document.getElementById('card-' + coinId);
+  if (!card) return;
+  const d        = coinData[coinId];
+  const analysis = analyses[coinId];
+  const meta     = getMeta(coinId);
+  const sColor   = SECTOR_COLORS[meta.sector] || '#00d4ff';
+
+  card.className = 'card loaded';
+  card.onclick   = null;
+
+  if (!d) {
+    card.innerHTML = `
+      <div class="scan-line"></div>
+      <div class="card-header">
+        <div><div class="coin-symbol">${meta.symbol}</div><div class="coin-name">${meta.name}</div></div>
+        <div class="card-actions">
+          <button class="refresh-btn" onclick="reloadCard('${coinId}')">↺</button>
+          <button class="remove-btn"  onclick="removeCoin('${coinId}')">✕</button>
+        </div>
+      </div>
+      <div class="error-state">[ DATA UNAVAILABLE — CHECK COIN ID OR RETRY ]</div>
+    `;
+    return;
+  }
+
+  const chg     = d.price_change_percentage_24h || 0;
+  const chgCls  = chg > 0 ? 'up' : chg < 0 ? 'down' : 'flat';
+  const chgSign = chg > 0 ? '+' : '';
+  const isUp    = chg >= 0;
+  const news    = d.news || [];
+
+  // ATH bar
+  const athPct  = d.ath && d.ath > 0
+    ? Math.max(0, Math.min(100, (d.price / d.ath) * 100))
+    : 50;
+
+  // Supply bar
+  const supplyPct = d.max_supply && d.circulating_supply
+    ? Math.min(100, (d.circulating_supply / d.max_supply) * 100)
+    : null;
+
+  // On-chain / community metrics
+  const volToMcap = d.market_cap > 0 ? ((d.total_volume / d.market_cap)*100).toFixed(1) : 'N/A';
+  const volHeat   = parseFloat(volToMcap) > 20 ? 'hot' : parseFloat(volToMcap) < 3 ? 'cold' : '';
+
+  // Sentiment
+  const sentHtml = d.sentiment_up ? `
+    <div class="onchain-item">
+      <div class="onchain-label">BULLISH SENTIMENT</div>
+      <div class="onchain-value ${d.sentiment_up > 60 ? 'hot' : ''}">${d.sentiment_up?.toFixed(0)}%</div>
+    </div>
+  ` : '';
+
+  // Multi-day returns
+  const retHtml = `
+    <div class="returns-row">
+      <div class="return-item">
+        <div class="meta-label">7D RETURN</div>
+        <div class="meta-value change ${d.price_change_7d >= 0 ? 'up':'down'}">${d.price_change_7d >= 0?'+':''}${d.price_change_7d?.toFixed(2)}%</div>
+      </div>
+      <div class="return-item">
+        <div class="meta-label">30D RETURN</div>
+        <div class="meta-value change ${d.price_change_30d >= 0 ? 'up':'down'}">${d.price_change_30d >= 0?'+':''}${d.price_change_30d?.toFixed(2)}%</div>
+      </div>
+      <div class="return-item">
+        <div class="meta-label">FROM ATH</div>
+        <div class="meta-value change down">${d.ath_change_pct?.toFixed(1)}%</div>
+      </div>
+    </div>
+  `;
+
+  // Verdict
+  const verdictHtml = !analysis
+    ? `<div class="verdict pending"><span class="verdict-badge">----</span><span class="verdict-text">running analysis...</span></div>`
+    : (() => {
+        const vc = verdictClass(analysis.verdict);
+        return `<div class="verdict ${vc}"><span class="verdict-badge">${vc.toUpperCase()}</span><span class="verdict-text">${analysis.reason}</span></div>`;
+      })();
+
+  // News
+  const newsHtml = news.length > 0 ? `
+    <div class="news-section">
+      <div class="section-label">Intel Feed</div>
+      ${news.map(n => `
+        <div class="news-item" onclick="window.open('${n.url}','_blank')">
+          ${n.headline.length > 85 ? n.headline.slice(0,85)+'...' : n.headline}
+          <div class="news-source">Google News${n.date ? ' · '+new Date(n.date).toLocaleDateString() : ''}</div>
+        </div>
+      `).join('')}
+    </div>
+    <hr class="divider">
+  ` : '';
+
+  // Notes
+  const noteVal = notes[coinId] || '';
+  const noteHtml = `
+    <div class="note-area">
+      <div class="section-label" style="cursor:pointer;margin-top:8px;" onclick="toggleNote('${coinId}')">◈ NOTES</div>
+      <div id="note-wrap-${coinId}" style="display:${noteVal?'block':'none'}">
+        <textarea class="note-input" id="note-${coinId}" rows="2"
+          placeholder="your thesis, entry target, DCA range..."
+          oninput="saveNote('${coinId}')">${noteVal}</textarea>
+      </div>
+      ${!noteVal ? `<div class="note-display" onclick="toggleNote('${coinId}')">+ add note</div>` : ''}
+    </div>
+  `;
+
+  card.innerHTML = `
+    <div class="scan-line"></div>
+    <div class="card-header">
+      <div>
+        <div class="coin-symbol">${d.symbol || meta.symbol}</div>
+        <div class="coin-name">${d.name}</div>
+      </div>
+      <div class="card-actions">
+        <button class="refresh-btn" title="Refresh" onclick="reloadCard('${coinId}')">↺</button>
+        <button class="remove-btn"  onclick="removeCoin('${coinId}')">✕</button>
+      </div>
+    </div>
+    <div class="badge-row">
+      <span class="badge" style="background:#06101a;border:1px solid ${sColor}22;color:${sColor};font-family:'IBM Plex Mono',monospace;font-size:9px;padding:2px 6px;border-radius:2px;letter-spacing:1px;">${meta.sector}</span>
+      <span class="badge badge-cap">${meta.tier}</span>
+      ${d.market_cap_rank ? `<span class="badge badge-rank">RANK #${d.market_cap_rank}</span>` : ''}
+    </div>
+    <div class="price-row">
+      <div class="price">${fmtPrice(d.price)}</div>
+      <div class="change ${chgCls}">${chgSign}${chg.toFixed(2)}%</div>
+    </div>
+    <div class="sparkline-wrap">
+      <div class="sparkline-label">7-DAY PRICE CHART</div>
+      <canvas class="sparkline" id="spark-${coinId}" height="36"></canvas>
+    </div>
+    <div class="meta-row">
+      <div class="meta-item"><div class="meta-label">Market Cap</div><div class="meta-value">${fmtMcap(d.market_cap)}</div></div>
+      <div class="meta-item"><div class="meta-label">24h Volume</div><div class="meta-value">${fmtVol(d.total_volume)}</div></div>
+      <div class="meta-item"><div class="meta-label">Vol/MCap</div><div class="meta-value onchain-value ${volHeat}">${volToMcap}%</div></div>
+    </div>
+    <div class="mcap-bar-wrap">
+      <div class="mcap-bar-label">
+        <span>24H LOW ${fmtPrice(d.low_24h)}</span>
+        <span>ATH ${fmtPrice(d.ath)}</span>
+      </div>
+      <div class="mcap-bar-track">
+        <div class="mcap-bar-fill" style="width:${athPct.toFixed(1)}%"></div>
+      </div>
+    </div>
+    ${retHtml}
+    <div class="onchain-row">
+      ${sentHtml}
+      ${d.community_data?.reddit_subscribers ? `
+        <div class="onchain-item">
+          <div class="onchain-label">REDDIT SUBS</div>
+          <div class="onchain-value">${(d.community_data.reddit_subscribers/1000).toFixed(0)}K</div>
+        </div>` : ''}
+      ${d.community_data?.twitter_followers ? `
+        <div class="onchain-item">
+          <div class="onchain-label">X FOLLOWERS</div>
+          <div class="onchain-value">${(d.community_data.twitter_followers/1000).toFixed(0)}K</div>
+        </div>` : ''}
+      ${supplyPct !== null ? `
+        <div class="onchain-item">
+          <div class="onchain-label">SUPPLY ISSUED</div>
+          <div class="onchain-value ${supplyPct > 90 ? 'hot':''}">${supplyPct.toFixed(1)}%</div>
+        </div>` : ''}
+    </div>
+    <hr class="divider">
+    ${newsHtml}
+    ${verdictHtml}
+    ${noteHtml}
+    <div class="timestamp">LOADED ${formatTime()}</div>
+  `;
+
+  // Draw sparkline after DOM update
+  setTimeout(() => drawSparkline('spark-' + coinId, d.sparkline, isUp), 50);
+
+  card.classList.add('scanning');
+  setTimeout(() => card.classList.remove('scanning'), 1600);
+}
+
+/* ─────────────────────────────────────────
+   NOTES
+───────────────────────────────────────── */
+function toggleNote(coinId) {
+  const wrap = document.getElementById('note-wrap-' + coinId);
+  if (!wrap) return;
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+  if (wrap.style.display === 'block') setTimeout(() => document.getElementById('note-' + coinId)?.focus(), 50);
+}
+
+function saveNote(coinId) {
+  const el = document.getElementById('note-' + coinId);
+  if (!el) return;
+  notes[coinId] = el.value;
+  save();
+}
+
+/* ─────────────────────────────────────────
+   LOAD CARD
+───────────────────────────────────────── */
+async function loadCard(coinId) {
+  if (loading[coinId]) return;
+  loading[coinId] = true;
+  renderCardLoading(coinId);
+  setStatus('FETCHING ' + coinId.toUpperCase() + '...', 'loading');
+
+  const [data, news] = await Promise.all([fetchCoinGecko(coinId), fetchNews(coinId)]);
+  coinData[coinId]   = data ? { ...data, news } : null;
+  renderLoaded(coinId);
+
+  if (coinData[coinId]) {
+    setStatus('RUNNING AI ANALYSIS FOR ' + (coinData[coinId].symbol || coinId.toUpperCase()) + '...', 'loading');
+    await analyzeStock(coinId);
+    renderLoaded(coinId);
+    updateSummary();
+    setStatus((coinData[coinId].symbol || coinId.toUpperCase()) + ' — INTEL COMPLETE @ ' + formatTime());
+    document.getElementById('last-updated').textContent = formatTime();
+  } else {
+    setStatus(coinId.toUpperCase() + ' — DATA UNAVAILABLE (CHECK COIN ID)', 'error');
+  }
+  loading[coinId] = false;
+}
+
+async function reloadCard(coinId) {
+  delete coinData[coinId]; delete analyses[coinId]; delete loading[coinId];
+  await loadCard(coinId);
+}
+
+async function loadAll() {
+  const btn     = document.getElementById('load-all-btn');
+  btn.disabled  = true;
+  const dormant = watchlist.filter(id => !coinData[id] && !loading[id]);
+  if (!dormant.length) { setStatus('ALL COINS ALREADY LOADED'); btn.disabled=false; return; }
+  setStatus('LOADING ' + dormant.length + ' COINS...', 'loading');
+  for (const id of dormant) {
+    await loadCard(id);
+    await new Promise(r => setTimeout(r, 700)); // CoinGecko rate limit courtesy
+  }
+  setStatus('ALL LOADED @ ' + formatTime());
+  btn.disabled = false;
+}
+
+function clearLoaded() {
+  coinData = {}; analyses = {}; loading = {};
+  updateSummary();
+  renderGrid();
+  setStatus('RESET — STANDING BY');
+  document.getElementById('last-updated').textContent = 'CLICK A CARD TO LOAD';
+}
+
+/* ─────────────────────────────────────────
+   GRID
+───────────────────────────────────────── */
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  const list = getSortedFiltered();
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state">[ NO COINS MATCH CURRENT FILTER ]</div>';
+    return;
+  }
+  grid.innerHTML = list.map(id => `<div class="card dormant" id="card-${id}"></div>`).join('');
+  list.forEach(id => coinData[id] ? renderLoaded(id) : renderDormant(id));
+}
+
+async function addCoin() {
+  const input  = document.getElementById('coin-input');
+  const coinId = input.value.trim().toLowerCase().replace(/\s+/g,'-');
+  if (!coinId || watchlist.includes(coinId)) { input.value=''; return; }
+  watchlist.push(coinId);
+  save();
+  input.value = '';
+  renderGrid();
+  setStatus('COIN ' + coinId.toUpperCase() + ' ADDED — CLICK CARD TO LOAD');
+}
+
+function removeCoin(coinId) {
+  watchlist = watchlist.filter(id => id !== coinId);
+  delete coinData[coinId]; delete analyses[coinId]; delete loading[coinId];
+  save();
+  updateSummary();
+  renderGrid();
+  setStatus('REMOVED: ' + coinId.toUpperCase());
+}
+
+document.getElementById('coin-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addCoin();
+});
+
+renderGrid();
+updateSummary();
+</script>
+</body>
+</html>

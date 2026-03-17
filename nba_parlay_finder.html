@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NBA Parlay Finder</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Rajdhani',sans-serif;background:#07080d;color:#c8ccd8;min-height:100vh;padding:16px;}
+.mono{font-family:'JetBrains Mono',monospace;}
+
+/* HEADER */
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #12151e;flex-wrap:wrap;gap:8px;}
+.h1{font-family:'JetBrains Mono',monospace;font-size:15px;color:#4ab8ff;letter-spacing:3px;}
+.hsub{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a2a3a;letter-spacing:1px;margin-top:2px;}
+.hmeta{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a2a3a;text-align:right;}
+
+/* API BAR */
+.api-bar{background:#0d1018;border:1px solid #12151e;border-radius:5px;padding:10px 14px;margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.api-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a4a6a;letter-spacing:1px;white-space:nowrap;}
+.api-input{flex:1;min-width:160px;background:#07080d;border:1px solid #12151e;color:#4ab8ff;font-family:'JetBrains Mono',monospace;font-size:11px;padding:5px 8px;border-radius:3px;outline:none;}
+.api-input:focus{border-color:#1a4a7a;}
+.api-status{font-family:'JetBrains Mono',monospace;font-size:10px;}
+.key-set{color:#44cc88;} .key-unset{color:#3a2a1a;}
+
+/* BUTTONS */
+.btn{background:#0d1018;border:1px solid #1e3a6e;color:#4ab8ff;font-family:'JetBrains Mono',monospace;font-size:11px;padding:7px 14px;border-radius:4px;cursor:pointer;letter-spacing:1px;transition:all 0.15s;white-space:nowrap;}
+.btn:hover{background:#0a1525;border-color:#4ab8ff;}
+.btn:disabled{opacity:0.3;cursor:not-allowed;}
+.btn-g{border-color:#0a4a1a;color:#44ff88;} .btn-g:hover{background:#070f08;border-color:#44ff88;}
+.btn-gold{border-color:#4a3a0a;color:#ffd700;} .btn-gold:hover{background:#12100a;border-color:#ffd700;}
+.btn-r{border-color:#4a1a1a;color:#ff4455;} .btn-r:hover{background:#120809;border-color:#ff4455;}
+
+/* STATUS */
+.status{font-family:'JetBrains Mono',monospace;font-size:11px;color:#1a4a6a;margin:8px 0;letter-spacing:1px;min-height:16px;}
+.status.ld{color:#4ab8ff;animation:blink 1s infinite;}
+.status.ok{color:#44cc88;}
+.status.er{color:#ff4455;}
+
+/* DEBUG PANEL */
+.debug-panel{background:#030508;border:1px solid #0a1020;border-radius:5px;padding:10px;margin:8px 0;display:none;}
+.debug-panel.show{display:block;}
+.debug-title{font-family:'JetBrains Mono',monospace;font-size:9px;color:#1a3a1a;letter-spacing:2px;margin-bottom:6px;}
+.debug-log{font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.7;max-height:200px;overflow-y:auto;}
+.d-ok{color:#2a6a2a;} .d-er{color:#6a2a2a;} .d-info{color:#1a3a5a;} .d-warn{color:#5a4a1a;}
+
+/* PARLAY BOX */
+.parlay-box{background:#0a0f08;border:1px solid #1a3a0a;border-radius:5px;padding:12px;margin-bottom:10px;}
+.parlay-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;}
+.parlay-title{font-family:'JetBrains Mono',monospace;font-size:11px;color:#44ff88;letter-spacing:2px;}
+.parlay-legs{display:flex;flex-wrap:wrap;gap:5px;min-height:28px;margin-bottom:8px;}
+.p-leg{background:#070f08;border:1px solid #1a4a1a;border-radius:3px;padding:4px 8px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#44cc88;display:flex;align-items:center;gap:5px;}
+.p-leg-x{color:#1a4a1a;cursor:pointer;font-size:12px;} .p-leg-x:hover{color:#ff4455;}
+.p-empty{font-family:'JetBrains Mono',monospace;font-size:10px;color:#0e2a1a;}
+.ai-out{margin-top:8px;padding-top:8px;border-top:1px solid #0a1a08;font-size:13px;color:#4a7a4a;line-height:1.6;}
+.ai-conf{font-family:'JetBrains Mono',monospace;font-size:11px;margin-top:4px;}
+.c-high{color:#44ff88;} .c-med{color:#ffd700;} .c-low{color:#ff8844;}
+
+/* CONTROLS + FILTERS */
+.controls{display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;}
+.filters{display:flex;gap:5px;margin-bottom:10px;flex-wrap:wrap;align-items:center;}
+.fl{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a2a3a;letter-spacing:1px;}
+.fb{font-family:'JetBrains Mono',monospace;font-size:10px;padding:3px 9px;border-radius:3px;border:1px solid #12151e;background:#07080d;color:#1a3a5a;cursor:pointer;letter-spacing:1px;transition:all 0.15s;}
+.fb:hover{border-color:#1e3a6e;color:#4ab8ff;}
+.fb.act{background:#0a1525;border-color:#4ab8ff;color:#4ab8ff;}
+.fsep{width:1px;height:14px;background:#12151e;margin:0 2px;}
+
+/* GAME BLOCK */
+.game-block{background:#0d1018;border:1px solid #12151e;border-radius:5px;margin-bottom:8px;}
+.game-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#0a0d14;border-radius:5px 5px 0 0;cursor:pointer;}
+.game-hdr:hover{background:#0d1018;}
+.game-matchup{display:flex;align-items:center;gap:8px;}
+.game-team{font-family:'JetBrains Mono',monospace;font-size:13px;letter-spacing:2px;}
+.game-vs{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a2a3a;}
+.game-meta{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a3a5a;}
+.game-val{font-family:'JetBrains Mono',monospace;font-size:9px;color:#ffd700;letter-spacing:1px;}
+.game-tog{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a2a3a;}
+.game-body{padding:10px 12px;}
+
+/* PLAYER CARD */
+.pcard{display:flex;border:1px solid #12151e;border-radius:4px;margin-bottom:6px;overflow:hidden;transition:border-color 0.15s;}
+.pcard:hover{border-color:#1e3a6e;}
+.pcard.val{border-color:#ffd700 !important;background:#0d0f08;}
+.pcard.added{border-color:#44ff88 !important;background:#070f08;}
+.pinfo{padding:8px 10px;flex:1;min-width:0;}
+.pname-row{display:flex;align-items:baseline;gap:5px;margin-bottom:5px;}
+.pname{font-size:14px;font-weight:600;color:#e8eaf0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;}
+.ppos{font-family:'JetBrains Mono',monospace;font-size:9px;color:#1a2a3a;}
+.pdot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+.dot-a{background:#44ff88;} .dot-g{background:#ffd700;} .dot-o{background:#ff4455;}
+.val-badge{font-family:'JetBrains Mono',monospace;font-size:9px;color:#ffd700;letter-spacing:1px;animation:pulse 1.5s infinite;}
+
+/* STAT PILLS */
+.stat-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:5px;}
+.spill{background:#07080d;border-radius:3px;padding:3px 7px;text-align:center;}
+.spill.vhit{background:#070f08;border:1px solid #1a3a0a;}
+.slbl{font-family:'JetBrains Mono',monospace;font-size:8px;color:#1a2a3a;letter-spacing:1px;}
+.savg{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:#c8ccd8;}
+.savg.hot{color:#ff8844;}
+.sline{font-family:'JetBrains Mono',monospace;font-size:9px;margin-top:1px;}
+.sline.val{color:#ffd700;} .sline.none{color:#1a2a3a;}
+.sedge{font-family:'JetBrains Mono',monospace;font-size:8px;padding:1px 3px;border-radius:2px;}
+.ep{background:#0a1a08;color:#44cc88;border:1px solid #1a3a1a;}
+.en{background:#1a0808;color:#cc4444;border:1px solid #3a1a1a;}
+.sodds{font-family:'JetBrains Mono',monospace;font-size:8px;margin-top:1px;}
+
+/* LOG STRIP */
+.log-strip{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap;}
+.lchip{font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 5px;border-radius:2px;background:#07080d;border:1px solid #0e1218;color:#2a4a6a;}
+.lchip.hi{border-color:#1a3a5a;color:#4a8aaa;}
+
+/* ADD COL */
+.addcol{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;background:#07080d;border-left:1px solid #0e1218;gap:3px;min-width:64px;}
+.add-btn{font-family:'JetBrains Mono',monospace;font-size:9px;padding:4px 7px;border-radius:3px;border:1px solid #1a3a1a;background:#070f08;color:#2a6a2a;cursor:pointer;letter-spacing:1px;transition:all 0.15s;white-space:nowrap;text-align:center;}
+.add-btn:hover{border-color:#44ff88;color:#44ff88;}
+.add-btn.on{border-color:#44ff88;color:#44ff88;background:#0a1a08;}
+.odds-disp{font-family:'JetBrains Mono',monospace;font-size:9px;color:#1a3a5a;text-align:center;}
+.odds-disp.good{color:#44cc88;} .odds-disp.great{color:#ffd700;}
+
+.loading-p{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a3a5a;padding:10px;letter-spacing:1px;animation:blink 1s infinite;}
+.no-data{font-family:'JetBrains Mono',monospace;font-size:10px;color:#1a2a3a;padding:8px 0;}
+.ts{font-family:'JetBrains Mono',monospace;font-size:9px;color:#0a2a3a;margin-top:5px;}
+.val-summary{background:#0a0f0a;border:1px solid #1a3a0a;border-radius:4px;padding:9px 12px;margin-bottom:10px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+.vs-item{display:flex;flex-direction:column;gap:1px;}
+.vs-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:#1a3a1a;letter-spacing:1px;}
+.vs-val{font-family:'JetBrains Mono',monospace;font-size:18px;color:#44ff88;}
+.empty{text-align:center;padding:50px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#0e1218;letter-spacing:2px;}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes pulse{0%,100%{opacity:0.5}50%{opacity:1}}
+@keyframes fadein{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div class="header">
+  <div>
+    <div class="h1">🏀 NBA PARLAY FINDER</div>
+    <div class="hsub">PLAYER PROPS vs L5 AVERAGES // VALUE DETECTOR</div>
+  </div>
+  <div class="hmeta" id="hmeta">--</div>
+</div>
+
+<!-- API KEYS -->
+<div class="api-bar">
+  <span class="api-label">ODDS API KEY:</span>
+  <input class="api-input" id="api-key" placeholder="the-odds-api.com key" />
+  <span class="api-label" style="margin-left:8px;">ANTHROPIC KEY:</span>
+  <input class="api-input" id="anthropic-key" placeholder="sk-ant-... from console.anthropic.com" type="password" />
+  <button class="btn" onclick="saveKey()" style="padding:5px 10px;font-size:10px;">SAVE</button>
+  <span class="api-status" id="key-status">● NOT SET</span>
+  <button class="btn" onclick="toggleDebug()" style="padding:5px 10px;font-size:10px;border-color:#1a2a3a;color:#2a4a6a;">DEBUG</button>
+</div>
+
+<!-- DEBUG PANEL -->
+<div class="debug-panel" id="debug-panel">
+  <div class="debug-title">◈ DEBUG LOG</div>
+  <div class="debug-log" id="debug-log"></div>
+</div>
+
+<!-- PARLAY BUILDER -->
+<div class="parlay-box">
+  <div class="parlay-hdr">
+    <div class="parlay-title">◈ PARLAY BUILDER</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <span class="mono" style="font-size:10px;color:#1a5a2a;" id="leg-count">0 LEGS</span>
+      <button class="btn btn-g" onclick="analyzeParlay()" id="analyze-btn" style="padding:5px 12px;font-size:10px;">◈ ANALYZE</button>
+      <button class="btn btn-r" onclick="clearParlay()" style="padding:5px 12px;font-size:10px;">✕ CLEAR</button>
+    </div>
+  </div>
+  <div class="parlay-legs" id="parlay-legs"><div class="p-empty">ADD PLAYERS BELOW</div></div>
+  <div id="ai-out" style="display:none;"></div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <button class="btn btn-g" onclick="loadGames()" id="load-btn">◈ LOAD TODAY'S GAMES</button>
+  <button class="btn btn-gold" onclick="autoFind()" id="find-btn" style="display:none;">⚡ AUTO-FIND VALUE</button>
+  <button class="btn" onclick="loadGames(1)" id="next-btn" style="display:none;">NEXT DAY →</button>
+</div>
+
+<!-- FILTERS -->
+<div class="filters" id="filter-bar" style="display:none;">
+  <span class="fl">SHOW:</span>
+  <button class="fb act" id="f-all"   onclick="setFilter('all')">ALL</button>
+  <button class="fb"     id="f-val"   onclick="setFilter('val')">⚡ VALUE</button>
+  <button class="fb"     id="f-pts"   onclick="setFilter('pts')">PTS</button>
+  <button class="fb"     id="f-reb"   onclick="setFilter('reb')">REB</button>
+  <button class="fb"     id="f-ast"   onclick="setFilter('ast')">AST</button>
+  <div class="fsep"></div>
+  <span class="fl">MIN PTS:</span>
+  <button class="fb" id="f-10" onclick="setMin(10)">10+</button>
+  <button class="fb" id="f-15" onclick="setMin(15)">15+</button>
+  <button class="fb" id="f-20" onclick="setMin(20)">20+</button>
+</div>
+
+<div class="status" id="status">READY — PASTE API KEY AND HIT LOAD</div>
+<div id="val-summary" style="display:none;"></div>
+<div id="games"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let KEY = localStorage.getItem('nba_odds_key') || '';
+let AKEY = localStorage.getItem('nba_anthropic_key') || '';
+let legs = [];
+let allP = [];
+let curFilter = 'all';
+let curMin = 0;
+let dayOffset = 0;
+
+// ═══════════════════════════════════════════
+// DEBUG
+// ═══════════════════════════════════════════
+let debugOn = false;
+function toggleDebug() {
+  debugOn = !debugOn;
+  document.getElementById('debug-panel').classList.toggle('show', debugOn);
+}
+function dbg(msg, type='info') {
+  const el = document.getElementById('debug-log');
+  const cls = type==='ok'?'d-ok':type==='er'?'d-er':type==='warn'?'d-warn':'d-info';
+  el.innerHTML += `<div class="${cls}">${new Date().toLocaleTimeString()} ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+  console.log(`[${type}] ${msg}`);
+}
+
+// ═══════════════════════════════════════════
+// API KEY
+// ═══════════════════════════════════════════
+function saveKey() {
+  KEY  = document.getElementById('api-key').value.trim();
+  AKEY = document.getElementById('anthropic-key').value.trim();
+  localStorage.setItem('nba_odds_key', KEY);
+  localStorage.setItem('nba_anthropic_key', AKEY);
+  updateKeyStatus();
+  dbg(`Odds key: ${KEY ? KEY.slice(0,8)+'...' : 'EMPTY'}`, KEY ? 'ok' : 'warn');
+  dbg(`Anthropic key: ${AKEY ? AKEY.slice(0,10)+'...' : 'EMPTY'}`, AKEY ? 'ok' : 'warn');
+}
+function updateKeyStatus() {
+  const el = document.getElementById('key-status');
+  const oddsOk = !!KEY;
+  const aiOk   = !!AKEY;
+  if (oddsOk && aiOk) { el.textContent='● BOTH KEYS SET'; el.className='api-status key-set'; }
+  else if (oddsOk)    { el.textContent='● ODDS KEY SET — NEED ANTHROPIC KEY FOR ANALYZE'; el.className='api-status'; el.style.color='#ffaa44'; }
+  else if (aiOk)      { el.textContent='● ANTHROPIC KEY SET — NEED ODDS KEY FOR PROPS'; el.className='api-status'; el.style.color='#ffaa44'; }
+  else                { el.textContent='● NO KEYS SET'; el.className='api-status key-unset'; }
+}
+if (KEY)  { document.getElementById('api-key').value = KEY; }
+if (AKEY) { document.getElementById('anthropic-key').value = AKEY; }
+updateKeyStatus();
+
+// Detect file:// and show warning
+if (window.location.protocol === 'file:') {
+  const warn = document.createElement('div');
+  warn.style.cssText = 'background:#1a0d00;border:1px solid #5a3a00;border-radius:5px;padding:12px 14px;margin-bottom:10px;';
+  warn.innerHTML = `
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#ffaa44;letter-spacing:1px;margin-bottom:6px;">⚠ FILE:// DETECTED — PROP LINES WILL NOT LOAD</div>
+    <div style="font-size:13px;color:#7a5a2a;line-height:1.6;">The Odds API is blocked by the browser when opening files directly. Serve this file over http:// instead:</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#ffcc88;background:#0d0800;border:1px solid #3a2a00;border-radius:3px;padding:7px 10px;margin-top:8px;">python3 -m http.server 8080</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#ffcc88;background:#0d0800;border:1px solid #3a2a00;border-radius:3px;padding:7px 10px;margin-top:4px;">npx serve .</div>
+    <div style="font-size:12px;color:#5a4a1a;margin-top:8px;">Then open: <span style="font-family:'JetBrains Mono',monospace;color:#ffaa44;">http://localhost:8080/nba_parlay_finder.html</span></div>
+    <div style="font-size:12px;color:#4a6a4a;margin-top:4px;">✓ ESPN player stats and game averages still load without this — only prop lines need http://</div>
+  `;
+  // Insert after api-bar
+  const apiBar = document.querySelector('.api-bar');
+  apiBar.parentNode.insertBefore(warn, apiBar.nextSibling);
+  dbg('⚠ Running from file:// — Odds API will be CORS-blocked. Serve via http.server', 'warn');
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function ss(msg, type='') {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status ' + type;
+}
+function fmt(n) { return n!=null ? (+n).toFixed(1) : '—'; }
+function fmtOdds(o) { return o>0 ? '+'+o : ''+o; }
+function isVal(avg, line) { return avg!=null && line!=null && avg > line; }
+function edgePct(avg, line) { return (!line||!avg) ? 0 : +((avg-line)/line*100).toFixed(1); }
+function goodOdds(o) { return o!=null && o > -400; }
+function ftime() { return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true}); }
+function getDate(offset=0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return {
+    espn: `${y}${m}${day}`,
+    label: d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}),
+  };
+}
+
+// ═══════════════════════════════════════════
+// ESPN — SCHEDULE
+// ═══════════════════════════════════════════
+async function getSchedule(offset=0) {
+  const dt = getDate(offset);
+  dbg(`Fetching ESPN schedule for ${dt.espn}...`);
+  const r = await fetch(
+    `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${dt.espn}`,
+    { signal: AbortSignal.timeout(12000) }
+  );
+  const d = await r.json();
+  const games = (d.events||[]).map(e => {
+    const comp = e.competitions?.[0]||{};
+    const odds = comp.odds?.[0]||{};
+    return {
+      id: e.id,
+      date: e.date,
+      teams: (comp.competitors||[]).map(c=>({
+        id: c.team?.id,
+        abbr: c.team?.abbreviation,
+        name: c.team?.displayName,
+        color: c.team?.color,
+      })),
+      overUnder: odds.overUnder||null,
+    };
+  }).filter(g=>g.teams.length===2);
+  dbg(`ESPN: ${games.length} games found`, 'ok');
+  return games;
+}
+
+// ═══════════════════════════════════════════
+// ESPN — ROSTER
+// ═══════════════════════════════════════════
+async function getRoster(teamId) {
+  const r = await fetch(
+    `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/roster`,
+    { signal: AbortSignal.timeout(10000) }
+  );
+  const d = await r.json();
+  return (d.athletes||[]).map(a=>({
+    id: a.id,
+    name: a.displayName,
+    pos: a.position?.abbreviation||'?',
+    status: a.injuries?.[0]?.status||'Active',
+  }));
+}
+
+// ═══════════════════════════════════════════
+// ESPN — LAST 5 GAME LOGS (season 2026 = 2025-26 season)
+// ═══════════════════════════════════════════
+async function getLast5(playerId) {
+  try {
+    const r = await fetch(
+      `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/athletes/${playerId}/eventlog?pageIndex=4`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    const d = await r.json();
+    const items = (d.events?.items||[]).filter(i=>i.played && i.statistics?.$ref);
+    const recent = items.slice(-5);
+    const games = await Promise.all(recent.map(async item => {
+      try {
+        const ref = item.statistics.$ref.replace('http://','https://');
+        const rs = await fetch(ref, { signal: AbortSignal.timeout(8000) });
+        const sd = await rs.json();
+        const cats = sd.splits?.categories||[];
+        const get = (cat,name) => {
+          const c = cats.find(c=>c.name===cat);
+          return parseFloat(c?.stats?.find(s=>s.name===name)?.displayValue||0)||0;
+        };
+        return {
+          pts: get('offensive','points'),
+          reb: get('general','rebounds'),
+          ast: get('offensive','assists'),
+          tpm: get('offensive','threePointFieldGoalsMade'),
+          stl: get('defensive','steals'),
+          blk: get('defensive','blocks'),
+          min: get('general','minutes'),
+        };
+      } catch(e) { return null; }
+    }));
+    return games.filter(Boolean);
+  } catch(e) { return []; }
+}
+
+function calcAvgs(games) {
+  if (!games.length) return null;
+  const avg = k => +((games.reduce((s,g)=>s+(g[k]||0),0)/games.length).toFixed(1));
+  return {pts:avg('pts'),reb:avg('reb'),ast:avg('ast'),tpm:avg('tpm'),stl:avg('stl'),blk:avg('blk'),min:avg('min')};
+}
+
+// ═══════════════════════════════════════════
+// ODDS API — EVENTS LIST (simple, no date filter)
+// ═══════════════════════════════════════════
+async function getOddsEvents() {
+  if (!KEY) { dbg('No API key — skipping odds fetch', 'warn'); return []; }
+  const url = `https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=${KEY}&regions=us&markets=h2h&oddsFormat=american`;
+  dbg(`Fetching odds events...`);
+  const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+  if (!r.ok) {
+    const txt = await r.text();
+    dbg(`Odds events error ${r.status}: ${txt.slice(0,100)}`, 'er');
+    return [];
+  }
+  const d = await r.json();
+  if (!Array.isArray(d)) {
+    dbg(`Odds events bad response: ${JSON.stringify(d).slice(0,100)}`, 'er');
+    return [];
+  }
+  dbg(`Odds events: ${d.length} games found`, 'ok');
+  d.forEach(e => dbg(`  ${e.id.slice(0,8)} | ${e.home_team} vs ${e.away_team}`, 'info'));
+  return d; // return raw so we have home_team / away_team strings
+}
+
+// ═══════════════════════════════════════════
+// MATCH ESPN GAME → ODDS EVENT
+// ═══════════════════════════════════════════
+function matchGame(game, oddsEvents) {
+  for (const oe of oddsEvents) {
+    const home = oe.home_team.toLowerCase();
+    const away = oe.away_team.toLowerCase();
+    // get last word of each ESPN team name (Hawks, Magic, Warriors, etc)
+    const t1last = game.teams[0].name.split(' ').pop().toLowerCase();
+    const t2last = game.teams[1].name.split(' ').pop().toLowerCase();
+    const t1abbr = game.teams[0].abbr.toLowerCase();
+    const t2abbr = game.teams[1].abbr.toLowerCase();
+    const t1h = home.includes(t1last)||home.includes(t1abbr);
+    const t1a = away.includes(t1last)||away.includes(t1abbr);
+    const t2h = home.includes(t2last)||home.includes(t2abbr);
+    const t2a = away.includes(t2last)||away.includes(t2abbr);
+    if ((t1h&&t2a)||(t1a&&t2h)) {
+      dbg(`  Matched: ${game.teams[0].abbr}/${game.teams[1].abbr} → ${oe.id.slice(0,8)}`, 'ok');
+      return oe.id;
+    }
+  }
+  dbg(`  No match for ${game.teams[0].abbr} vs ${game.teams[1].abbr}`, 'warn');
+  return null;
+}
+
+// ═══════════════════════════════════════════
+// ODDS API — PLAYER PROPS FOR ONE GAME
+// ═══════════════════════════════════════════
+async function getProps(oddsId) {
+  if (!KEY || !oddsId) return {};
+  const url = `https://api.the-odds-api.com/v4/sports/basketball_nba/events/${oddsId}/odds?apiKey=${KEY}&regions=us&markets=player_points,player_rebounds,player_assists,player_threes&oddsFormat=american&bookmakers=fanduel,draftkings,betmgm`;
+  dbg(`  Fetching props for ${oddsId.slice(0,8)}...`);
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    if (!r.ok) {
+      const txt = await r.text();
+      dbg(`  Props error ${r.status}: ${txt.slice(0,80)}`, 'er');
+      return {};
+    }
+    const d = await r.json();
+    if (d.message) { dbg(`  Props API msg: ${d.message}`, 'er'); return {}; }
+    const books = d.bookmakers||[];
+    dbg(`  Props books: ${books.map(b=>b.title).join(', ')}`, 'ok');
+    const out = {};
+    for (const book of books) {
+      for (const market of (book.markets||[])) {
+        const pk = {player_points:'pts',player_rebounds:'reb',player_assists:'ast',player_threes:'tpm'}[market.key];
+        if (!pk) continue;
+        for (const o of (market.outcomes||[])) {
+          if (o.name !== 'Over') continue;
+          const pname = (o.description||o.player||'').trim();
+          if (!pname) continue;
+          if (!out[pname]) out[pname] = {};
+          if (!out[pname][pk] || o.price > out[pname][pk].odds) {
+            out[pname][pk] = { line: o.point, odds: o.price };
+          }
+        }
+      }
+    }
+    dbg(`  Props players: ${Object.keys(out).join(', ')}`, 'ok');
+    return out;
+  } catch(e) {
+    dbg(`  Props fetch threw: ${e.message}`, 'er');
+    return {};
+  }
+}
+
+// ═══════════════════════════════════════════
+// MATCH PLAYER NAME (ESPN → Odds API)
+// ═══════════════════════════════════════════
+function matchProps(espnName, propsMap) {
+  if (propsMap[espnName]) return propsMap[espnName];
+  const en = espnName.toLowerCase();
+  const ep = en.split(' ');
+  const elast = ep[ep.length-1];
+  const efirst = ep[0];
+  for (const [pn, pd] of Object.entries(propsMap)) {
+    const pp = pn.toLowerCase().split(' ');
+    const plast = pp[pp.length-1];
+    const pfirst = pp[0];
+    // Last name match + first initial
+    if (plast===elast && pfirst[0]===efirst[0]) return pd;
+    // Full containment
+    if (pn.toLowerCase().includes(elast) && pn.toLowerCase().includes(efirst)) return pd;
+  }
+  return {};
+}
+
+// ═══════════════════════════════════════════
+// RENDER — PLAYER CARD
+// ═══════════════════════════════════════════
+function renderCard(player) {
+  const avgs = player.avgs;
+  const props = player.props||{};
+  if (!avgs || avgs.min < 8) return '';
+
+  const isOut = player.status.toLowerCase().includes('out');
+  const isGtd = player.status.toLowerCase().includes('question');
+  const dotCls = isOut?'dot-o':isGtd?'dot-g':'dot-a';
+  if (isOut) return '';
+
+  // Check value across all props
+  const ptsVal = isVal(avgs.pts, props.pts?.line) && goodOdds(props.pts?.odds);
+  const rebVal = isVal(avgs.reb, props.reb?.line) && goodOdds(props.reb?.odds);
+  const astVal = isVal(avgs.ast, props.ast?.line) && goodOdds(props.ast?.odds);
+  const tpmVal = isVal(avgs.tpm, props.tpm?.line) && goodOdds(props.tpm?.odds);
+  const anyVal = ptsVal||rebVal||astVal||tpmVal;
+
+  // Best prop for add button
+  let best = null, bestEdge = 0;
+  for (const [k,lbl] of [['pts','PTS'],['reb','REB'],['ast','AST'],['tpm','3PM']]) {
+    if (props[k] && avgs[k]!=null && goodOdds(props[k].odds)) {
+      const e = edgePct(avgs[k], props[k].line);
+      if (e > bestEdge) { bestEdge=e; best={k,lbl,line:props[k].line,odds:props[k].odds}; }
+    }
+  }
+
+  const isAdded = legs.some(l=>l.name===player.name&&l.prop===best?.k);
+  const cardId = `c-${player.id}`;
+
+  function spill(lbl, avg, prop) {
+    const v = isVal(avg,prop?.line)&&goodOdds(prop?.odds);
+    const e = prop?.line ? edgePct(avg,prop.line) : 0;
+    const oddsStr = prop?.odds ? fmtOdds(prop.odds) : '';
+    const oddsColor = prop?.odds > 0 ? '#ffd700' : prop?.odds > -200 ? '#44cc88' : '#2a5a2a';
+    return `<div class="spill${v?' vhit':''}">
+      <div class="slbl">${lbl}</div>
+      <div class="savg${avg>=25?' hot':''}">${fmt(avg)}</div>
+      <div class="sline${prop?.line!=null&&v?' val':prop?.line!=null?'':' none'}">
+        ${prop?.line!=null?`L${prop.line}`:'-'}
+        ${v?`<span class="sedge ep">+${e}%</span>`:e<0?`<span class="sedge en">${e}%</span>`:''}
+      </div>
+      ${prop?.odds?`<div class="sodds" style="color:${oddsColor}">${oddsStr}</div>`:''}
+    </div>`;
+  }
+
+  const logs = player.games.slice(-5).map(g=>
+    `<div class="lchip${g.pts>=20?' hi':''}">${g.pts}/${g.reb}/${g.ast}</div>`
+  ).join('');
+
+  const addLabel = isAdded ? '✓ ADDED' : best ? `+ ${best.lbl} O${best.line}` : '+ ADD';
+  const oddsDisp = best ? `<div class="odds-disp${best.odds>0?' great':best.odds>-200?' good':''}">${fmtOdds(best.odds)}</div>` : '';
+  const edgeDisp = bestEdge>0 ? `<div style="font-family:'JetBrains Mono',monospace;font-size:8px;color:#2a5a2a;">+${bestEdge}%</div>` : '';
+
+  return `<div class="pcard${anyVal?' val':''}${isAdded?' added':''}" id="${cardId}"
+    data-pts="${avgs.pts}" data-val="${anyVal}" data-haspts="${!!props.pts}" data-hasreb="${!!props.reb}" data-hasast="${!!props.ast}">
+    <div class="pinfo">
+      <div class="pname-row">
+        <div class="pdot ${dotCls}"></div>
+        <span class="pname">${player.name}</span>
+        <span class="ppos">${player.pos}</span>
+        ${anyVal?'<span class="val-badge">⚡VALUE</span>':''}
+      </div>
+      <div class="stat-row">
+        ${spill('PTS',avgs.pts,props.pts)}
+        ${spill('REB',avgs.reb,props.reb)}
+        ${spill('AST',avgs.ast,props.ast)}
+        ${spill('3PM',avgs.tpm,props.tpm)}
+      </div>
+      ${logs?`<div style="margin-top:3px;"><div class="slbl" style="margin-bottom:2px;">L5 (PTS/REB/AST)</div><div class="log-strip">${logs}</div></div>`:''}
+    </div>
+    <div class="addcol">
+      ${anyVal?'<div class="val-badge">VALUE</div>':''}
+      <button class="add-btn${isAdded?' on':''}"
+        onclick="handleAdd('${player.name}','${player.teamAbbr}','${best?.k||''}','${best?.lbl||''}',${best?.line||0},${avgs[best?.k]||0},${bestEdge},${best?.odds||0},this)">
+        ${addLabel}
+      </button>
+      ${oddsDisp}${edgeDisp}
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+// RENDER — GAME BLOCK
+// ═══════════════════════════════════════════
+function renderGame(game, players) {
+  const t1=game.teams[0], t2=game.teams[1];
+  const time = new Date(game.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+  const valCount = players.filter(p=>{
+    const props=p.props||{};
+    return ['pts','reb','ast','tpm'].some(k=>isVal(p.avgs?.[k],props[k]?.line)&&goodOdds(props[k]?.odds));
+  }).length;
+  const cards = players.map(renderCard).filter(Boolean).join('');
+  return `<div class="game-block" id="gb-${game.id}" style="animation:fadein 0.3s ease;">
+    <div class="game-hdr" onclick="tog('${game.id}')">
+      <div class="game-matchup">
+        <span class="game-team" style="color:#${t1.color||'4ab8ff'}">${t1.abbr}</span>
+        <span class="game-vs">vs</span>
+        <span class="game-team" style="color:#${t2.color||'ff8844'}">${t2.abbr}</span>
+        <span class="game-meta">${time}</span>
+        ${game.overUnder?`<span class="game-meta">O/U ${game.overUnder}</span>`:''}
+        ${valCount>0?`<span class="game-val">⚡${valCount} VALUE</span>`:''}
+      </div>
+      <span class="game-tog" id="tog-${game.id}">▼</span>
+    </div>
+    <div class="game-body" id="body-${game.id}">
+      ${cards||`<div class="no-data">${KEY?'NO PROPS LOADED FOR THIS GAME':'ADD API KEY TO SEE PROP LINES'}</div>`}
+    </div>
+  </div>`;
+}
+
+function tog(id) {
+  const b=document.getElementById('body-'+id), t=document.getElementById('tog-'+id);
+  b.style.display=b.style.display==='none'?'':('none');
+  t.textContent=b.style.display==='none'?'▶':'▼';
+}
+
+// ═══════════════════════════════════════════
+// FILTERS
+// ═══════════════════════════════════════════
+function setFilter(f) {
+  curFilter=f;
+  ['all','val','pts','reb','ast'].forEach(k=>document.getElementById('f-'+k)?.classList.toggle('act',k===f));
+  applyFilters();
+}
+function setMin(n) {
+  curMin=curMin===n?0:n;
+  ['10','15','20'].forEach(k=>document.getElementById('f-'+k)?.classList.toggle('act',parseInt(k)===curMin));
+  applyFilters();
+}
+function applyFilters() {
+  document.querySelectorAll('.pcard').forEach(c=>{
+    const pts=parseFloat(c.dataset.pts||0);
+    const val=c.dataset.val==='true';
+    const haspts=c.dataset.haspts==='true';
+    const hasreb=c.dataset.hasreb==='true';
+    const hasast=c.dataset.hasast==='true';
+    let show=true;
+    if(curFilter==='val'&&!val) show=false;
+    if(curFilter==='pts'&&!haspts) show=false;
+    if(curFilter==='reb'&&!hasreb) show=false;
+    if(curFilter==='ast'&&!hasast) show=false;
+    if(curMin>0&&pts<curMin) show=false;
+    c.style.display=show?'':'none';
+  });
+}
+
+// ═══════════════════════════════════════════
+// PARLAY
+// ═══════════════════════════════════════════
+function handleAdd(name,team,prop,propLbl,line,avg,edge,odds,btn) {
+  if (!prop) { ss('NO PROP LINE — ADD API KEY OR WAIT FOR LINES TO RELEASE','er'); return; }
+  const key=`${name}_${prop}`;
+  const exists=legs.findIndex(l=>l.key===key);
+  if (exists>=0) {
+    legs.splice(exists,1);
+    btn.textContent=`+ ${propLbl} O${line}`;
+    btn.classList.remove('on');
+    btn.closest('.pcard')?.classList.remove('added');
+  } else {
+    legs.push({name,team,prop,propLbl,line,avg,edge,odds,key});
+    btn.textContent='✓ ADDED';
+    btn.classList.add('on');
+    btn.closest('.pcard')?.classList.add('added');
+  }
+  renderLegs();
+}
+
+function renderLegs() {
+  const el=document.getElementById('parlay-legs');
+  document.getElementById('leg-count').textContent=legs.length+' LEG'+(legs.length!==1?'S':'');
+  if (!legs.length) { el.innerHTML='<div class="p-empty">ADD PLAYERS BELOW</div>'; return; }
+  el.innerHTML=legs.map(l=>`<div class="p-leg">
+    <span>${l.name} ${l.propLbl} O${l.line}${l.odds?' ('+fmtOdds(l.odds)+')':''}</span>
+    <span class="p-leg-x" onclick="removeLeg('${l.key}')">✕</span>
+  </div>`).join('');
+}
+
+function removeLeg(key) {
+  legs=legs.filter(l=>l.key!==key);
+  renderLegs();
+  // un-highlight card
+  document.querySelectorAll('.pcard.added').forEach(c=>{
+    const btn=c.querySelector('.add-btn');
+    if (btn) {
+      const isStillAdded = legs.some(l=>btn.textContent.includes(l.propLbl));
+      if (!isStillAdded) { c.classList.remove('added'); btn.classList.remove('on'); }
+    }
+  });
+}
+
+function clearParlay() {
+  legs=[];
+  renderLegs();
+  document.querySelectorAll('.pcard.added').forEach(c=>c.classList.remove('added'));
+  document.querySelectorAll('.add-btn.on').forEach(b=>b.classList.remove('on'));
+  document.getElementById('ai-out').style.display='none';
+}
+
+async function analyzeParlay() {
+  if (legs.length<2) { ss('ADD AT LEAST 2 LEGS TO ANALYZE','er'); return; }
+  if (!AKEY) { ss('ADD YOUR ANTHROPIC API KEY AND HIT SAVE FIRST', 'er'); return; }
+  ss('RUNNING AI ANALYSIS...','ld');
+  dbg(`Analyzing ${legs.length} legs...`);
+  const legsText=legs.map(l=>`${l.name} ${l.propLbl} Over ${l.line} | L5 avg: ${l.avg} | Edge: +${l.edge}% | Odds: ${l.odds?fmtOdds(l.odds):'N/A'}`).join('\n');
+  try {
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': AKEY,
+        'anthropic-dangerous-direct-browser-access':'true',
+        'anthropic-version':'2023-06-01',
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:500,
+        system:`You are an NBA prop betting analyst. The user bets overs when a player's last-5-game average exceeds the prop line.
+Analyze the parlay legs provided and respond with ONLY a JSON object — no markdown, no backticks, no extra text before or after.
+Format exactly:
+{"confidence":"HIGH","narrative":"Your 2-3 sentence analysis here.","caution":"One risk note or leave empty string."}`,
+        messages:[{role:'user',content:`Analyze this NBA over parlay:\n${legsText}`}]
+      })
+    });
+
+    if (!resp.ok) {
+      const errText = await resp.text();
+      dbg(`API HTTP error ${resp.status}: ${errText.slice(0,100)}`, 'er');
+      ss(`AI ERROR: HTTP ${resp.status}`, 'er');
+      return;
+    }
+
+    const data = await resp.json();
+    dbg(`API response type: ${data.type}, content blocks: ${data.content?.length}`);
+
+    const rawText = data.content?.[0]?.text || '';
+    dbg(`Raw AI text: ${rawText.slice(0,120)}`);
+
+    if (!rawText) {
+      ss('AI ERROR: Empty response — check API key or try again', 'er');
+      return;
+    }
+
+    // Robust JSON extraction — strip markdown fences, find the JSON object
+    let jsonStr = rawText.replace(/```json|```/g,'').trim();
+    // Find first { to last } in case there's any surrounding text
+    const start = jsonStr.indexOf('{');
+    const end   = jsonStr.lastIndexOf('}');
+    if (start !== -1 && end !== -1) jsonStr = jsonStr.slice(start, end+1);
+
+    let ai;
+    try {
+      ai = JSON.parse(jsonStr);
+    } catch(parseErr) {
+      dbg(`JSON parse failed: ${parseErr.message} | text was: ${jsonStr.slice(0,100)}`, 'er');
+      // Show raw text as fallback
+      const el=document.getElementById('ai-out');
+      el.style.display='block';
+      el.innerHTML=`<div class="ai-out">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#1a4a1a;letter-spacing:2px;margin-bottom:5px;">◈ AI ASSESSMENT</div>
+        <div>${rawText}</div>
+      </div>`;
+      ss('ANALYSIS COMPLETE (raw)', 'ok');
+      return;
+    }
+
+    const cc = ai.confidence==='HIGH'?'c-high':ai.confidence==='MEDIUM'?'c-med':'c-low';
+    const el = document.getElementById('ai-out');
+    el.style.display='block';
+    el.innerHTML=`<div class="ai-out">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:#1a4a1a;letter-spacing:2px;margin-bottom:5px;">◈ AI ASSESSMENT</div>
+      <div>${ai.narrative||ai.analysis||rawText}</div>
+      ${ai.caution?`<div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#4a3a1a;margin-top:4px;">⚠ ${ai.caution}</div>`:''}
+      <div class="ai-conf ${cc}" style="margin-top:4px;">CONFIDENCE: ${ai.confidence||'—'}</div>
+    </div>`;
+    ss('ANALYSIS COMPLETE','ok');
+    dbg('Parlay analysis complete', 'ok');
+  } catch(e) {
+    dbg(`analyzeParlay threw: ${e.message}`, 'er');
+    ss('AI ERROR: '+e.message,'er');
+  }
+}
+
+// ═══════════════════════════════════════════
+// AUTO-FIND VALUE LEGS
+// ═══════════════════════════════════════════
+function autoFind() {
+  const candidates=allP.flatMap(p=>{
+    return ['pts','reb','ast','tpm'].filter(k=>{
+      const pd=p.props?.[k];
+      return pd && isVal(p.avgs?.[k],pd.line) && goodOdds(pd.odds);
+    }).map(k=>({
+      ...p, activeK:k, activeEdge:edgePct(p.avgs[k],p.props[k].line),
+      activeLine:p.props[k].line, activeOdds:p.props[k].odds,
+    }));
+  }).sort((a,b)=>b.activeEdge-a.activeEdge).slice(0,4);
+
+  clearParlay();
+  for (const p of candidates) {
+    const lbl={pts:'PTS',reb:'REB',ast:'AST',tpm:'3PM'}[p.activeK];
+    legs.push({name:p.name,team:p.teamAbbr,prop:p.activeK,propLbl:lbl,
+      line:p.activeLine,avg:p.avgs[p.activeK],edge:p.activeEdge,odds:p.activeOdds,
+      key:`${p.name}_${p.activeK}`});
+  }
+  renderLegs();
+  ss(candidates.length?`AUTO-ADDED ${candidates.length} VALUE LEGS`:'NO VALUE LEGS FOUND — LINES MAY NOT BE OUT YET',
+    candidates.length?'ok':'er');
+  dbg(`Auto-find: ${candidates.length} legs found`, candidates.length?'ok':'warn');
+}
+
+// ═══════════════════════════════════════════
+// VALUE SUMMARY BAR
+// ═══════════════════════════════════════════
+function updateSummary() {
+  const valP=allP.filter(p=>['pts','reb','ast','tpm'].some(k=>isVal(p.avgs?.[k],p.props?.[k]?.line)&&goodOdds(p.props?.[k]?.odds)));
+  const el=document.getElementById('val-summary');
+  if (!valP.length) { el.style.display='none'; return; }
+  el.style.display='flex';
+  el.innerHTML=`
+    <div class="vs-item"><div class="vs-lbl">VALUE LEGS</div><div class="vs-val">${valP.length}</div></div>
+    <div class="vs-item"><div class="vs-lbl">PLAYERS LOADED</div><div class="vs-val">${allP.filter(p=>p.avgs).length}</div></div>
+    <div class="vs-item"><div class="vs-lbl">GAMES</div><div class="vs-val">${document.querySelectorAll('.game-block').length}</div></div>
+    <div style="margin-left:auto;font-size:12px;color:#2a5a2a;line-height:1.5;">L5 AVG &gt; LINE<br>+ ODDS &gt; -400<br>= ⚡ VALUE</div>
+  `;
+}
+
+// ═══════════════════════════════════════════
+// MAIN LOAD
+// ═══════════════════════════════════════════
+async function loadGames(offset=0) {
+  dayOffset=offset;
+  dbg(`=== LOAD GAMES offset=${offset} ===`,'info');
+  const dt=getDate(offset);
+  document.getElementById('load-btn').disabled=true;
+  document.getElementById('games').innerHTML='';
+  document.getElementById('val-summary').style.display='none';
+  document.getElementById('filter-bar').style.display='none';
+  document.getElementById('find-btn').style.display='none';
+  document.getElementById('next-btn').style.display='none';
+  allP=[];
+  ss(`LOADING ${dt.label} SCHEDULE...`,'ld');
+
+  try {
+    const games=await getSchedule(offset);
+    if (!games.length) { ss(`NO GAMES ON ${dt.label}`,'er'); document.getElementById('load-btn').disabled=false; return; }
+    ss(`${games.length} GAMES FOUND — FETCHING ODDS EVENTS...`,'ld');
+    document.getElementById('hmeta').textContent=dt.label.toUpperCase();
+
+    // Fetch odds events once
+    const oddsEvents=await getOddsEvents();
+    dbg(`Using key: ${KEY?KEY.slice(0,8)+'...':'NONE'}`, KEY?'ok':'warn');
+
+    ss(`LOADING ROSTERS & PROPS...`,'ld');
+    const container=document.getElementById('games');
+
+    // Process each game — show placeholder first, then fill
+    for (const game of games) {
+      const ph=document.createElement('div');
+      ph.className='game-block';
+      ph.id='ph-'+game.id;
+      ph.innerHTML=`<div class="game-hdr"><div class="game-matchup">
+        <span class="game-team" style="color:#${game.teams[0].color||'4ab8ff'}">${game.teams[0].abbr}</span>
+        <span class="game-vs">vs</span>
+        <span class="game-team" style="color:#${game.teams[1].color||'ff8844'}">${game.teams[1].abbr}</span>
+      </div></div><div class="loading-p">LOADING...</div>`;
+      container.appendChild(ph);
+
+      // Load async (no await = parallel loading)
+      loadOneGame(game, oddsEvents, ph, container);
+    }
+  } catch(e) {
+    dbg(`loadGames error: ${e.message}`,'er');
+    ss('ERROR: '+e.message,'er');
+  }
+  document.getElementById('load-btn').disabled=false;
+}
+
+async function loadOneGame(game, oddsEvents, ph, container) {
+  try {
+    // Rosters
+    const [r1,r2]=await Promise.all([getRoster(game.teams[0].id),getRoster(game.teams[1].id)]);
+    dbg(`Rosters: ${game.teams[0].abbr}(${r1.length}) ${game.teams[1].abbr}(${r2.length})`,'ok');
+
+    // Match odds event
+    const oddsId=matchGame(game,oddsEvents);
+    const props=oddsId?await getProps(oddsId):{};
+    const propPlayerCount=Object.keys(props).length;
+    dbg(`Props for ${game.teams[0].abbr}/${game.teams[1].abbr}: ${propPlayerCount} players`,(propPlayerCount>0?'ok':'warn'));
+
+    // Top 8 each team, skip OUT
+    const roster=[
+      ...r1.slice(0,8).map(p=>({...p,teamAbbr:game.teams[0].abbr})),
+      ...r2.slice(0,8).map(p=>({...p,teamAbbr:game.teams[1].abbr})),
+    ].filter(p=>!p.status.toLowerCase().includes('out'));
+
+    // Fetch last 5 games for each
+    const players=await Promise.all(roster.map(async p=>{
+      const games=await getLast5(p.id);
+      const avgs=calcAvgs(games);
+      const matchedProps=avgs?matchProps(p.name,props):{};
+      if (avgs && Object.keys(matchedProps).length>0) {
+        dbg(`  ${p.name}: avg=${avgs.pts}pts props matched`,'ok');
+      }
+      return {...p,games,avgs,props:matchedProps};
+    }));
+
+    // Store globally
+    allP.push(...players);
+
+    // Render
+    const html=renderGame(game,players);
+    const newEl=document.createElement('div');
+    newEl.innerHTML=html;
+    if (ph.parentNode) container.replaceChild(newEl.firstElementChild,ph);
+
+    // Update UI
+    updateSummary();
+    document.getElementById('filter-bar').style.display='flex';
+    document.getElementById('find-btn').style.display='';
+    document.getElementById('next-btn').style.display='';
+    document.getElementById('hmeta').textContent=ftime();
+    ss(`LOADED ${document.querySelectorAll('.game-block').length} GAMES — ${allP.filter(p=>p.avgs).length} PLAYERS — ${allP.filter(p=>Object.keys(p.props||{}).length>0).length} WITH PROP LINES`,'ok');
+  } catch(e) {
+    dbg(`loadOneGame error (${game.teams[0].abbr}/${game.teams[1].abbr}): ${e.message}`,'er');
+    if (ph.parentNode) ph.innerHTML=`<div style="padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:#3a1a1a;">ERROR: ${game.teams[0].abbr} vs ${game.teams[1].abbr} — ${e.message}</div>`;
+  }
+}
+</script>
+</body>
+</html>
