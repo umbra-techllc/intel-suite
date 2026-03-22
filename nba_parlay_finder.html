@@ -618,32 +618,34 @@ async function getRoster(teamId) {
 // ═══════════════════════════════════
 async function getLast5(playerId) {
   try {
-    const r = await fetch(`https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/athletes/${playerId}/eventlog?pageIndex=4`, { signal: AbortSignal.timeout(10000) });
+    // Step 1: fetch page 1 just to get the total page count
+    const r0 = await fetch(
+      `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/athletes/${playerId}/eventlog?pageIndex=1`,
+      { signal: AbortSignal.timeout(10000) }
+    );
+    const d0 = await r0.json();
+    const pageCount = d0.events?.pageCount || 1;
+
+    // Step 2: fetch the LAST page — that's where the most recent games live
+    const r = await fetch(
+      `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/athletes/${playerId}/eventlog?pageIndex=${pageCount}`,
+      { signal: AbortSignal.timeout(10000) }
+    );
     const d = await r.json();
-    const items = (d.events?.items||[]).filter(i => i.played && i.statistics?.$ref);
+    const items = (d.events?.items || []).filter(i => i.played && i.statistics?.$ref);
     const recent = items.slice(-5);
+
     const games = await Promise.all(recent.map(async item => {
       try {
         const ref = item.statistics.$ref.replace('http://','https://');
         const rs  = await fetch(ref, { signal: AbortSignal.timeout(8000) });
         const sd  = await rs.json();
-        const cats = sd.splits?.categories||[];
+        const cats = sd.splits?.categories || [];
         const get = (cat, name) => {
-          const c = cats.find(c => c.name===cat);
-          return parseFloat(c?.stats?.find(s => s.name===name)?.displayValue||0)||0;
+          const c = cats.find(c => c.name === cat);
+          return parseFloat(c?.stats?.find(s => s.name === name)?.displayValue || 0) || 0;
         };
-        // Get opponent from competition ref
-        const compRef = (item.competition?.$ref||'').replace('http://','https://');
-        let opp = '';
-        try {
-          const cr = await fetch(compRef+'?limit=1', { signal: AbortSignal.timeout(5000) });
-          const cd = await cr.json();
-          const comps = cd.competitors||[];
-          const other = comps.find(c => !c.homeAway); // just pick any
-          opp = cd.shortName || '';
-        } catch(e) {}
         return {
-          opp,
           pts: get('offensive','points'),
           reb: get('general','rebounds'),
           ast: get('offensive','assists'),
