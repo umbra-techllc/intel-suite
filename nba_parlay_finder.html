@@ -616,49 +616,78 @@ async function getRoster(teamId) {
 // ═══════════════════════════════════
 // ESPN — LAST 5 GAME LOGS
 // ═══════════════════════════════════
-async function getLast5(playerId) {
-  try {
-    // Step 1: fetch page 1 just to get the total page count
-    const r0 = await fetch(
-      `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/athletes/${playerId}/eventlog?pageIndex=1`,
-      { signal: AbortSignal.timeout(10000) }
-    );
-    const d0 = await r0.json();
-    const pageCount = d0.events?.pageCount || 1;
+// Cache team schedules so we don't re-fetch for every player on the same team
+const teamScheduleCache = {};
 
-    // Step 2: fetch the LAST page — that's where the most recent games live
+async function getTeamRecentGames(teamId) {
+  if (teamScheduleCache[teamId]) return teamScheduleCache[teamId];
+  try {
     const r = await fetch(
-      `https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/2026/athletes/${playerId}/eventlog?pageIndex=${pageCount}`,
-      { signal: AbortSignal.timeout(10000) }
+      `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/schedule?season=2026`,
+      { signal: AbortSignal.timeout(12000) }
     );
     const d = await r.json();
-    const items = (d.events?.items || []).filter(i => i.played && i.statistics?.$ref);
-    const recent = items.slice(-5);
+    const played = (d.events || [])
+      .filter(e => e.competitions?.[0]?.status?.type?.completed === true)
+      .slice(-10)  // last 10 played games is enough
+      .map(e => e.id);
+    teamScheduleCache[teamId] = played;
+    return played;
+  } catch(e) { return []; }
+}
 
-    const games = await Promise.all(recent.map(async item => {
+async function getLast5(playerId, teamId) {
+  try {
+    // Get recent game IDs for this player's current team
+    const gameIds = await getTeamRecentGames(teamId);
+    if (!gameIds.length) return [];
+
+    // Fetch box scores for last 10 games, find this player, collect up to 5
+    const games = [];
+    for (const eid of gameIds.slice().reverse()) {  // newest first
+      if (games.length >= 5) break;
       try {
-        const ref = item.statistics.$ref.replace('http://','https://');
-        const rs  = await fetch(ref, { signal: AbortSignal.timeout(8000) });
-        const sd  = await rs.json();
-        const cats = sd.splits?.categories || [];
-        const get = (cat, name) => {
-          const c = cats.find(c => c.name === cat);
-          return parseFloat(c?.stats?.find(s => s.name === name)?.displayValue || 0) || 0;
-        };
-        return {
-          pts: get('offensive','points'),
-          reb: get('general','rebounds'),
-          ast: get('offensive','assists'),
-          tpm: get('offensive','threePointFieldGoalsMade'),
-          stl: get('defensive','steals'),
-          blk: get('defensive','blocks'),
-          min: get('general','minutes'),
-          fgm: get('offensive','fieldGoalsMade'),
-          fga: get('offensive','fieldGoalsAttempted'),
-        };
-      } catch(e) { return null; }
-    }));
-    return games.filter(Boolean);
+        const r = await fetch(
+          `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${eid}`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        const d = await r.json();
+        let found = false;
+        for (const team of (d.boxscore?.players || [])) {
+          for (const sg of (team.statistics || [])) {
+            for (const player of (sg.athletes || [])) {
+              if (player.athlete?.id === String(playerId)) {
+                const labels = sg.labels || [];
+                const stats  = player.stats || [];
+                const st = {};
+                labels.forEach((l, i) => st[l] = stats[i] || '0');
+                // Skip DNP
+                if (!st['MIN'] || st['MIN'] === '--' || st['MIN'] === '0:00') { found = true; break; }
+                // Parse 3PT as made (format is "2-8")
+                const tpm = st['3PT'] ? parseInt(st['3PT'].split('-')[0]) || 0 : 0;
+                const min = st['MIN'] ? parseFloat(st['MIN'].replace(':','.')) || 0 : 0;
+                games.push({
+                  pts: parseFloat(st['PTS']) || 0,
+                  reb: parseFloat(st['REB']) || 0,
+                  ast: parseFloat(st['AST']) || 0,
+                  tpm,
+                  stl: parseFloat(st['STL']) || 0,
+                  blk: parseFloat(st['BLK']) || 0,
+                  min,
+                  fgm: st['FG'] ? parseInt(st['FG'].split('-')[0]) || 0 : 0,
+                  fga: st['FG'] ? parseInt(st['FG'].split('-')[1]) || 0 : 0,
+                });
+                found = true;
+                break;
+              }
+            }
+            if (found) break;
+          }
+          if (found) break;
+        }
+      } catch(e) { /* skip this game */ }
+    }
+    return games;
   } catch(e) { return []; }
 }
 
@@ -988,12 +1017,12 @@ async function loadOneGame(game, oddsEvents, ph, container) {
     const props    = oddsId ? await getProps(oddsId) : {};
 
     const roster = [
-      ...r1.slice(0,8).map(p => ({...p, teamAbbr: game.teams[0].abbr})),
-      ...r2.slice(0,8).map(p => ({...p, teamAbbr: game.teams[1].abbr})),
+      ...r1.slice(0,8).map(p => ({...p, teamAbbr: game.teams[0].abbr, teamId: game.teams[0].id})),
+      ...r2.slice(0,8).map(p => ({...p, teamAbbr: game.teams[1].abbr, teamId: game.teams[1].id})),
     ].filter(p => !p.status.toLowerCase().includes('out'));
 
     const players = await Promise.all(roster.map(async p => {
-      const games = await getLast5(p.id);
+      const games = await getLast5(p.id, p.teamId);
       const avgs  = calcAvgs(games);
       const matchedProps = avgs ? matchProps(p.name, props) : {};
       return { ...p, games, avgs, props: matchedProps };
