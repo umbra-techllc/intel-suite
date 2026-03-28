@@ -60,8 +60,19 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .wl-rm{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;padding:2px;transition:color 0.1s;}
 .wl-rm:hover{color:var(--red);}
 
-/* ADD TICKER */
-.add-row{display:flex;gap:6px;margin-top:8px;}
+/* ITA EXPLORER */
+.ita-item{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;}
+.ita-item:last-child{border:none;}
+.ita-item:hover{background:var(--bg2);}
+.ita-item.in-wl{opacity:0.4;cursor:default;}
+.ita-left{display:flex;flex-direction:column;gap:1px;}
+.ita-ticker{font-family:var(--mono);font-size:11px;color:var(--text);font-weight:500;}
+.ita-name{font-family:var(--mono);font-size:8px;color:var(--text3);}
+.ita-right{display:flex;align-items:center;gap:6px;}
+.ita-weight{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.ita-add{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.ita-add:hover{border-color:var(--green);color:var(--green);}
+.ita-add.added{border-color:var(--green);color:var(--green);}
 .add-inp{flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:11px;padding:5px 8px;border-radius:4px;outline:none;text-transform:uppercase;letter-spacing:2px;}
 .add-inp:focus{border-color:var(--green);}
 .add-inp::placeholder{text-transform:none;letter-spacing:0;color:var(--text3);}
@@ -278,8 +289,19 @@ canvas.spark{width:100%;height:40px;display:block;}
       <button class="preset-btn" onclick="loadPreset('cyber')">CYBER/AI</button>
       <button class="preset-btn" onclick="loadPreset('drones')">DRONES</button>
       <button class="preset-btn" onclick="loadPreset('evtol')">eVTOL</button>
+      <button class="preset-btn" onclick="loadPreset('prime')">PRIME CONTRACTORS</button>
+      <button class="preset-btn" onclick="loadPreset('sensors')">SENSORS</button>
+      <button class="preset-btn" onclick="loadPreset('ita_top10')">ITA TOP 10</button>
       <button class="preset-btn" onclick="loadPreset('all')" style="grid-column:1/-1;">ALL DEFAULT</button>
     </div>
+  </div>
+
+  <!-- ITA ETF EXPLORER -->
+  <div class="sb-sec">
+    <div class="sb-sec-title">ITA ETF EXPLORER <span style="color:var(--text3);font-size:8px;letter-spacing:0;">— 44 HOLDINGS</span></div>
+    <div style="font-family:var(--mono);font-size:9px;color:var(--text3);margin-bottom:6px;">Click any stock to add a card</div>
+    <input class="add-inp" id="ita-search" placeholder="search by ticker or name..." oninput="filterITA()" style="margin-bottom:6px;letter-spacing:0;font-size:10px;"/>
+    <div id="ita-list" style="max-height:260px;overflow-y:auto;"></div>
   </div>
 
   <!-- PRICE ALERTS -->
@@ -326,40 +348,126 @@ canvas.spark{width:100%;height:40px;display:block;}
 // ═══════════════════════════════════
 const DEFAULT_TICKERS = ['RKLB','KTOS','PLTR','ACHR','JOBY','LUNR','BWXT','DRS','HII','CACI'];
 
+// Full ITA (iShares U.S. Aerospace & Defense ETF) holdings — 44 equities as of March 2026
+// Rebalances quarterly — update periodically
+const ITA_HOLDINGS = [
+  {ticker:'GE',  name:'GE Aerospace',              weight:19.00},
+  {ticker:'RTX', name:'RTX Corp.',                  weight:16.44},
+  {ticker:'BA',  name:'Boeing',                     weight:8.65},
+  {ticker:'GD',  name:'General Dynamics',           weight:4.91},
+  {ticker:'LMT', name:'Lockheed Martin',            weight:4.72},
+  {ticker:'LHX', name:'L3Harris Technologies',      weight:4.69},
+  {ticker:'NOC', name:'Northrop Grumman',           weight:4.61},
+  {ticker:'HWM', name:'Howmet Aerospace',           weight:4.48},
+  {ticker:'TDG', name:'TransDigm Group',            weight:4.47},
+  {ticker:'AXON',name:'Axon Enterprise',            weight:2.98},
+  {ticker:'RKLB',name:'Rocket Lab',                 weight:2.60},
+  {ticker:'FTAI',name:'FTAI Aviation',              weight:2.06},
+  {ticker:'CW',  name:'Curtiss-Wright',             weight:2.06},
+  {ticker:'WWD', name:'Woodward Inc.',              weight:1.78},
+  {ticker:'ATI', name:'ATI Inc.',                   weight:1.64},
+  {ticker:'CRS', name:'Carpenter Technology',       weight:1.63},
+  {ticker:'BWXT',name:'BWX Technologies',           weight:1.57},
+  {ticker:'HEIA',name:'Heico Corp. Class A',        weight:1.35},
+  {ticker:'TXT', name:'Textron Inc.',               weight:1.30},
+  {ticker:'HII', name:'Huntington Ingalls',         weight:1.27},
+  {ticker:'KTOS',name:'Kratos Defense',             weight:1.17},
+  {ticker:'HEI', name:'Heico Corp.',                weight:0.92},
+  {ticker:'MOGA',name:'Moog Inc.',                  weight:0.69},
+  {ticker:'KRMN',name:'Karman Holdings',            weight:0.55},
+  {ticker:'AVAV',name:'AeroVironment',              weight:0.52},
+  {ticker:'HXL', name:'Hexcel Corp.',               weight:0.51},
+  {ticker:'VSEC',name:'VSE Corp.',                  weight:0.42},
+  {ticker:'SARO',name:'StandardAero',               weight:0.42},
+  {ticker:'AIR', name:'AAR Corp.',                  weight:0.36},
+  {ticker:'MRCY',name:'Mercury Systems',            weight:0.34},
+  {ticker:'DRS', name:'Leonardo DRS',               weight:0.30},
+  {ticker:'ACHR',name:'Archer Aviation',            weight:0.28},
+  {ticker:'LUNR',name:'Intuitive Machines',         weight:0.18},
+  {ticker:'ATRO',name:'Astronics Corp.',            weight:0.17},
+  {ticker:'LOAR',name:'Loar Holdings',              weight:0.17},
+  {ticker:'DCO', name:'Ducommun Inc.',              weight:0.14},
+  {ticker:'RCAT',name:'Red Cat Holdings',           weight:0.12},
+  {ticker:'VVX', name:'V2X Inc.',                   weight:0.12},
+  {ticker:'CDRE',name:'Cadre Holdings',             weight:0.07},
+  {ticker:'NPK', name:'National Presto Industries', weight:0.06},
+  {ticker:'RDW', name:'Redwire Corp.',              weight:0.06},
+  {ticker:'RGR', name:'Sturm Ruger',                weight:0.06},
+  {ticker:'SWBI',name:'Smith & Wesson Brands',      weight:0.06},
+  {ticker:'BETA',name:'Beta Technologies',          weight:0.04},
+];
+
 const TICKER_META = {
-  RKLB:{name:'Rocket Lab USA',sector:'Space',cap:'Small'},
-  KTOS:{name:'Kratos Defense',sector:'Drones',cap:'Small'},
-  PLTR:{name:'Palantir Technologies',sector:'Cyber/AI',cap:'Large'},
-  ACHR:{name:'Archer Aviation',sector:'eVTOL',cap:'Small'},
-  JOBY:{name:'Joby Aviation',sector:'eVTOL',cap:'Small'},
-  LUNR:{name:'Intuitive Machines',sector:'Space',cap:'Micro'},
-  BWXT:{name:'BWX Technologies',sector:'Nuclear',cap:'Mid'},
-  DRS:{name:'Leonardo DRS',sector:'Sensors',cap:'Mid'},
-  HII:{name:'Huntington Ingalls',sector:'Naval',cap:'Large'},
-  CACI:{name:'CACI International',sector:'Cyber/AI',cap:'Mid'},
-  AXON:{name:'Axon Enterprise',sector:'Cyber/AI',cap:'Large'},
-  LDOS:{name:'Leidos Holdings',sector:'Cyber/AI',cap:'Large'},
-  SAIC:{name:'Science Applications',sector:'Cyber/AI',cap:'Mid'},
-  MANT:{name:'ManTech International',sector:'Cyber/AI',cap:'Small'},
-  ASTR:{name:'Astra Space',sector:'Space',cap:'Micro'},
-  SPIR:{name:'Spire Global',sector:'Space',cap:'Micro'},
-  BKSY:{name:'BlackSky Technology',sector:'Space',cap:'Micro'},
-  PL:{name:'Planet Labs',sector:'Space',cap:'Small'},
-  GD:{name:'General Dynamics',sector:'Naval',cap:'Large'},
-  RTX:{name:'RTX Corporation',sector:'Sensors',cap:'Large'},
-  NOC:{name:'Northrop Grumman',sector:'Space',cap:'Large'},
-  LMT:{name:'Lockheed Martin',sector:'Space',cap:'Large'},
-  BA:{name:'Boeing',sector:'Aerospace',cap:'Large'},
-  AVAV:{name:'AeroVironment',sector:'Drones',cap:'Small'},
-  OSIS:{name:'OSI Systems',sector:'Sensors',cap:'Small'},
+  // Emerging / watchlist originals
+  RKLB:{name:'Rocket Lab USA',        sector:'Space',    cap:'Small'},
+  KTOS:{name:'Kratos Defense',        sector:'Drones',   cap:'Small'},
+  PLTR:{name:'Palantir Technologies', sector:'Cyber/AI', cap:'Large'},
+  ACHR:{name:'Archer Aviation',       sector:'eVTOL',    cap:'Small'},
+  JOBY:{name:'Joby Aviation',         sector:'eVTOL',    cap:'Small'},
+  LUNR:{name:'Intuitive Machines',    sector:'Space',    cap:'Micro'},
+  BWXT:{name:'BWX Technologies',      sector:'Nuclear',  cap:'Mid'},
+  DRS: {name:'Leonardo DRS',          sector:'Sensors',  cap:'Mid'},
+  HII: {name:'Huntington Ingalls',    sector:'Naval',    cap:'Large'},
+  CACI:{name:'CACI International',    sector:'Cyber/AI', cap:'Mid'},
+  AXON:{name:'Axon Enterprise',       sector:'Cyber/AI', cap:'Large'},
+  LDOS:{name:'Leidos Holdings',       sector:'Cyber/AI', cap:'Large'},
+  SAIC:{name:'Science Applications',  sector:'Cyber/AI', cap:'Mid'},
+  MANT:{name:'ManTech International', sector:'Cyber/AI', cap:'Small'},
+  ASTR:{name:'Astra Space',           sector:'Space',    cap:'Micro'},
+  SPIR:{name:'Spire Global',          sector:'Space',    cap:'Micro'},
+  BKSY:{name:'BlackSky Technology',   sector:'Space',    cap:'Micro'},
+  PL:  {name:'Planet Labs',           sector:'Space',    cap:'Small'},
+  AVAV:{name:'AeroVironment',         sector:'Drones',   cap:'Small'},
+  OSIS:{name:'OSI Systems',           sector:'Sensors',  cap:'Small'},
+  RCAT:{name:'Red Cat Holdings',      sector:'Drones',   cap:'Micro'},
+  // ITA prime contractors
+  GE:  {name:'GE Aerospace',          sector:'Aerospace',cap:'Large'},
+  RTX: {name:'RTX Corp.',             sector:'Aerospace',cap:'Large'},
+  BA:  {name:'Boeing',                sector:'Aerospace',cap:'Large'},
+  GD:  {name:'General Dynamics',      sector:'Naval',    cap:'Large'},
+  LMT: {name:'Lockheed Martin',       sector:'Aerospace',cap:'Large'},
+  LHX: {name:'L3Harris Technologies', sector:'Sensors',  cap:'Large'},
+  NOC: {name:'Northrop Grumman',      sector:'Aerospace',cap:'Large'},
+  HWM: {name:'Howmet Aerospace',      sector:'Aerospace',cap:'Large'},
+  TDG: {name:'TransDigm Group',       sector:'Aerospace',cap:'Large'},
+  // ITA mid-tier
+  FTAI:{name:'FTAI Aviation',         sector:'Aerospace',cap:'Mid'},
+  CW:  {name:'Curtiss-Wright',        sector:'Sensors',  cap:'Mid'},
+  WWD: {name:'Woodward Inc.',         sector:'Aerospace',cap:'Mid'},
+  ATI: {name:'ATI Inc.',              sector:'Aerospace',cap:'Mid'},
+  CRS: {name:'Carpenter Technology',  sector:'Aerospace',cap:'Mid'},
+  HEIA:{name:'Heico Corp. Class A',   sector:'Aerospace',cap:'Mid'},
+  HEI: {name:'Heico Corp.',           sector:'Aerospace',cap:'Mid'},
+  TXT: {name:'Textron Inc.',          sector:'Aerospace',cap:'Large'},
+  MOGA:{name:'Moog Inc.',             sector:'Sensors',  cap:'Small'},
+  KRMN:{name:'Karman Holdings',       sector:'Space',    cap:'Small'},
+  HXL: {name:'Hexcel Corp.',          sector:'Aerospace',cap:'Small'},
+  VSEC:{name:'VSE Corp.',             sector:'Aerospace',cap:'Small'},
+  SARO:{name:'StandardAero',          sector:'Aerospace',cap:'Mid'},
+  AIR: {name:'AAR Corp.',             sector:'Aerospace',cap:'Small'},
+  MRCY:{name:'Mercury Systems',       sector:'Sensors',  cap:'Small'},
+  ATRO:{name:'Astronics Corp.',       sector:'Aerospace',cap:'Small'},
+  LOAR:{name:'Loar Holdings',         sector:'Aerospace',cap:'Small'},
+  DCO: {name:'Ducommun Inc.',         sector:'Aerospace',cap:'Small'},
+  VVX: {name:'V2X Inc.',              sector:'Cyber/AI', cap:'Small'},
+  CDRE:{name:'Cadre Holdings',        sector:'Weapons',  cap:'Small'},
+  NPK: {name:'National Presto',       sector:'Weapons',  cap:'Small'},
+  RDW: {name:'Redwire Corp.',         sector:'Space',    cap:'Micro'},
+  RGR: {name:'Sturm Ruger',           sector:'Weapons',  cap:'Small'},
+  SWBI:{name:'Smith & Wesson Brands', sector:'Weapons',  cap:'Small'},
+  BETA:{name:'Beta Technologies',     sector:'eVTOL',    cap:'Micro'},
 };
 
 const PRESETS = {
-  space:['RKLB','LUNR','ASTR','SPIR','BKSY','PL','NOC','LMT'],
-  cyber:['PLTR','CACI','LDOS','SAIC','MANT','AXON'],
-  drones:['KTOS','AVAV'],
-  evtol:['ACHR','JOBY'],
-  all:[...DEFAULT_TICKERS],
+  space:  ['RKLB','LUNR','ASTR','SPIR','BKSY','PL','NOC','LMT','RDW','KRMN'],
+  cyber:  ['PLTR','CACI','LDOS','SAIC','MANT','AXON','VVX'],
+  drones: ['KTOS','AVAV','RCAT'],
+  evtol:  ['ACHR','JOBY','BETA'],
+  prime:  ['GE','RTX','BA','GD','LMT','LHX','NOC','HWM','TDG'],
+  sensors:['DRS','MRCY','CW','OSIS','LHX'],
+  evtol:  ['ACHR','JOBY','BETA'],
+  all:    [...DEFAULT_TICKERS],
+  ita_top10: ['GE','RTX','BA','GD','LMT','LHX','NOC','HWM','TDG','AXON'],
 };
 
 const SECTOR_COLORS = {
@@ -399,6 +507,7 @@ if(AKEY) document.getElementById('akey-inp').value=AKEY;
 updateKeyStatus();
 renderWatchlist();
 renderAlerts();
+renderITAList();
 
 function saveAKey(){
   AKEY=document.getElementById('akey-inp').value.trim();
@@ -409,6 +518,56 @@ function updateKeyStatus(){
   const el=document.getElementById('akey-status');
   el.textContent=AKEY?'● KEY SET':'● NOT SET — AI SIGNALS DISABLED';
   el.className='key-status '+(AKEY?'ks-set':'ks-none');
+}
+
+// ═══════════════════════════════════
+// ITA EXPLORER
+// ═══════════════════════════════════
+function renderITAList(filter=''){
+  const el=document.getElementById('ita-list');
+  if(!el) return;
+  const q=filter.toLowerCase();
+  const filtered=ITA_HOLDINGS.filter(h=>
+    !q || h.ticker.toLowerCase().includes(q) || h.name.toLowerCase().includes(q)
+  );
+  if(!filtered.length){el.innerHTML='<div style="font-family:var(--mono);font-size:9px;color:var(--text3);padding:4px 0;">No matches</div>';return;}
+  el.innerHTML=filtered.map(h=>{
+    const inWl=watchlist.includes(h.ticker);
+    return`<div class="ita-item${inWl?' in-wl':''}" id="ita-row-${h.ticker}">
+      <div class="ita-left">
+        <div class="ita-ticker">${h.ticker}</div>
+        <div class="ita-name">${h.name}</div>
+      </div>
+      <div class="ita-right">
+        <div class="ita-weight">${h.weight.toFixed(1)}%</div>
+        ${inWl
+          ? '<div class="ita-add added">✓ IN WL</div>'
+          : `<button class="ita-add" onclick="addFromITA('${h.ticker}','${h.name.replace(/'/g,"\\'")}')">+ ADD</button>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterITA(){
+  const q=document.getElementById('ita-search')?.value||'';
+  renderITAList(q);
+}
+
+function addFromITA(ticker, name){
+  // Add to TICKER_META if not already there
+  if(!TICKER_META[ticker]){
+    const h=ITA_HOLDINGS.find(h=>h.ticker===ticker);
+    TICKER_META[ticker]={name:h?.name||name, sector:'Aerospace', cap:'?'};
+  }
+  if(!watchlist.includes(ticker)){
+    watchlist.push(ticker);
+    save();
+    renderGrid();
+    renderWatchlist();
+    ss(`ADDED ${ticker} — CLICK TO LOAD`,'ok');
+  }
+  // Refresh ITA list to show it's now in watchlist
+  renderITAList(document.getElementById('ita-search')?.value||'');
 }
 
 function ss(msg,type=''){const el=document.getElementById('status');el.textContent=msg;el.className='status-bar '+type;}
@@ -904,7 +1063,7 @@ function addTicker(){
 function removeTicker(ticker){
   watchlist=watchlist.filter(t=>t!==ticker);
   delete stockData[ticker];delete analyses[ticker];delete loading[ticker];
-  save();renderGrid();renderWatchlist();updateSummary();
+  save();renderGrid();renderWatchlist();updateSummary();renderITAList();
   ss('REMOVED '+ticker);
 }
 
