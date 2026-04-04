@@ -611,8 +611,8 @@ body {
     </div>
     <div class="key-label" style="margin-top:12px;margin-bottom:6px;">Min Hit Rate</div>
     <div class="toggle-group" id="hitrate-toggle">
-      <button class="toggle-btn" data-val="0">Any</button>
-      <button class="toggle-btn active" data-val="60">60%+</button>
+      <button class="toggle-btn active" data-val="0">Any</button>
+      <button class="toggle-btn" data-val="60">60%+</button>
       <button class="toggle-btn" data-val="70">70%+</button>
       <button class="toggle-btn" data-val="80">80%+</button>
     </div>
@@ -692,7 +692,7 @@ let state = {
   parlay: [],
   sampleSize: 10,
   propType: 'points',
-  minHitRate: 60,
+  minHitRate: 0,  // Default to showing all
   oddsKey: '',
   anthropicKey: ''
 };
@@ -777,13 +777,15 @@ async function loadGames() {
       };
     });
     
-    content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading team stats & player data...</div>`;
+    content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading team stats...</div>`;
     
     // Load team pace/defense data
     await loadTeamStats();
     
-    // Load player data for each team
-    await loadAllPlayerData();
+    content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading recent box scores (this takes a moment)...</div>`;
+    
+    // Load player data from recent box scores
+    await loadPlayerDataFromBoxScores();
     
     // Load prop lines if we have API key
     if (state.oddsKey) {
@@ -860,121 +862,182 @@ async function loadTeamStats() {
   }
 }
 
-async function loadAllPlayerData() {
+async function loadPlayerDataFromBoxScores() {
+  // Get the last 20 days of games to build player stats
+  const playerStats = {}; // playerId -> { name, team, games: [] }
+  
+  // Fetch recent game dates (last 15 days)
+  const dates = [];
+  for (let i = 1; i <= 15; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().split('T')[0].replace(/-/g, ''));
+  }
+  
+  // Get game IDs from recent dates
+  const gameIds = [];
+  for (const dateStr of dates.slice(0, 7)) { // Limit to 7 days to keep it fast
+    try {
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${dateStr}`);
+      const data = await res.json();
+      if (data.events) {
+        data.events.forEach(e => {
+          if (e.status?.type?.name === 'STATUS_FINAL') {
+            gameIds.push(e.id);
+          }
+        });
+      }
+    } catch (e) {}
+  }
+  
+  console.log(`Found ${gameIds.length} recent completed games`);
+  
+  // Fetch box scores for recent games (limit to avoid too many requests)
+  for (const gameId of gameIds.slice(0, 20)) {
+    try {
+      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${gameId}`);
+      const data = await res.json();
+      
+      const boxscore = data.boxscore;
+      if (!boxscore?.players) continue;
+      
+      // Get home/away info
+      const header = data.header?.competitions?.[0];
+      const homeTeamId = header?.competitors?.find(c => c.homeAway === 'home')?.id;
+      
+      boxscore.players.forEach(teamBox => {
+        const teamId = teamBox.team?.id;
+        const teamAbbr = teamBox.team?.abbreviation;
+        const isHome = teamId === homeTeamId;
+        
+        const stats = teamBox.statistics?.[0];
+        if (!stats?.athletes) return;
+        
+        // ESPN box score stat order: MIN, FG, 3PT, FT, OREB, DREB, REB, AST, STL, BLK, TO, PF, +/-, PTS
+        const statKeys = stats.keys || [];
+        const minIdx = statKeys.indexOf('MIN') !== -1 ? statKeys.indexOf('MIN') : 0;
+        const ptsIdx = statKeys.indexOf('PTS') !== -1 ? statKeys.indexOf('PTS') : 13;
+        const rebIdx = statKeys.indexOf('REB') !== -1 ? statKeys.indexOf('REB') : 6;
+        const astIdx = statKeys.indexOf('AST') !== -1 ? statKeys.indexOf('AST') : 7;
+        const tpmIdx = statKeys.indexOf('3PT') !== -1 ? statKeys.indexOf('3PT') : 2;
+        
+        stats.athletes.forEach(a => {
+          const athlete = a.athlete;
+          const s = a.stats || [];
+          
+          if (!athlete?.id || s.length === 0) return;
+          
+          const minutes = parseInt(s[minIdx]) || 0;
+          if (minutes < 5) return; // Skip players with minimal minutes
+          
+          const points = parseInt(s[ptsIdx]) || 0;
+          const rebounds = parseInt(s[rebIdx]) || 0;
+          const assists = parseInt(s[astIdx]) || 0;
+          
+          // Parse 3PT made from "X-Y" format
+          let threes = 0;
+          if (s[tpmIdx] && s[tpmIdx].includes('-')) {
+            threes = parseInt(s[tpmIdx].split('-')[0]) || 0;
+          }
+          
+          if (!playerStats[athlete.id]) {
+            playerStats[athlete.id] = {
+              id: athlete.id,
+              name: athlete.displayName,
+              team: teamAbbr,
+              teamId: teamId,
+              games: []
+            };
+          }
+          
+          playerStats[athlete.id].games.push({
+            points, rebounds, assists, threes, minutes, isHome
+          });
+        });
+      });
+    } catch (e) {
+      console.error(`Error loading box score ${gameId}:`, e);
+    }
+  }
+  
+  console.log(`Loaded stats for ${Object.keys(playerStats).length} players`);
+  
+  // Now build player objects for today's games
   const allPlayers = [];
   
   for (const game of state.games) {
-    // Load roster and stats for both teams
-    const homeRoster = await loadTeamRoster(game.home.id, game.home.abbr, game.home.name, game.away.abbr, true);
-    const awayRoster = await loadTeamRoster(game.away.id, game.away.abbr, game.away.name, game.home.abbr, false);
-    
-    allPlayers.push(...homeRoster.map(p => ({ ...p, gameId: game.id, gameName: game.name, gameTime: game.date })));
-    allPlayers.push(...awayRoster.map(p => ({ ...p, gameId: game.id, gameName: game.name, gameTime: game.date })));
+    // Find players on each team
+    Object.values(playerStats).forEach(p => {
+      if (p.games.length < 3) return; // Need at least 3 games
+      
+      const isHomeTeam = p.teamId == game.home.id;
+      const isAwayTeam = p.teamId == game.away.id;
+      
+      if (!isHomeTeam && !isAwayTeam) return;
+      
+      const calcAvg = (games, stat) => games.reduce((sum, g) => sum + g[stat], 0) / games.length;
+      
+      const l5 = p.games.slice(0, 5);
+      const l10 = p.games.slice(0, 10);
+      const l20 = p.games.slice(0, 20);
+      const homeGames = p.games.filter(g => g.isHome).slice(0, 10);
+      const awayGames = p.games.filter(g => !g.isHome).slice(0, 10);
+      
+      const player = {
+        id: p.id,
+        name: p.name,
+        team: p.team,
+        teamName: isHomeTeam ? game.home.name : game.away.name,
+        opponent: isHomeTeam ? game.away.abbr : game.home.abbr,
+        isHome: isHomeTeam,
+        gameId: game.id,
+        gameName: game.name,
+        gameTime: game.date,
+        gameLogs: p.games,
+        stats: {
+          l5: {
+            points: calcAvg(l5, 'points'),
+            rebounds: calcAvg(l5, 'rebounds'),
+            assists: calcAvg(l5, 'assists'),
+            threes: calcAvg(l5, 'threes'),
+            minutes: calcAvg(l5, 'minutes')
+          },
+          l10: {
+            points: l10.length >= 5 ? calcAvg(l10, 'points') : calcAvg(l5, 'points'),
+            rebounds: l10.length >= 5 ? calcAvg(l10, 'rebounds') : calcAvg(l5, 'rebounds'),
+            assists: l10.length >= 5 ? calcAvg(l10, 'assists') : calcAvg(l5, 'assists'),
+            threes: l10.length >= 5 ? calcAvg(l10, 'threes') : calcAvg(l5, 'threes'),
+            minutes: l10.length >= 5 ? calcAvg(l10, 'minutes') : calcAvg(l5, 'minutes')
+          },
+          l20: {
+            points: l20.length >= 10 ? calcAvg(l20, 'points') : calcAvg(l10, 'points'),
+            rebounds: l20.length >= 10 ? calcAvg(l20, 'rebounds') : calcAvg(l10, 'rebounds'),
+            assists: l20.length >= 10 ? calcAvg(l20, 'assists') : calcAvg(l10, 'assists'),
+            threes: l20.length >= 10 ? calcAvg(l20, 'threes') : calcAvg(l10, 'threes'),
+            minutes: l20.length >= 10 ? calcAvg(l20, 'minutes') : calcAvg(l10, 'minutes')
+          },
+          home: homeGames.length >= 2 ? {
+            points: calcAvg(homeGames, 'points'),
+            rebounds: calcAvg(homeGames, 'rebounds'),
+            assists: calcAvg(homeGames, 'assists')
+          } : null,
+          away: awayGames.length >= 2 ? {
+            points: calcAvg(awayGames, 'points'),
+            rebounds: calcAvg(awayGames, 'rebounds'),
+            assists: calcAvg(awayGames, 'assists')
+          } : null
+        }
+      };
+      
+      allPlayers.push(player);
+    });
   }
   
+  // Sort by minutes (most minutes = likely starters/key rotation)
+  allPlayers.sort((a, b) => (b.stats.l5.minutes || 0) - (a.stats.l5.minutes || 0));
+  
   state.players = allPlayers;
-}
-
-async function loadTeamRoster(teamId, teamAbbr, teamName, oppAbbr, isHome) {
-  try {
-    // Get team roster
-    const rosterRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/${teamId}/roster`);
-    const rosterData = await rosterRes.json();
-    
-    if (!rosterData.athletes) return [];
-    
-    const players = [];
-    
-    // Get recent game logs for key players (top 8 by jersey number as proxy for starters/rotation)
-    for (const athlete of rosterData.athletes.slice(0, 10)) {
-      try {
-        const logsRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/athletes/${athlete.id}/gamelog`);
-        const logsData = await logsRes.json();
-        
-        if (!logsData.events || logsData.events.length === 0) continue;
-        
-        // Parse game logs
-        const gameLogs = logsData.events.slice(0, 20).map(e => {
-          const stats = e.stats || {};
-          return {
-            date: e.gameDate,
-            opponent: e.opponent?.abbreviation || '?',
-            home: e.homeAway === 'home',
-            points: parseFloat(stats.points) || 0,
-            rebounds: parseFloat(stats.rebounds) || 0,
-            assists: parseFloat(stats.assists) || 0,
-            threes: parseFloat(stats.threePointFieldGoalsMade) || 0,
-            minutes: parseFloat(stats.minutes) || 0
-          };
-        }).filter(g => g.minutes > 0);
-        
-        if (gameLogs.length < 3) continue;
-        
-        // Calculate averages for different sample sizes
-        const calcAvg = (logs, stat) => logs.reduce((sum, g) => sum + g[stat], 0) / logs.length;
-        
-        const l5 = gameLogs.slice(0, 5);
-        const l10 = gameLogs.slice(0, 10);
-        const l20 = gameLogs.slice(0, 20);
-        const homeGames = gameLogs.filter(g => g.home).slice(0, 10);
-        const awayGames = gameLogs.filter(g => !g.home).slice(0, 10);
-        
-        const player = {
-          id: athlete.id,
-          name: athlete.fullName || athlete.displayName,
-          team: teamAbbr,
-          teamName: teamName,
-          opponent: oppAbbr,
-          isHome: isHome,
-          gameLogs: gameLogs,
-          stats: {
-            l5: {
-              points: calcAvg(l5, 'points'),
-              rebounds: calcAvg(l5, 'rebounds'),
-              assists: calcAvg(l5, 'assists'),
-              threes: calcAvg(l5, 'threes'),
-              minutes: calcAvg(l5, 'minutes')
-            },
-            l10: {
-              points: l10.length >= 5 ? calcAvg(l10, 'points') : calcAvg(l5, 'points'),
-              rebounds: l10.length >= 5 ? calcAvg(l10, 'rebounds') : calcAvg(l5, 'rebounds'),
-              assists: l10.length >= 5 ? calcAvg(l10, 'assists') : calcAvg(l5, 'assists'),
-              threes: l10.length >= 5 ? calcAvg(l10, 'threes') : calcAvg(l5, 'threes'),
-              minutes: l10.length >= 5 ? calcAvg(l10, 'minutes') : calcAvg(l5, 'minutes')
-            },
-            l20: {
-              points: l20.length >= 10 ? calcAvg(l20, 'points') : calcAvg(l10, 'points'),
-              rebounds: l20.length >= 10 ? calcAvg(l20, 'rebounds') : calcAvg(l10, 'rebounds'),
-              assists: l20.length >= 10 ? calcAvg(l20, 'assists') : calcAvg(l10, 'assists'),
-              threes: l20.length >= 10 ? calcAvg(l20, 'threes') : calcAvg(l10, 'threes'),
-              minutes: l20.length >= 10 ? calcAvg(l20, 'minutes') : calcAvg(l10, 'minutes')
-            },
-            home: homeGames.length >= 3 ? {
-              points: calcAvg(homeGames, 'points'),
-              rebounds: calcAvg(homeGames, 'rebounds'),
-              assists: calcAvg(homeGames, 'assists')
-            } : null,
-            away: awayGames.length >= 3 ? {
-              points: calcAvg(awayGames, 'points'),
-              rebounds: calcAvg(awayGames, 'rebounds'),
-              assists: calcAvg(awayGames, 'assists')
-            } : null
-          }
-        };
-        
-        players.push(player);
-        
-      } catch (e) {
-        // Skip player if we can't get their logs
-      }
-    }
-    
-    return players;
-    
-  } catch (err) {
-    console.error(`Error loading roster for ${teamAbbr}:`, err);
-    return [];
-  }
+  console.log(`Built ${allPlayers.length} player profiles for today's games`);
 }
 
 async function loadPropLines() {
@@ -1137,25 +1200,34 @@ function renderTeamSection(team, players, dvp, isHome) {
   const dvpLabel = dvp === 'soft' ? '🟢 SOFT MATCHUP' : dvp === 'tough' ? '🔴 TOUGH MATCHUP' : '⚪ NEUTRAL';
   const propLabel = state.propType.toUpperCase();
   
-  // Filter and sort players
+  // Filter players - show all if no props loaded, otherwise filter by hit rate
   let filteredPlayers = players.filter(p => {
     const prop = p.props?.[state.propType];
-    if (!prop) return false;
     
-    const hitRate = calculateHitRate(p, state.propType, prop.line);
-    return hitRate.rate >= state.minHitRate;
+    // If no prop lines loaded, show all players with decent minutes
+    if (!prop) {
+      return p.stats?.l5?.minutes >= 15; // Show players averaging 15+ minutes
+    }
+    
+    // If we have prop lines and a hit rate filter, apply it
+    if (state.minHitRate > 0) {
+      const hitRate = calculateHitRate(p, state.propType, prop.line);
+      return hitRate.rate >= state.minHitRate;
+    }
+    
+    return true;
   });
   
-  // Sort by hit rate descending
+  // Sort by average (descending) - top scorers/rebounders/assisters first
+  const sampleKey = `l${state.sampleSize}`;
   filteredPlayers.sort((a, b) => {
-    const propA = a.props?.[state.propType];
-    const propB = b.props?.[state.propType];
-    if (!propA || !propB) return 0;
-    
-    const hrA = calculateHitRate(a, state.propType, propA.line).rate;
-    const hrB = calculateHitRate(b, state.propType, propB.line).rate;
-    return hrB - hrA;
+    const avgA = a.stats?.[sampleKey]?.[state.propType] || 0;
+    const avgB = b.stats?.[sampleKey]?.[state.propType] || 0;
+    return avgB - avgA;
   });
+  
+  // Limit to top 8 per team to keep it manageable
+  filteredPlayers = filteredPlayers.slice(0, 8);
   
   let html = `
     <div class="team-section">
@@ -1186,14 +1258,17 @@ function renderPlayerRow(player) {
   const propType = state.propType;
   const prop = player.props?.[propType];
   
-  if (!prop) return '';
-  
   const avg = player.stats[sampleKey]?.[propType] || 0;
-  const line = prop.line;
-  const odds = prop.odds;
-  const hitRate = calculateHitRate(player, propType, line);
+  const line = prop?.line || null;
+  const odds = prop?.odds || null;
   
-  const isValue = isValuePick(player, propType);
+  // Calculate hit rate only if we have a line
+  let hitRate = { rate: 0, hits: 0, total: 0 };
+  if (line !== null) {
+    hitRate = calculateHitRate(player, propType, line);
+  }
+  
+  const isValue = line !== null && isValuePick(player, propType);
   const valueClass = isValue ? 'value-pick' : '';
   
   // Get split comparison
@@ -1210,6 +1285,9 @@ function renderPlayerRow(player) {
   const addBtnClass = inParlay ? 'add-btn added' : 'add-btn';
   const addBtnText = inParlay ? '✓ ADDED' : '+ ADD';
   
+  // Can only add to parlay if we have a line
+  const canAdd = line !== null;
+  
   return `
     <div class="player-row ${valueClass}" data-player-id="${player.id}">
       <div class="player-info">
@@ -1220,8 +1298,9 @@ function renderPlayerRow(player) {
         <div class="player-stats">
           <div class="player-stat">
             <span class="player-stat-label">L${state.sampleSize} AVG</span>
-            <span class="player-stat-value ${avg > line ? 'above' : 'below'}">${avg.toFixed(1)}</span>
+            <span class="player-stat-value ${line !== null && avg > line ? 'above' : line !== null && avg < line ? 'below' : ''}">${avg.toFixed(1)}</span>
           </div>
+          ${line !== null ? `
           <div class="player-stat">
             <span class="player-stat-label">LINE</span>
             <span class="player-stat-value">${line}</span>
@@ -1235,20 +1314,35 @@ function renderPlayerRow(player) {
               <span class="hit-rate-text">${hitRate.hits}/${hitRate.total}</span>
             </div>
           </div>
+          ` : `
+          <div class="player-stat">
+            <span class="player-stat-label">LINE</span>
+            <span class="player-stat-value" style="color:var(--text3)">No line</span>
+          </div>
+          `}
           ${splitAvg ? `
           <div class="player-stat">
             <span class="player-stat-label">${player.isHome ? 'HOME' : 'AWAY'} SPLIT</span>
             <span class="player-stat-value ${splitDiff > 0 ? 'above' : splitDiff < 0 ? 'below' : ''}">${splitLabel}</span>
           </div>
           ` : ''}
+          <div class="player-stat">
+            <span class="player-stat-label">MIN</span>
+            <span class="player-stat-value">${(player.stats[sampleKey]?.minutes || 0).toFixed(0)}</span>
+          </div>
         </div>
       </div>
       <div class="prop-actions">
+        ${line !== null ? `
         <div class="prop-line">O ${line} <strong>${propType.toUpperCase()}</strong></div>
         <div class="prop-odds">${formatOdds(odds)}</div>
         <button class="${addBtnClass}" onclick="toggleParlay('${player.id}', '${propType}', ${line}, ${odds}, '${player.name.replace(/'/g, "\\'")}')">
           ${addBtnText}
         </button>
+        ` : `
+        <div class="prop-line" style="color:var(--text3)">Prop lines not available</div>
+        <div style="font-size:10px;color:var(--text3);">Add Odds API key</div>
+        `}
       </div>
     </div>
   `;
