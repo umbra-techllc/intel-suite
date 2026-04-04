@@ -38,7 +38,7 @@ body {
 }
 
 /* LAYOUT */
-.app { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+.app { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
 @media (max-width: 900px) { .app { grid-template-columns: 1fr; } }
 
 /* SIDEBAR */
@@ -48,7 +48,7 @@ body {
   padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -72,6 +72,7 @@ body {
   border-radius: 8px;
   padding: 14px;
 }
+.sb-section.collapsed .sb-content { display: none; }
 .sb-title {
   font-family: var(--mono);
   font-size: 9px;
@@ -80,6 +81,36 @@ body {
   text-transform: uppercase;
   margin-bottom: 10px;
 }
+.sb-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+.sb-header .sb-title { margin-bottom: 0; }
+.sb-section.collapsed .sb-header { margin-bottom: 0; }
+.sb-section:not(.collapsed) .sb-header { margin-bottom: 10px; }
+.key-status {
+  display: flex;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.key-status .status {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.key-status .check { color: var(--green); }
+.key-status .x { color: var(--red); }
+.collapse-icon {
+  color: var(--text3);
+  font-size: 12px;
+  transition: transform 0.2s;
+}
+.sb-section.collapsed .collapse-icon { transform: rotate(-90deg); }
+
 .key-row { margin-bottom: 8px; }
 .key-label {
   font-family: var(--mono);
@@ -160,7 +191,35 @@ body {
 }
 .toggle-btn:hover:not(.active) { color: var(--text2); }
 
-/* PARLAY BUILDER */
+/* AUTO FIND ROW */
+.auto-find-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.auto-find-row .btn { flex: 1; }
+.leg-toggles {
+  display: flex;
+  gap: 4px;
+}
+.leg-toggle {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.leg-toggle.active {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.leg-toggle:hover:not(.active) { border-color: var(--text3); }
+
+/* PARLAY BUILDER - BIGGER */
 .parlay-box {
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -169,7 +228,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 150px;
+  min-height: 220px;
 }
 .parlay-header {
   display: flex;
@@ -185,8 +244,8 @@ body {
 .parlay-legs {
   flex: 1;
   overflow-y: auto;
-  min-height: 60px;
-  max-height: 180px;
+  min-height: 100px;
+  max-height: 280px;
 }
 .parlay-empty {
   color: var(--text3);
@@ -392,6 +451,15 @@ body {
   letter-spacing: 1px;
   font-weight: 600;
 }
+.prop-type-badge {
+  font-family: var(--mono);
+  font-size: 8px;
+  background: var(--bg3);
+  color: var(--text2);
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 1px;
+}
 .player-stats {
   display: flex;
   gap: 16px;
@@ -498,6 +566,12 @@ body {
   margin-bottom: 12px;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+.loading-status {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 8px;
+}
 
 /* EMPTY STATE */
 .empty-state {
@@ -568,18 +642,27 @@ body {
 <aside class="sidebar">
   <div class="logo">NBA Parlay Finder <span>v2</span></div>
   
-  <!-- API KEYS -->
-  <div class="sb-section">
-    <div class="sb-title">API Keys</div>
-    <div class="key-row">
-      <div class="key-label">Odds API (the-odds-api.com)</div>
-      <input type="text" class="key-input" id="odds-key" placeholder="Free key for prop lines" />
+  <!-- API KEYS - COLLAPSIBLE -->
+  <div class="sb-section collapsed" id="api-section">
+    <div class="sb-header" onclick="toggleApiSection()">
+      <div class="sb-title">API Keys</div>
+      <div class="key-status">
+        <span class="status" id="odds-status"><span class="x">✗</span> Odds</span>
+        <span class="status" id="anthropic-status"><span class="x">✗</span> AI</span>
+        <span class="collapse-icon">▼</span>
+      </div>
     </div>
-    <div class="key-row">
-      <div class="key-label">Anthropic (for AI analysis)</div>
-      <input type="password" class="key-input" id="anthropic-key" placeholder="sk-ant-..." />
+    <div class="sb-content">
+      <div class="key-row">
+        <div class="key-label">Odds API (the-odds-api.com)</div>
+        <input type="text" class="key-input" id="odds-key" placeholder="Free key for prop lines" />
+      </div>
+      <div class="key-row">
+        <div class="key-label">Anthropic (for AI analysis)</div>
+        <input type="password" class="key-input" id="anthropic-key" placeholder="sk-ant-..." />
+      </div>
+      <button class="btn btn-primary" onclick="saveKeys()" style="width:100%;margin-top:8px;">Save Keys</button>
     </div>
-    <button class="btn btn-primary" onclick="saveKeys()" style="width:100%;margin-top:8px;">Save Keys</button>
   </div>
   
   <!-- SETTINGS -->
@@ -592,6 +675,7 @@ body {
     </div>
     <div class="key-label" style="margin-top:12px;margin-bottom:6px;">Prop Type</div>
     <div class="toggle-group" id="prop-toggle">
+      <button class="toggle-btn" data-val="all">ALL</button>
       <button class="toggle-btn active" data-val="points">PTS</button>
       <button class="toggle-btn" data-val="rebounds">REB</button>
       <button class="toggle-btn" data-val="assists">AST</button>
@@ -609,11 +693,20 @@ body {
   <button class="btn btn-primary" onclick="loadGames()" id="load-btn" style="width:100%;">
     ◈ Load Today's Games
   </button>
-  <button class="btn btn-gold" onclick="autoFindValue()" id="find-btn" style="width:100%;display:none;">
-    ⚡ Auto-Find Value Picks
-  </button>
   
-  <!-- PARLAY BUILDER -->
+  <!-- AUTO FIND WITH LEG COUNT -->
+  <div class="auto-find-row" id="find-row" style="display:none;">
+    <button class="btn btn-gold" onclick="autoFindValue()" id="find-btn">
+      ⚡ Auto-Find
+    </button>
+    <div class="leg-toggles">
+      <button class="leg-toggle" data-legs="4" onclick="setLegCount(4)">4</button>
+      <button class="leg-toggle active" data-legs="5" onclick="setLegCount(5)">5</button>
+      <button class="leg-toggle" data-legs="6" onclick="setLegCount(6)">6</button>
+    </div>
+  </div>
+  
+  <!-- PARLAY BUILDER - BIGGER -->
   <div class="parlay-box">
     <div class="parlay-header">
       <div class="sb-title" style="margin:0;">Parlay Builder</div>
@@ -680,6 +773,7 @@ let state = {
   sampleSize: 10,
   propType: 'points',
   minHitRate: 0,
+  legCount: 5,
   oddsKey: '',
   anthropicKey: '',
   teamStats: {}
@@ -693,9 +787,34 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('odds-key').value = state.oddsKey;
   document.getElementById('anthropic-key').value = state.anthropicKey;
   
+  // Update key status indicators
+  updateKeyStatus();
+  
   // Setup toggle buttons
   setupToggles();
 });
+
+function updateKeyStatus() {
+  const oddsStatus = document.getElementById('odds-status');
+  const anthropicStatus = document.getElementById('anthropic-status');
+  
+  if (state.oddsKey) {
+    oddsStatus.innerHTML = '<span class="check">✓</span> Odds';
+  } else {
+    oddsStatus.innerHTML = '<span class="x">✗</span> Odds';
+  }
+  
+  if (state.anthropicKey) {
+    anthropicStatus.innerHTML = '<span class="check">✓</span> AI';
+  } else {
+    anthropicStatus.innerHTML = '<span class="x">✗</span> AI';
+  }
+}
+
+function toggleApiSection() {
+  const section = document.getElementById('api-section');
+  section.classList.toggle('collapsed');
+}
 
 function setupToggles() {
   document.querySelectorAll('.toggle-group').forEach(group => {
@@ -719,18 +838,33 @@ function setupToggles() {
   });
 }
 
+function setLegCount(count) {
+  state.legCount = count;
+  document.querySelectorAll('.leg-toggle').forEach(btn => {
+    btn.classList.toggle('active', parseInt(btn.dataset.legs) === count);
+  });
+}
+
 function saveKeys() {
   state.oddsKey = document.getElementById('odds-key').value.trim();
   state.anthropicKey = document.getElementById('anthropic-key').value.trim();
   localStorage.setItem('oddsApiKey', state.oddsKey);
   localStorage.setItem('anthropicKey', state.anthropicKey);
-  alert('Keys saved!');
+  updateKeyStatus();
+  
+  // Collapse the section after saving
+  document.getElementById('api-section').classList.add('collapsed');
 }
 
 // ============ DATA LOADING ============
 async function loadGames() {
   const content = document.getElementById('content');
-  content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading today's games...</div>`;
+  content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading today's games...<div class="loading-status" id="load-status"></div></div>`;
+  
+  const updateStatus = (msg) => {
+    const el = document.getElementById('load-status');
+    if (el) el.textContent = msg;
+  };
   
   try {
     // Get today's date
@@ -769,22 +903,22 @@ async function loadGames() {
     });
     
     console.log('Games loaded:', state.games.length);
+    updateStatus(`Found ${state.games.length} games today`);
     
-    content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading team stats...</div>`;
     loadTeamStats();
     
-    content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading player stats from recent box scores...</div>`;
-    await loadPlayerDataFromBoxScores();
+    updateStatus('Loading player stats from box scores...');
+    await loadPlayerDataFromBoxScores(updateStatus);
     
     // Load prop lines if we have API key
     if (state.oddsKey) {
-      content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading prop lines...</div>`;
+      updateStatus('Loading prop lines...');
       await loadPropLines();
     }
     
     // Show UI elements
     document.getElementById('stats-bar').style.display = 'grid';
-    document.getElementById('find-btn').style.display = 'block';
+    document.getElementById('find-row').style.display = 'flex';
     
     // Render
     renderGames();
@@ -821,12 +955,13 @@ function loadTeamStats() {
   });
 }
 
-async function loadPlayerDataFromBoxScores() {
+async function loadPlayerDataFromBoxScores(updateStatus) {
   const playerMap = {}; // playerId -> { name, team, teamId, games: [] }
   let gamesLoaded = 0;
+  const maxGames = 100; // Load more games for better L5/L10 data
   
-  // Check last 14 days for completed games - load more to ensure coverage
-  for (let daysAgo = 1; daysAgo <= 14 && gamesLoaded < 50; daysAgo++) {
+  // Check last 21 days for completed games
+  for (let daysAgo = 1; daysAgo <= 21 && gamesLoaded < maxGames; daysAgo++) {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
     const dateStr = d.toISOString().split('T')[0].replace(/-/g, '');
@@ -837,7 +972,7 @@ async function loadPlayerDataFromBoxScores() {
       
       for (const event of (data.events || [])) {
         if (event.status?.type?.name !== 'STATUS_FINAL') continue;
-        if (gamesLoaded >= 50) break;
+        if (gamesLoaded >= maxGames) break;
         
         try {
           const boxRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${event.id}`);
@@ -890,7 +1025,9 @@ async function loadPlayerDataFromBoxScores() {
           }
           
           gamesLoaded++;
-          console.log(`Loaded box score ${gamesLoaded}/50`);
+          if (gamesLoaded % 10 === 0) {
+            updateStatus(`Loaded ${gamesLoaded}/${maxGames} box scores...`);
+          }
           
         } catch (e) {
           console.error(`Box score error:`, e);
@@ -943,6 +1080,7 @@ async function loadPlayerDataFromBoxScores() {
         gameName: game.name,
         gameTime: game.date,
         gameLogs: p.games,
+        gamesAvailable: p.games.length,
         stats: {
           l5: {
             points: calcAvg(l5, 'points'),
@@ -1108,36 +1246,54 @@ function renderGames() {
 function renderTeamSection(team, players, dvp, isHome) {
   const dvpClass = dvp === 'soft' ? 'dvp-soft' : dvp === 'tough' ? 'dvp-tough' : 'dvp-neutral';
   const dvpLabel = dvp === 'soft' ? '🟢 SOFT MATCHUP' : dvp === 'tough' ? '🔴 TOUGH MATCHUP' : '⚪ NEUTRAL';
-  const propLabel = state.propType.toUpperCase();
   const sampleKey = `l${state.sampleSize}`;
   
-  // Filter players
-  let filteredPlayers = players.filter(p => {
-    const prop = p.props?.[state.propType];
-    
-    // Show players with decent minutes even without prop lines
-    if (!prop) {
-      return p.stats?.l5?.minutes >= 15;
-    }
-    
-    // Apply hit rate filter if set
-    if (state.minHitRate > 0) {
-      const hitRate = calculateHitRate(p, state.propType, prop.line);
-      return hitRate.rate >= state.minHitRate;
-    }
-    
-    return true;
+  // Get prop types to check
+  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists'] : [state.propType];
+  
+  // Filter and collect player rows (potentially multiple per player if ALL mode)
+  let playerRows = [];
+  
+  players.forEach(p => {
+    propTypes.forEach(propType => {
+      const prop = p.props?.[propType];
+      
+      // Show players with decent minutes even without prop lines
+      if (!prop) {
+        if (state.propType !== 'all' && p.stats?.l5?.minutes >= 15) {
+          playerRows.push({ player: p, propType, prop: null });
+        }
+        return;
+      }
+      
+      // Apply hit rate filter if set
+      if (state.minHitRate > 0) {
+        const hitRate = calculateHitRate(p, propType, prop.line);
+        if (hitRate.rate < state.minHitRate) return;
+      }
+      
+      playerRows.push({ player: p, propType, prop });
+    });
   });
   
-  // Sort by average stat
-  filteredPlayers.sort((a, b) => {
-    const avgA = a.stats?.[sampleKey]?.[state.propType] || 0;
-    const avgB = b.stats?.[sampleKey]?.[state.propType] || 0;
-    return avgB - avgA;
+  // Sort by value (avg > line differential)
+  playerRows.sort((a, b) => {
+    if (!a.prop && !b.prop) return 0;
+    if (!a.prop) return 1;
+    if (!b.prop) return -1;
+    
+    const avgA = a.player.stats?.[sampleKey]?.[a.propType] || 0;
+    const avgB = b.player.stats?.[sampleKey]?.[b.propType] || 0;
+    const diffA = avgA - a.prop.line;
+    const diffB = avgB - b.prop.line;
+    return diffB - diffA;
   });
   
-  // Limit to top 8
-  filteredPlayers = filteredPlayers.slice(0, 8);
+  // Limit to top 10 rows
+  playerRows = playerRows.slice(0, 10);
+  
+  // Determine which prop label to show
+  const propLabel = state.propType === 'all' ? 'ALL PROPS' : state.propType.toUpperCase();
   
   let html = `
     <div class="team-section">
@@ -1146,16 +1302,16 @@ function renderTeamSection(team, players, dvp, isHome) {
           ${team.name}
           ${isHome ? '<span class="home-badge">HOME</span>' : ''}
         </div>
-        <div class="team-dvp ${dvpClass}">${dvpLabel} vs ${propLabel}</div>
+        <div class="team-dvp ${dvpClass}">${dvpLabel}</div>
       </div>
       <div class="player-grid">
   `;
   
-  if (filteredPlayers.length === 0) {
+  if (playerRows.length === 0) {
     html += `<div style="color:var(--text3);font-size:12px;padding:10px;">No players match current filters</div>`;
   } else {
-    filteredPlayers.forEach(p => {
-      html += renderPlayerRow(p);
+    playerRows.forEach(({ player, propType, prop }) => {
+      html += renderPlayerRow(player, propType, prop);
     });
   }
   
@@ -1163,22 +1319,20 @@ function renderTeamSection(team, players, dvp, isHome) {
   return html;
 }
 
-function renderPlayerRow(player) {
+function renderPlayerRow(player, propType, prop) {
   const sampleKey = `l${state.sampleSize}`;
-  const propType = state.propType;
-  const prop = player.props?.[propType];
   
   const avg = player.stats[sampleKey]?.[propType] || 0;
   const line = prop?.line;
   const odds = prop?.odds;
   
-  // Hit rate
+  // Hit rate based on actual sample size
   let hitRate = { rate: 0, hits: 0, total: 0 };
   if (line !== null && line !== undefined) {
     hitRate = calculateHitRate(player, propType, line);
   }
   
-  const isValue = line !== null && line !== undefined && isValuePick(player, propType);
+  const isValue = line !== null && line !== undefined && isValuePick(player, propType, prop);
   const valueClass = isValue ? 'value-pick' : '';
   
   // Split
@@ -1195,11 +1349,16 @@ function renderPlayerRow(player) {
   const addBtnClass = inParlay ? 'add-btn added' : 'add-btn';
   const addBtnText = inParlay ? '✓ ADDED' : '+ ADD';
   
+  // Prop type badge for ALL mode
+  const propTypeBadge = state.propType === 'all' ? 
+    `<span class="prop-type-badge">${propType.toUpperCase()}</span>` : '';
+  
   return `
     <div class="player-row ${valueClass}" data-player-id="${player.id}">
       <div class="player-info">
         <div class="player-name">
           ${player.name}
+          ${propTypeBadge}
           ${isValue ? '<span class="value-badge">VALUE</span>' : ''}
         </div>
         <div class="player-stats">
@@ -1258,6 +1417,7 @@ function renderPlayerRow(player) {
 function calculateHitRate(player, propType, line) {
   if (!player.gameLogs || player.gameLogs.length === 0) return { rate: 0, hits: 0, total: 0 };
   
+  // Use actual sample size setting
   const logs = player.gameLogs.slice(0, state.sampleSize);
   const hits = logs.filter(g => g[propType] > line).length;
   
@@ -1268,10 +1428,9 @@ function calculateHitRate(player, propType, line) {
   };
 }
 
-function isValuePick(player, propType) {
+function isValuePick(player, propType, prop) {
   const sampleKey = `l${state.sampleSize}`;
   const avg = player.stats[sampleKey]?.[propType] || 0;
-  const prop = player.props?.[propType];
   
   if (!prop) return false;
   
@@ -1295,13 +1454,17 @@ function updateStats() {
   let valuePicks = 0;
   let highHitRate = 0;
   
+  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists'] : [state.propType];
+  
   state.players.forEach(p => {
-    const prop = p.props?.[state.propType];
-    if (prop) {
-      if (isValuePick(p, state.propType)) valuePicks++;
-      const hr = calculateHitRate(p, state.propType, prop.line);
-      if (hr.rate >= 70) highHitRate++;
-    }
+    propTypes.forEach(propType => {
+      const prop = p.props?.[propType];
+      if (prop) {
+        if (isValuePick(p, propType, prop)) valuePicks++;
+        const hr = calculateHitRate(p, propType, prop.line);
+        if (hr.rate >= 70) highHitRate++;
+      }
+    });
   });
   
   document.getElementById('stat-value').textContent = valuePicks;
@@ -1387,27 +1550,53 @@ function calculateParlayOdds(oddsArray) {
 
 // ============ AUTO FIND VALUE ============
 function autoFindValue() {
-  const valuePicks = state.players
-    .filter(p => isValuePick(p, state.propType))
-    .map(p => {
-      const prop = p.props[state.propType];
-      const hr = calculateHitRate(p, state.propType, prop.line);
-      return { ...p, hitRate: hr.rate, prop };
-    })
-    .sort((a, b) => b.hitRate - a.hitRate)
-    .slice(0, 4);
+  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists'] : [state.propType];
   
-  if (valuePicks.length === 0) {
+  // Collect all value picks across selected prop types
+  let allValuePicks = [];
+  
+  state.players.forEach(p => {
+    propTypes.forEach(propType => {
+      const prop = p.props?.[propType];
+      if (!prop) return;
+      
+      if (isValuePick(p, propType, prop)) {
+        const hr = calculateHitRate(p, propType, prop.line);
+        const sampleKey = `l${state.sampleSize}`;
+        const avg = p.stats[sampleKey]?.[propType] || 0;
+        const edge = avg - prop.line;
+        
+        allValuePicks.push({
+          player: p,
+          propType,
+          prop,
+          hitRate: hr.rate,
+          edge
+        });
+      }
+    });
+  });
+  
+  if (allValuePicks.length === 0) {
     alert('No value picks found with current filters. Try adjusting settings.');
     return;
   }
   
-  state.parlay = valuePicks.map(p => ({
-    playerId: p.id,
-    propType: state.propType,
-    line: p.prop.line,
-    odds: p.prop.odds,
-    playerName: p.name
+  // Sort by hit rate then edge
+  allValuePicks.sort((a, b) => {
+    if (b.hitRate !== a.hitRate) return b.hitRate - a.hitRate;
+    return b.edge - a.edge;
+  });
+  
+  // Take top N based on leg count setting
+  const topPicks = allValuePicks.slice(0, state.legCount);
+  
+  state.parlay = topPicks.map(pick => ({
+    playerId: pick.player.id,
+    propType: pick.propType,
+    line: pick.prop.line,
+    odds: pick.prop.odds,
+    playerName: pick.player.name
   }));
   
   renderParlay();
