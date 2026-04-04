@@ -1555,7 +1555,8 @@ function renderGameLog(player, propType, line) {
 function calculateHitRate(player, propType, line) {
   if (!player.gameLogs || player.gameLogs.length === 0) return { rate: 0, hits: 0, total: 0 };
   
-  const logs = player.gameLogs.slice(0, state.sampleSize);
+  // Always use last 10 games for hit rate consistency
+  const logs = player.gameLogs.slice(0, 10);
   const hits = logs.filter(g => g[propType] > line).length;
   
   return {
