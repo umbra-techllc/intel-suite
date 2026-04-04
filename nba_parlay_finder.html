@@ -825,8 +825,8 @@ async function loadPlayerDataFromBoxScores() {
   const playerMap = {}; // playerId -> { name, team, teamId, games: [] }
   let gamesLoaded = 0;
   
-  // Check last 10 days for completed games
-  for (let daysAgo = 1; daysAgo <= 10 && gamesLoaded < 25; daysAgo++) {
+  // Check last 14 days for completed games - load more to ensure coverage
+  for (let daysAgo = 1; daysAgo <= 14 && gamesLoaded < 50; daysAgo++) {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
     const dateStr = d.toISOString().split('T')[0].replace(/-/g, '');
@@ -837,7 +837,7 @@ async function loadPlayerDataFromBoxScores() {
       
       for (const event of (data.events || [])) {
         if (event.status?.type?.name !== 'STATUS_FINAL') continue;
-        if (gamesLoaded >= 25) break;
+        if (gamesLoaded >= 50) break;
         
         try {
           const boxRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${event.id}`);
@@ -890,7 +890,7 @@ async function loadPlayerDataFromBoxScores() {
           }
           
           gamesLoaded++;
-          console.log(`Loaded box score ${gamesLoaded}/25`);
+          console.log(`Loaded box score ${gamesLoaded}/50`);
           
         } catch (e) {
           console.error(`Box score error:`, e);
@@ -916,7 +916,7 @@ async function loadPlayerDataFromBoxScores() {
   
   for (const game of state.games) {
     for (const p of Object.values(playerMap)) {
-      if (p.games.length < 3) continue;
+      if (p.games.length < 2) continue;  // Only need 2 games minimum
       
       const isHome = p.teamId === game.home.id;
       const isAway = p.teamId === game.away.id;
