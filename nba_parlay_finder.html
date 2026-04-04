@@ -984,27 +984,49 @@ async function loadPropLines() {
   if (!state.oddsKey) return;
   
   try {
-    const res = await fetch(`https://api.the-odds-api.com/v4/sports/basketball_nba/odds/?apiKey=${state.oddsKey}&regions=us&markets=player_points,player_rebounds,player_assists&oddsFormat=american`);
-    const data = await res.json();
+    // First get all events
+    const eventsRes = await fetch(`https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=${state.oddsKey}`);
+    const events = await eventsRes.json();
     
-    if (!Array.isArray(data)) {
-      console.error('Props API error:', data);
+    if (!Array.isArray(events)) {
+      console.error('Events API error:', events);
       return;
     }
     
+    console.log(`Found ${events.length} events for props`);
+    
     const propMap = {};
     
-    for (const event of data) {
-      for (const book of (event.bookmakers || [])) {
-        for (const market of (book.markets || [])) {
-          const propType = market.key.replace('player_', '');
-          for (const outcome of (market.outcomes || [])) {
-            if (outcome.name !== 'Over') continue;
-            const key = `${outcome.description}_${propType}`;
-            if (!propMap[key] || book.key === 'fanduel') {
-              propMap[key] = { line: outcome.point, odds: outcome.price };
+    // Fetch props for each event (today's games)
+    for (const event of events) {
+      const markets = ['player_points', 'player_rebounds', 'player_assists'];
+      
+      for (const market of markets) {
+        try {
+          const res = await fetch(`https://api.the-odds-api.com/v4/sports/basketball_nba/events/${event.id}/odds?apiKey=${state.oddsKey}&regions=us&markets=${market}&oddsFormat=american`);
+          const data = await res.json();
+          
+          if (data.bookmakers) {
+            for (const book of data.bookmakers) {
+              for (const mkt of (book.markets || [])) {
+                const propType = mkt.key.replace('player_', '');
+                for (const outcome of (mkt.outcomes || [])) {
+                  if (outcome.name !== 'Over') continue;
+                  const key = `${outcome.description}_${propType}`;
+                  // Prefer FanDuel, then DraftKings
+                  if (!propMap[key] || book.key === 'fanduel' || (book.key === 'draftkings' && !propMap[key].fromFD)) {
+                    propMap[key] = { 
+                      line: outcome.point, 
+                      odds: outcome.price,
+                      fromFD: book.key === 'fanduel'
+                    };
+                  }
+                }
+              }
             }
           }
+        } catch (e) {
+          console.error(`Props error for ${market}:`, e);
         }
       }
     }
@@ -1012,13 +1034,17 @@ async function loadPropLines() {
     console.log(`Props loaded: ${Object.keys(propMap).length}`);
     
     // Match to players
+    let matched = 0;
     for (const p of state.players) {
       p.props = {
         points: propMap[`${p.name}_points`] || null,
         rebounds: propMap[`${p.name}_rebounds`] || null,
         assists: propMap[`${p.name}_assists`] || null
       };
+      if (p.props.points || p.props.rebounds || p.props.assists) matched++;
     }
+    
+    console.log(`Matched props to ${matched} players`);
     
   } catch (err) {
     console.error('Props error:', err);
