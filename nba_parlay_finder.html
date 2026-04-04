@@ -38,17 +38,17 @@ body {
 }
 
 /* LAYOUT */
-.app { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+.app { display: grid; grid-template-columns: 340px 1fr; min-height: 100vh; }
 @media (max-width: 900px) { .app { grid-template-columns: 1fr; } }
 
 /* SIDEBAR */
 .sidebar {
   background: var(--bg1);
   border-right: 1px solid var(--border);
-  padding: 20px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -60,7 +60,7 @@ body {
   letter-spacing: 4px;
   color: var(--green);
   text-transform: uppercase;
-  padding-bottom: 12px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
 }
 .logo span { color: var(--text3); }
@@ -70,7 +70,7 @@ body {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 14px;
+  padding: 12px;
 }
 .sb-section.collapsed .sb-content { display: none; }
 .sb-title {
@@ -79,7 +79,7 @@ body {
   letter-spacing: 2px;
   color: var(--text3);
   text-transform: uppercase;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .sb-header {
   display: flex;
@@ -172,6 +172,7 @@ body {
   border-radius: 5px;
   padding: 3px;
   gap: 2px;
+  flex-wrap: wrap;
 }
 .toggle-btn {
   flex: 1;
@@ -179,11 +180,12 @@ body {
   border: none;
   color: var(--text3);
   font-family: var(--mono);
-  font-size: 10px;
-  padding: 6px 10px;
+  font-size: 9px;
+  padding: 5px 8px;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
+  min-width: 40px;
 }
 .toggle-btn.active {
   background: var(--bg2);
@@ -219,22 +221,21 @@ body {
 }
 .leg-toggle:hover:not(.active) { border-color: var(--text3); }
 
-/* PARLAY BUILDER - BIGGER */
+/* PARLAY BUILDER - BIGGER to fit 6 legs */
 .parlay-box {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 14px;
-  flex: 1;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  min-height: 220px;
+  min-height: 320px;
 }
 .parlay-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 .parlay-count {
   font-family: var(--mono);
@@ -244,8 +245,7 @@ body {
 .parlay-legs {
   flex: 1;
   overflow-y: auto;
-  min-height: 100px;
-  max-height: 280px;
+  min-height: 200px;
 }
 .parlay-empty {
   color: var(--text3);
@@ -256,16 +256,16 @@ body {
 .parlay-leg {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   padding: 8px;
   background: var(--bg);
   border-radius: 5px;
-  margin-bottom: 6px;
-  font-size: 12px;
+  margin-bottom: 5px;
+  font-size: 11px;
 }
-.parlay-leg .player { font-weight: 500; color: var(--text); flex: 1; }
-.parlay-leg .prop { font-family: var(--mono); font-size: 10px; color: var(--green); }
-.parlay-leg .odds { font-family: var(--mono); font-size: 10px; color: var(--gold); }
+.parlay-leg .player { font-weight: 500; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.parlay-leg .prop { font-family: var(--mono); font-size: 9px; color: var(--green); white-space: nowrap; }
+.parlay-leg .odds { font-family: var(--mono); font-size: 9px; color: var(--gold); }
 .parlay-leg .remove {
   background: none;
   border: none;
@@ -273,13 +273,13 @@ body {
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
-  padding: 2px 6px;
+  padding: 2px 4px;
 }
 .parlay-leg .remove:hover { color: var(--red); }
 .parlay-summary {
   border-top: 1px solid var(--border);
   padding-top: 10px;
-  margin-top: 10px;
+  margin-top: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -423,16 +423,20 @@ body {
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 12px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: center;
+  overflow: hidden;
   transition: border-color 0.2s;
 }
 .player-row:hover { border-color: var(--border2); }
 .player-row.value-pick { border-color: var(--green); background: var(--green-bg); }
 
+.player-main {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  cursor: pointer;
+}
 .player-info { display: flex; flex-direction: column; gap: 4px; }
 .player-name {
   font-weight: 500;
@@ -460,6 +464,13 @@ body {
   border-radius: 3px;
   letter-spacing: 1px;
 }
+.expand-icon {
+  font-size: 10px;
+  color: var(--text3);
+  transition: transform 0.2s;
+}
+.player-row.expanded .expand-icon { transform: rotate(180deg); }
+
 .player-stats {
   display: flex;
   gap: 16px;
@@ -547,6 +558,43 @@ body {
 .add-btn:hover { border-color: var(--green); color: var(--green); }
 .add-btn.added { background: var(--green); border-color: var(--green); color: var(--bg); }
 
+/* PLAYER DROPDOWN - L5 GAME LOG */
+.player-dropdown {
+  display: none;
+  border-top: 1px solid var(--border);
+  padding: 12px;
+  background: var(--bg);
+}
+.player-row.expanded .player-dropdown { display: block; }
+.dropdown-title {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+.game-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 10px;
+}
+.game-log-table th {
+  text-align: left;
+  color: var(--text3);
+  font-weight: normal;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.game-log-table td {
+  padding: 6px 8px;
+  color: var(--text2);
+  border-bottom: 1px solid var(--border);
+}
+.game-log-table tr:last-child td { border-bottom: none; }
+.game-log-table .hit { color: var(--green); font-weight: 600; }
+.game-log-table .miss { color: var(--red); }
+
 /* LOADING */
 .loading {
   display: flex;
@@ -590,8 +638,8 @@ body {
   background: var(--bg2);
   border: 1px solid var(--purple);
   border-radius: 8px;
-  padding: 14px;
-  margin-top: 12px;
+  padding: 12px;
+  margin-top: 10px;
 }
 .ai-title {
   font-family: var(--mono);
@@ -601,7 +649,7 @@ body {
   margin-bottom: 8px;
 }
 .ai-content {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text2);
   line-height: 1.6;
 }
@@ -620,7 +668,7 @@ body {
     height: auto;
     max-height: none;
   }
-  .player-row {
+  .player-main {
     grid-template-columns: 1fr;
   }
   .prop-actions {
@@ -673,14 +721,16 @@ body {
       <button class="toggle-btn" data-val="5">L5</button>
       <button class="toggle-btn active" data-val="10">L10</button>
     </div>
-    <div class="key-label" style="margin-top:12px;margin-bottom:6px;">Prop Type</div>
+    <div class="key-label" style="margin-top:10px;margin-bottom:6px;">Prop Type</div>
     <div class="toggle-group" id="prop-toggle">
       <button class="toggle-btn" data-val="all">ALL</button>
       <button class="toggle-btn active" data-val="points">PTS</button>
       <button class="toggle-btn" data-val="rebounds">REB</button>
       <button class="toggle-btn" data-val="assists">AST</button>
+      <button class="toggle-btn" data-val="threes">3PT</button>
+      <button class="toggle-btn" data-val="pra">PRA</button>
     </div>
-    <div class="key-label" style="margin-top:12px;margin-bottom:6px;">Min Hit Rate</div>
+    <div class="key-label" style="margin-top:10px;margin-bottom:6px;">Min Hit Rate</div>
     <div class="toggle-group" id="hitrate-toggle">
       <button class="toggle-btn active" data-val="0">Any</button>
       <button class="toggle-btn" data-val="60">60%+</button>
@@ -706,7 +756,7 @@ body {
     </div>
   </div>
   
-  <!-- PARLAY BUILDER - BIGGER -->
+  <!-- PARLAY BUILDER - BIGGER to fit 6 legs without scroll -->
   <div class="parlay-box">
     <div class="parlay-header">
       <div class="sb-title" style="margin:0;">Parlay Builder</div>
@@ -776,7 +826,17 @@ let state = {
   legCount: 5,
   oddsKey: '',
   anthropicKey: '',
-  teamStats: {}
+  teamStats: {},
+  expandedPlayers: new Set()
+};
+
+// Prop type display names
+const PROP_LABELS = {
+  points: 'PTS',
+  rebounds: 'REB',
+  assists: 'AST',
+  threes: '3PT',
+  pra: 'PRA'
 };
 
 // ============ INIT ============
@@ -814,6 +874,16 @@ function updateKeyStatus() {
 function toggleApiSection() {
   const section = document.getElementById('api-section');
   section.classList.toggle('collapsed');
+}
+
+function togglePlayerDropdown(playerId, propType) {
+  const key = `${playerId}_${propType}`;
+  if (state.expandedPlayers.has(key)) {
+    state.expandedPlayers.delete(key);
+  } else {
+    state.expandedPlayers.add(key);
+  }
+  renderGames();
 }
 
 function setupToggles() {
@@ -931,7 +1001,6 @@ async function loadGames() {
 }
 
 function loadTeamStats() {
-  // Pace and defense data (simplified - in production pull from NBA.com)
   const fastTeams = ['IND', 'ATL', 'SAC', 'MIL', 'MIN', 'PHX', 'UTA', 'POR'];
   const slowTeams = ['MIA', 'NYK', 'CLE', 'DEN', 'LAC', 'MEM', 'ORL', 'HOU'];
   const softDefense = ['WAS', 'POR', 'SAS', 'UTA', 'DET', 'CHI', 'TOR', 'BKN'];
@@ -939,7 +1008,6 @@ function loadTeamStats() {
   
   state.teamStats = {};
   
-  // Build for all teams in today's games
   state.games.forEach(game => {
     [game.home, game.away].forEach(team => {
       let pace = 'avg';
@@ -956,11 +1024,10 @@ function loadTeamStats() {
 }
 
 async function loadPlayerDataFromBoxScores(updateStatus) {
-  const playerMap = {}; // playerId -> { name, team, teamId, games: [] }
+  const playerMap = {};
   let gamesLoaded = 0;
-  const maxGames = 100; // Load more games for better L5/L10 data
+  const maxGames = 100;
   
-  // Check last 21 days for completed games
   for (let daysAgo = 1; daysAgo <= 21 && gamesLoaded < maxGames; daysAgo++) {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -980,17 +1047,22 @@ async function loadPlayerDataFromBoxScores(updateStatus) {
           
           const header = boxData.header?.competitions?.[0];
           const homeTeamId = String(header?.competitors?.find(c => c.homeAway === 'home')?.id || '');
+          const gameDate = event.date?.split('T')[0] || '';
+          
+          // Get opponent abbreviations
+          const competitors = header?.competitors || [];
+          const homeAbbr = competitors.find(c => c.homeAway === 'home')?.team?.abbreviation || '?';
+          const awayAbbr = competitors.find(c => c.homeAway === 'away')?.team?.abbreviation || '?';
           
           for (const teamBox of (boxData.boxscore?.players || [])) {
             const teamId = String(teamBox.team?.id || '');
             const teamAbbr = teamBox.team?.abbreviation || '?';
-            const isHome = teamId === homeTeamId;
+            const isHomeTeam = teamId === homeTeamId;
+            const opponent = isHomeTeam ? awayAbbr : homeAbbr;
             
             const stats = teamBox.statistics?.[0];
             if (!stats?.athletes) continue;
             
-            // ESPN box score stat order:
-            // 0: minutes, 1: points, 2: FG, 3: 3PT, 4: FT, 5: rebounds, 6: assists, 7: turnovers, 8: steals, 9: blocks
             for (const a of stats.athletes) {
               const athlete = a.athlete;
               const s = a.stats || [];
@@ -1008,6 +1080,8 @@ async function loadPlayerDataFromBoxScores(updateStatus) {
                 threes = parseInt(s[3].split('-')[0]) || 0;
               }
               
+              const pra = points + rebounds + assists;
+              
               const playerId = String(athlete.id);
               
               if (!playerMap[playerId]) {
@@ -1020,7 +1094,12 @@ async function loadPlayerDataFromBoxScores(updateStatus) {
                 };
               }
               
-              playerMap[playerId].games.push({ points, rebounds, assists, threes, minutes, isHome });
+              playerMap[playerId].games.push({ 
+                points, rebounds, assists, threes, pra, minutes, 
+                isHome: isHomeTeam, 
+                opponent,
+                date: gameDate
+              });
             }
           }
           
@@ -1049,11 +1128,9 @@ async function loadPlayerDataFromBoxScores(updateStatus) {
     todayTeamIds.add(g.away.id);
   });
   
-  console.log(`Today's team IDs: ${[...todayTeamIds].join(', ')}`);
-  
   for (const game of state.games) {
     for (const p of Object.values(playerMap)) {
-      if (p.games.length < 2) continue;  // Only need 2 games minimum
+      if (p.games.length < 2) continue;
       
       const isHome = p.teamId === game.home.id;
       const isAway = p.teamId === game.away.id;
@@ -1086,23 +1163,31 @@ async function loadPlayerDataFromBoxScores(updateStatus) {
             points: calcAvg(l5, 'points'),
             rebounds: calcAvg(l5, 'rebounds'),
             assists: calcAvg(l5, 'assists'),
+            threes: calcAvg(l5, 'threes'),
+            pra: calcAvg(l5, 'pra'),
             minutes: calcAvg(l5, 'minutes')
           },
           l10: {
             points: l10.length >= 5 ? calcAvg(l10, 'points') : calcAvg(l5, 'points'),
             rebounds: l10.length >= 5 ? calcAvg(l10, 'rebounds') : calcAvg(l5, 'rebounds'),
             assists: l10.length >= 5 ? calcAvg(l10, 'assists') : calcAvg(l5, 'assists'),
+            threes: l10.length >= 5 ? calcAvg(l10, 'threes') : calcAvg(l5, 'threes'),
+            pra: l10.length >= 5 ? calcAvg(l10, 'pra') : calcAvg(l5, 'pra'),
             minutes: l10.length >= 5 ? calcAvg(l10, 'minutes') : calcAvg(l5, 'minutes')
           },
           home: homeGames.length >= 2 ? {
             points: calcAvg(homeGames, 'points'),
             rebounds: calcAvg(homeGames, 'rebounds'),
-            assists: calcAvg(homeGames, 'assists')
+            assists: calcAvg(homeGames, 'assists'),
+            threes: calcAvg(homeGames, 'threes'),
+            pra: calcAvg(homeGames, 'pra')
           } : null,
           away: awayGames.length >= 2 ? {
             points: calcAvg(awayGames, 'points'),
             rebounds: calcAvg(awayGames, 'rebounds'),
-            assists: calcAvg(awayGames, 'assists')
+            assists: calcAvg(awayGames, 'assists'),
+            threes: calcAvg(awayGames, 'threes'),
+            pra: calcAvg(awayGames, 'pra')
           } : null
         },
         props: {}
@@ -1112,9 +1197,7 @@ async function loadPlayerDataFromBoxScores(updateStatus) {
     }
   }
   
-  // Sort by minutes
   state.players.sort((a, b) => (b.stats.l5.minutes || 0) - (a.stats.l5.minutes || 0));
-  
   console.log(`Players for today's games: ${state.players.length}`);
 }
 
@@ -1122,7 +1205,6 @@ async function loadPropLines() {
   if (!state.oddsKey) return;
   
   try {
-    // First get all events
     const eventsRes = await fetch(`https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=${state.oddsKey}`);
     const events = await eventsRes.json();
     
@@ -1135,10 +1217,16 @@ async function loadPropLines() {
     
     const propMap = {};
     
-    // Fetch props for each event (today's games)
+    // Markets to fetch - now includes threes and PRA
+    const markets = [
+      'player_points', 
+      'player_rebounds', 
+      'player_assists',
+      'player_threes',
+      'player_points_rebounds_assists'
+    ];
+    
     for (const event of events) {
-      const markets = ['player_points', 'player_rebounds', 'player_assists'];
-      
       for (const market of markets) {
         try {
           const res = await fetch(`https://api.the-odds-api.com/v4/sports/basketball_nba/events/${event.id}/odds?apiKey=${state.oddsKey}&regions=us&markets=${market}&oddsFormat=american`);
@@ -1147,11 +1235,13 @@ async function loadPropLines() {
           if (data.bookmakers) {
             for (const book of data.bookmakers) {
               for (const mkt of (book.markets || [])) {
-                const propType = mkt.key.replace('player_', '');
+                // Map market key to our prop type
+                let propType = mkt.key.replace('player_', '');
+                if (propType === 'points_rebounds_assists') propType = 'pra';
+                
                 for (const outcome of (mkt.outcomes || [])) {
                   if (outcome.name !== 'Over') continue;
                   const key = `${outcome.description}_${propType}`;
-                  // Prefer FanDuel, then DraftKings
                   if (!propMap[key] || book.key === 'fanduel' || (book.key === 'draftkings' && !propMap[key].fromFD)) {
                     propMap[key] = { 
                       line: outcome.point, 
@@ -1177,9 +1267,11 @@ async function loadPropLines() {
       p.props = {
         points: propMap[`${p.name}_points`] || null,
         rebounds: propMap[`${p.name}_rebounds`] || null,
-        assists: propMap[`${p.name}_assists`] || null
+        assists: propMap[`${p.name}_assists`] || null,
+        threes: propMap[`${p.name}_threes`] || null,
+        pra: propMap[`${p.name}_pra`] || null
       };
-      if (p.props.points || p.props.rebounds || p.props.assists) matched++;
+      if (p.props.points || p.props.rebounds || p.props.assists || p.props.threes || p.props.pra) matched++;
     }
     
     console.log(`Matched props to ${matched} players`);
@@ -1193,7 +1285,6 @@ async function loadPropLines() {
 function renderGames() {
   const content = document.getElementById('content');
   
-  // Group players by game
   const gameMap = {};
   state.games.forEach(g => {
     gameMap[g.id] = { ...g, homePlayers: [], awayPlayers: [] };
@@ -1209,14 +1300,12 @@ function renderGames() {
   let html = '<div class="games-grid">';
   
   Object.values(gameMap).forEach(game => {
-    // Get pace info
     const homeStats = state.teamStats[game.home.id] || {};
     const awayStats = state.teamStats[game.away.id] || {};
     const pace = (homeStats.pace === 'fast' || awayStats.pace === 'fast') ? 'fast' : 
                  (homeStats.pace === 'slow' && awayStats.pace === 'slow') ? 'slow' : 'avg';
     const paceLabel = pace === 'fast' ? 'FAST PACE' : pace === 'slow' ? 'SLOW PACE' : 'AVG PACE';
     
-    // DvP = opponent's defense
     const homeDvp = state.teamStats[game.away.id]?.dvp || 'neutral';
     const awayDvp = state.teamStats[game.home.id]?.dvp || 'neutral';
     
@@ -1249,16 +1338,14 @@ function renderTeamSection(team, players, dvp, isHome) {
   const sampleKey = `l${state.sampleSize}`;
   
   // Get prop types to check
-  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists'] : [state.propType];
+  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists', 'threes', 'pra'] : [state.propType];
   
-  // Filter and collect player rows (potentially multiple per player if ALL mode)
   let playerRows = [];
   
   players.forEach(p => {
     propTypes.forEach(propType => {
       const prop = p.props?.[propType];
       
-      // Show players with decent minutes even without prop lines
       if (!prop) {
         if (state.propType !== 'all' && p.stats?.l5?.minutes >= 15) {
           playerRows.push({ player: p, propType, prop: null });
@@ -1266,7 +1353,6 @@ function renderTeamSection(team, players, dvp, isHome) {
         return;
       }
       
-      // Apply hit rate filter if set
       if (state.minHitRate > 0) {
         const hitRate = calculateHitRate(p, propType, prop.line);
         if (hitRate.rate < state.minHitRate) return;
@@ -1276,7 +1362,6 @@ function renderTeamSection(team, players, dvp, isHome) {
     });
   });
   
-  // Sort by value (avg > line differential)
   playerRows.sort((a, b) => {
     if (!a.prop && !b.prop) return 0;
     if (!a.prop) return 1;
@@ -1289,11 +1374,7 @@ function renderTeamSection(team, players, dvp, isHome) {
     return diffB - diffA;
   });
   
-  // Limit to top 10 rows
   playerRows = playerRows.slice(0, 10);
-  
-  // Determine which prop label to show
-  const propLabel = state.propType === 'all' ? 'ALL PROPS' : state.propType.toUpperCase();
   
   let html = `
     <div class="team-section">
@@ -1321,12 +1402,13 @@ function renderTeamSection(team, players, dvp, isHome) {
 
 function renderPlayerRow(player, propType, prop) {
   const sampleKey = `l${state.sampleSize}`;
+  const expandKey = `${player.id}_${propType}`;
+  const isExpanded = state.expandedPlayers.has(expandKey);
   
   const avg = player.stats[sampleKey]?.[propType] || 0;
   const line = prop?.line;
   const odds = prop?.odds;
   
-  // Hit rate based on actual sample size
   let hitRate = { rate: 0, hits: 0, total: 0 };
   if (line !== null && line !== undefined) {
     hitRate = calculateHitRate(player, propType, line);
@@ -1334,90 +1416,145 @@ function renderPlayerRow(player, propType, prop) {
   
   const isValue = line !== null && line !== undefined && isValuePick(player, propType, prop);
   const valueClass = isValue ? 'value-pick' : '';
+  const expandedClass = isExpanded ? 'expanded' : '';
   
-  // Split
   const splitKey = player.isHome ? 'home' : 'away';
   const splitAvg = player.stats[splitKey]?.[propType];
   const splitDiff = splitAvg ? (splitAvg - avg).toFixed(1) : null;
   const splitLabel = splitDiff > 0 ? `+${splitDiff}` : splitDiff;
   
-  // Hit rate bar class
   const hrClass = hitRate.rate >= 70 ? '' : hitRate.rate >= 50 ? 'medium' : 'low';
   
-  // In parlay?
   const inParlay = state.parlay.some(leg => leg.playerId === player.id && leg.propType === propType);
   const addBtnClass = inParlay ? 'add-btn added' : 'add-btn';
   const addBtnText = inParlay ? '✓ ADDED' : '+ ADD';
   
-  // Prop type badge for ALL mode
   const propTypeBadge = state.propType === 'all' ? 
-    `<span class="prop-type-badge">${propType.toUpperCase()}</span>` : '';
+    `<span class="prop-type-badge">${PROP_LABELS[propType] || propType.toUpperCase()}</span>` : '';
+  
+  // Build game log dropdown
+  const gameLogHtml = renderGameLog(player, propType, line);
   
   return `
-    <div class="player-row ${valueClass}" data-player-id="${player.id}">
-      <div class="player-info">
-        <div class="player-name">
-          ${player.name}
-          ${propTypeBadge}
-          ${isValue ? '<span class="value-badge">VALUE</span>' : ''}
-        </div>
-        <div class="player-stats">
-          <div class="player-stat">
-            <span class="player-stat-label">L${state.sampleSize} AVG</span>
-            <span class="player-stat-value ${line !== undefined && avg > line ? 'above' : line !== undefined && avg < line ? 'below' : ''}">${avg.toFixed(1)}</span>
+    <div class="player-row ${valueClass} ${expandedClass}" data-player-id="${player.id}">
+      <div class="player-main" onclick="togglePlayerDropdown('${player.id}', '${propType}')">
+        <div class="player-info">
+          <div class="player-name">
+            ${player.name}
+            ${propTypeBadge}
+            ${isValue ? '<span class="value-badge">VALUE</span>' : ''}
+            <span class="expand-icon">▼</span>
           </div>
-          ${line !== undefined ? `
-          <div class="player-stat">
-            <span class="player-stat-label">LINE</span>
-            <span class="player-stat-value">${line}</span>
-          </div>
-          <div class="player-stat">
-            <span class="player-stat-label">HIT RATE</span>
-            <div class="hit-rate-container">
-              <div class="hit-rate-bar">
-                <div class="hit-rate-fill ${hrClass}" style="width:${hitRate.rate}%"></div>
+          <div class="player-stats">
+            <div class="player-stat">
+              <span class="player-stat-label">L${state.sampleSize} AVG</span>
+              <span class="player-stat-value ${line !== undefined && avg > line ? 'above' : line !== undefined && avg < line ? 'below' : ''}">${avg.toFixed(1)}</span>
+            </div>
+            ${line !== undefined ? `
+            <div class="player-stat">
+              <span class="player-stat-label">LINE</span>
+              <span class="player-stat-value">${line}</span>
+            </div>
+            <div class="player-stat">
+              <span class="player-stat-label">HIT RATE</span>
+              <div class="hit-rate-container">
+                <div class="hit-rate-bar">
+                  <div class="hit-rate-fill ${hrClass}" style="width:${hitRate.rate}%"></div>
+                </div>
+                <span class="hit-rate-text">${hitRate.hits}/${hitRate.total}</span>
               </div>
-              <span class="hit-rate-text">${hitRate.hits}/${hitRate.total}</span>
+            </div>
+            ` : `
+            <div class="player-stat">
+              <span class="player-stat-label">LINE</span>
+              <span class="player-stat-value" style="color:var(--text3)">--</span>
+            </div>
+            `}
+            ${splitDiff ? `
+            <div class="player-stat">
+              <span class="player-stat-label">${player.isHome ? 'HOME' : 'AWAY'}</span>
+              <span class="player-stat-value ${parseFloat(splitDiff) > 0 ? 'above' : parseFloat(splitDiff) < 0 ? 'below' : ''}">${splitLabel}</span>
+            </div>
+            ` : ''}
+            <div class="player-stat">
+              <span class="player-stat-label">MIN</span>
+              <span class="player-stat-value">${(player.stats[sampleKey]?.minutes || 0).toFixed(0)}</span>
             </div>
           </div>
+        </div>
+        <div class="prop-actions" onclick="event.stopPropagation()">
+          ${line !== undefined ? `
+          <div class="prop-line">O ${line} <strong>${PROP_LABELS[propType] || propType.toUpperCase()}</strong></div>
+          <div class="prop-odds">${formatOdds(odds)}</div>
+          <button class="${addBtnClass}" onclick="toggleParlay('${player.id}', '${propType}', ${line}, ${odds}, '${player.name.replace(/'/g, "\\'")}')">
+            ${addBtnText}
+          </button>
           ` : `
-          <div class="player-stat">
-            <span class="player-stat-label">LINE</span>
-            <span class="player-stat-value" style="color:var(--text3)">--</span>
-          </div>
+          <div class="prop-line" style="color:var(--text3)">No line available</div>
           `}
-          ${splitDiff ? `
-          <div class="player-stat">
-            <span class="player-stat-label">${player.isHome ? 'HOME' : 'AWAY'}</span>
-            <span class="player-stat-value ${parseFloat(splitDiff) > 0 ? 'above' : parseFloat(splitDiff) < 0 ? 'below' : ''}">${splitLabel}</span>
-          </div>
-          ` : ''}
-          <div class="player-stat">
-            <span class="player-stat-label">MIN</span>
-            <span class="player-stat-value">${(player.stats[sampleKey]?.minutes || 0).toFixed(0)}</span>
-          </div>
         </div>
       </div>
-      <div class="prop-actions">
-        ${line !== undefined ? `
-        <div class="prop-line">O ${line} <strong>${propType.toUpperCase()}</strong></div>
-        <div class="prop-odds">${formatOdds(odds)}</div>
-        <button class="${addBtnClass}" onclick="toggleParlay('${player.id}', '${propType}', ${line}, ${odds}, '${player.name.replace(/'/g, "\\'")}')">
-          ${addBtnText}
-        </button>
-        ` : `
-        <div class="prop-line" style="color:var(--text3)">No line available</div>
-        `}
+      <div class="player-dropdown">
+        ${gameLogHtml}
       </div>
     </div>
   `;
+}
+
+function renderGameLog(player, propType, line) {
+  const logs = player.gameLogs.slice(0, 5);
+  if (logs.length === 0) return '<div style="color:var(--text3);font-size:11px;">No recent games</div>';
+  
+  const propLabel = PROP_LABELS[propType] || propType.toUpperCase();
+  
+  let html = `
+    <div class="dropdown-title">LAST 5 GAMES - ${propLabel}</div>
+    <table class="game-log-table">
+      <thead>
+        <tr>
+          <th>DATE</th>
+          <th>OPP</th>
+          <th>MIN</th>
+          <th>PTS</th>
+          <th>REB</th>
+          <th>AST</th>
+          <th>3PT</th>
+          <th>PRA</th>
+          ${line !== undefined ? `<th>${propLabel}</th>` : ''}
+        </tr>
+      </thead>
+      <tbody>
+  `;
+  
+  logs.forEach(g => {
+    const statVal = g[propType] || 0;
+    const hitClass = line !== undefined ? (statVal > line ? 'hit' : 'miss') : '';
+    const dateStr = g.date ? new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-';
+    const homeAway = g.isHome ? 'vs' : '@';
+    
+    html += `
+      <tr>
+        <td>${dateStr}</td>
+        <td>${homeAway} ${g.opponent || '?'}</td>
+        <td>${g.minutes}</td>
+        <td>${g.points}</td>
+        <td>${g.rebounds}</td>
+        <td>${g.assists}</td>
+        <td>${g.threes}</td>
+        <td>${g.pra}</td>
+        ${line !== undefined ? `<td class="${hitClass}">${statVal}</td>` : ''}
+      </tr>
+    `;
+  });
+  
+  html += '</tbody></table>';
+  return html;
 }
 
 // ============ HELPERS ============
 function calculateHitRate(player, propType, line) {
   if (!player.gameLogs || player.gameLogs.length === 0) return { rate: 0, hits: 0, total: 0 };
   
-  // Use actual sample size setting
   const logs = player.gameLogs.slice(0, state.sampleSize);
   const hits = logs.filter(g => g[propType] > line).length;
   
@@ -1454,7 +1591,7 @@ function updateStats() {
   let valuePicks = 0;
   let highHitRate = 0;
   
-  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists'] : [state.propType];
+  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists', 'threes', 'pra'] : [state.propType];
   
   state.players.forEach(p => {
     propTypes.forEach(propType => {
@@ -1508,10 +1645,11 @@ function renderParlay() {
   
   let html = '';
   state.parlay.forEach((leg, idx) => {
+    const propLabel = PROP_LABELS[leg.propType] || leg.propType.toUpperCase();
     html += `
       <div class="parlay-leg">
         <span class="player">${leg.playerName}</span>
-        <span class="prop">O ${leg.line} ${leg.propType.toUpperCase()}</span>
+        <span class="prop">O ${leg.line} ${propLabel}</span>
         <span class="odds">${formatOdds(leg.odds)}</span>
         <button class="remove" onclick="removeLeg(${idx})">×</button>
       </div>
@@ -1523,7 +1661,6 @@ function renderParlay() {
   analyzeBtn.style.display = 'block';
   countEl.textContent = `${state.parlay.length} leg${state.parlay.length > 1 ? 's' : ''}`;
   
-  // Calculate combined odds
   const combinedOdds = calculateParlayOdds(state.parlay.map(l => l.odds));
   document.getElementById('parlay-odds').textContent = formatOdds(combinedOdds);
 }
@@ -1550,9 +1687,8 @@ function calculateParlayOdds(oddsArray) {
 
 // ============ AUTO FIND VALUE ============
 function autoFindValue() {
-  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists'] : [state.propType];
+  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists', 'threes', 'pra'] : [state.propType];
   
-  // Collect all value picks across selected prop types
   let allValuePicks = [];
   
   state.players.forEach(p => {
@@ -1582,13 +1718,11 @@ function autoFindValue() {
     return;
   }
   
-  // Sort by hit rate then edge
   allValuePicks.sort((a, b) => {
     if (b.hitRate !== a.hitRate) return b.hitRate - a.hitRate;
     return b.edge - a.edge;
   });
   
-  // Take top N based on leg count setting
   const topPicks = allValuePicks.slice(0, state.legCount);
   
   state.parlay = topPicks.map(pick => ({
@@ -1632,13 +1766,14 @@ async function analyzeParlay() {
     const splitKey = player.isHome ? 'home' : 'away';
     const splitAvg = player.stats[splitKey]?.[leg.propType];
     const dvp = state.teamStats[player.oppId]?.dvp || 'neutral';
+    const propLabel = PROP_LABELS[leg.propType] || leg.propType.toUpperCase();
     
     return {
       name: player.name,
       team: player.team,
       opponent: player.opponent,
       isHome: player.isHome,
-      prop: `Over ${leg.line} ${leg.propType}`,
+      prop: `Over ${leg.line} ${propLabel}`,
       odds: leg.odds,
       avg: avg.toFixed(1),
       hitRate: `${hr.hits}/${hr.total} (${hr.rate}%)`,
