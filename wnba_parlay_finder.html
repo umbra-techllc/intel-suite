@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>WNBA Parlay Finder · Intel Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:     #f0f2f7;
+  --bg1:    #ffffff;
+  --bg2:    #e8ebf3;
+  --bg3:    #f8f9fc;
+  --border: #d0d5e8;
+  --border2:#b8c0d8;
+  --text:   #1a1d2e;
+  --text2:  #4a5270;
+  --text3:  #8a94b8;
+  --blue:   #3a6ff0;
+  --green:  #1a9e5c;
+  --red:    #d93a4a;
+  --gold:   #c87a00;
+  --purple: #7a3af0;
+  --teal:   #0a9a88;
+  --orange: #d4620a;
+  --mono:   'JetBrains Mono',monospace;
+  --radius: 8px;
+  --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 0 0 1px var(--border);
+  --shadow2: 0 4px 16px rgba(0,0,0,0.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;}
+.shell{display:grid;grid-template-columns:280px 1fr;min-height:100vh;}
+.sidebar{background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.main{overflow-y:auto;padding:20px;}
+
+/* ── SIDEBAR ── */
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border);}
+.sb-logo-text{font-family:var(--mono);font-size:13px;color:var(--purple);letter-spacing:2px;font-weight:500;}
+.sb-logo-sub{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:2px;margin-top:3px;}
+
+.sb-sec{padding:14px 16px;border-bottom:1px solid var(--border);}
+.sb-sec-title{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:2px;margin-bottom:10px;text-transform:uppercase;}
+
+.key-lbl{font-family:var(--mono);font-size:9px;color:var(--text2);letter-spacing:1px;margin-bottom:3px;}
+.key-inp{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--blue);font-family:var(--mono);font-size:10px;padding:6px 9px;border-radius:5px;outline:none;margin-bottom:5px;}
+.key-inp:focus{border-color:var(--blue);background:var(--bg1);}
+.sb-btn{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:10px;padding:7px;border-radius:5px;cursor:pointer;letter-spacing:1px;transition:all 0.15s;margin-top:2px;}
+.sb-btn:hover{background:var(--blue);border-color:var(--blue);color:#fff;}
+.key-status{font-family:var(--mono);font-size:9px;margin-top:6px;letter-spacing:1px;}
+.ks-ok{color:var(--green);} .ks-warn{color:var(--gold);} .ks-none{color:var(--text3);}
+
+/* PARLAY BUILDER */
+.parlay-sec{padding:14px 16px;border-bottom:1px solid var(--border);flex:1;}
+.parlay-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.parlay-title{font-family:var(--mono);font-size:10px;color:var(--purple);letter-spacing:2px;font-weight:500;}
+.parlay-count{font-family:var(--mono);font-size:9px;color:var(--text3);background:var(--bg2);padding:2px 7px;border-radius:10px;}
+.parlay-legs{display:flex;flex-direction:column;gap:5px;min-height:48px;margin-bottom:10px;}
+.p-leg{background:var(--bg3);border:1px solid #c0e8d0;border-radius:6px;padding:7px 10px;position:relative;}
+.p-leg-player{font-size:12px;font-weight:600;color:var(--text);padding-right:18px;}
+.p-leg-detail{font-family:var(--mono);font-size:9px;color:var(--green);margin-top:2px;}
+.p-leg-cons{font-family:var(--mono);font-size:8px;color:var(--text3);margin-top:1px;}
+.p-leg-x{position:absolute;top:7px;right:8px;background:none;border:none;color:var(--text3);cursor:pointer;font-size:12px;line-height:1;}
+.p-leg-x:hover{color:var(--red);}
+.p-empty{font-family:var(--mono);font-size:9px;color:var(--text3);text-align:center;padding:12px 0;background:var(--bg3);border:1px dashed var(--border);border-radius:5px;}
+
+/* ACTION BUTTONS */
+.parlay-actions{display:flex;flex-direction:column;gap:6px;}
+.action-btn{width:100%;padding:9px;border-radius:6px;font-family:var(--mono);font-size:10px;cursor:pointer;letter-spacing:1px;border:none;transition:all 0.15s;font-weight:500;}
+.ab-analyze{background:var(--purple);color:#fff;}
+.ab-analyze:hover{background:#6a2ae0;}
+.ab-auto{background:var(--bg2);color:var(--blue);border:1px solid var(--border2);}
+.ab-auto:hover{background:var(--blue);color:#fff;border-color:var(--blue);}
+.ab-clear{background:var(--bg3);color:var(--text3);border:1px solid var(--border);}
+.ab-clear:hover{background:var(--red);color:#fff;border-color:var(--red);}
+
+/* LEG COUNT */
+.leg-count-row{display:flex;align-items:center;gap:5px;margin-top:8px;}
+.lc-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.lc-btn{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:4px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;transition:all 0.15s;}
+.lc-btn:hover{border-color:var(--blue);color:var(--blue);}
+.lc-btn.act{background:var(--purple);border-color:var(--purple);color:#fff;}
+
+/* AI RESULT */
+.ai-result{margin-top:12px;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);}
+.ai-result-hdr{padding:10px 12px;display:flex;align-items:center;gap:8px;}
+.ai-conf-HIGH{background:#e8f8ef;border-bottom:1px solid #c0e8d0;}
+.ai-conf-MEDIUM{background:#fef8e8;border-bottom:1px solid #f0e0a0;}
+.ai-conf-LOW{background:#fde8ea;border-bottom:1px solid #f0c0c8;}
+.ai-conf-badge{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;letter-spacing:1px;}
+.ai-conf-HIGH .ai-conf-badge{background:#1a9e5c;color:#fff;}
+.ai-conf-MEDIUM .ai-conf-badge{background:#c87a00;color:#fff;}
+.ai-conf-LOW .ai-conf-badge{background:#d93a4a;color:#fff;}
+.ai-conf-label{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;}
+.ai-body{padding:10px 12px;background:var(--bg1);}
+.ai-narrative{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:8px;}
+.ai-legs{display:flex;flex-direction:column;gap:4px;}
+.ai-leg-row{display:flex;align-items:flex-start;gap:8px;padding:5px 8px;border-radius:4px;background:var(--bg3);}
+.v-STRONG{color:var(--green);font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 5px;background:#e8f8ef;border-radius:3px;white-space:nowrap;}
+.v-OK{color:var(--gold);font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 5px;background:#fef8e8;border-radius:3px;white-space:nowrap;}
+.v-WEAK{color:var(--red);font-family:var(--mono);font-size:9px;font-weight:600;padding:2px 5px;background:#fde8ea;border-radius:3px;white-space:nowrap;}
+.ai-leg-note{font-size:11px;color:var(--text2);line-height:1.4;}
+.ai-caution{margin-top:8px;padding:6px 8px;background:#fef8e8;border-radius:4px;font-size:11px;color:var(--gold);border-left:3px solid var(--gold);}
+.ai-wnba-note{margin-top:8px;padding:6px 8px;background:#f0f0fe;border-radius:4px;font-size:11px;color:var(--purple);border-left:3px solid var(--purple);}
+.ai-loading{padding:16px;text-align:center;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:1px;animation:blink 1s infinite;}
+
+/* ── MAIN ── */
+.main-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.main-title{font-family:var(--mono);font-size:11px;color:var(--text2);letter-spacing:2px;}
+.main-meta{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.main-controls{display:flex;gap:6px;flex-wrap:wrap;}
+.ctrl-btn{background:var(--bg1);border:1px solid var(--border2);color:var(--text2);font-family:var(--mono);font-size:10px;padding:7px 14px;border-radius:6px;cursor:pointer;letter-spacing:1px;transition:all 0.15s;box-shadow:var(--shadow);}
+.ctrl-btn:hover{background:var(--bg2);border-color:var(--border2);}
+.ctrl-btn:disabled{opacity:0.4;cursor:not-allowed;}
+.ctrl-btn.primary{background:var(--purple);border-color:var(--purple);color:#fff;box-shadow:0 2px 8px rgba(122,58,240,0.25);}
+.ctrl-btn.primary:hover{background:#6a2ae0;}
+.ctrl-btn.accent{background:var(--green);border-color:var(--green);color:#fff;}
+.ctrl-btn.accent:hover{background:#168a50;}
+
+/* STATUS */
+.status-bar{font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:14px;letter-spacing:1px;min-height:14px;padding:8px 12px;background:var(--bg1);border-radius:6px;border:1px solid var(--border);}
+.status-bar.ld{color:var(--blue);animation:blink 1s infinite;}
+.status-bar.ok{color:var(--green);}
+.status-bar.er{color:var(--red);}
+
+/* VALUE OVERVIEW */
+.vo-card{background:var(--bg1);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;}
+.vo-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;transition:background 0.15s;}
+.vo-hdr:hover{background:var(--bg3);}
+.vo-hdr-left{display:flex;align-items:center;gap:10px;}
+.vo-title{font-family:var(--mono);font-size:11px;color:var(--gold);letter-spacing:2px;font-weight:500;}
+.vo-pill{font-family:var(--mono);font-size:9px;background:#fef0d0;color:var(--gold);padding:2px 8px;border-radius:10px;border:1px solid #f0d880;}
+.vo-stats{display:flex;gap:16px;}
+.vo-stat{text-align:right;}
+.vo-stat-val{font-family:var(--mono);font-size:18px;font-weight:500;}
+.vo-stat-lbl{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:1px;margin-top:1px;}
+.vo-col-hdr{display:grid;grid-template-columns:1fr 60px 60px 80px 65px 80px;padding:6px 16px;background:var(--bg3);border-top:1px solid var(--border);}
+.vo-col-hdr span{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:1px;text-align:right;}
+.vo-col-hdr span:first-child{text-align:left;}
+.vo-row{display:grid;grid-template-columns:1fr 60px 60px 80px 65px 80px;align-items:center;padding:8px 16px;border-top:1px solid var(--border);cursor:pointer;transition:background 0.1s;}
+.vo-row:hover{background:var(--bg3);}
+.vo-row.added{background:#f0faf5;}
+.vo-player{display:flex;flex-direction:column;gap:2px;}
+.vo-name{font-size:13px;font-weight:500;color:var(--text);}
+.vo-sub{font-family:var(--mono);font-size:8px;color:var(--text3);}
+.vo-line{font-family:var(--mono);font-size:11px;font-weight:500;text-align:right;color:var(--text2);}
+.vo-avg{font-family:var(--mono);font-size:11px;text-align:right;color:var(--text2);}
+.vo-edge{font-family:var(--mono);font-size:11px;font-weight:600;text-align:right;color:var(--green);}
+.vo-odds{font-family:var(--mono);font-size:10px;text-align:right;}
+.vo-odds.great{color:var(--gold);font-weight:600;}
+.vo-odds.good{color:var(--green);}
+.vo-odds.ok{color:var(--text2);}
+.vo-add{text-align:right;}
+.vo-add-btn{font-family:var(--mono);font-size:9px;padding:4px 9px;border-radius:4px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;transition:all 0.15s;}
+.vo-add-btn:hover{background:var(--green);border-color:var(--green);color:#fff;}
+.vo-add-btn.on{background:var(--green);border-color:var(--green);color:#fff;}
+.cons-pip{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:4px;vertical-align:middle;}
+.pip-hi{background:var(--green);} .pip-md{background:var(--gold);} .pip-lo{background:var(--red);}
+
+/* WNBA VARIANCE NOTE */
+.variance-banner{background:#f0f0fe;border:1px solid #d0c8f8;border-radius:6px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:var(--purple);line-height:1.5;}
+.variance-banner strong{font-weight:600;}
+
+/* FILTERS */
+.filter-bar{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.fl{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;}
+.fb{font-family:var(--mono);font-size:10px;padding:5px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg1);color:var(--text2);cursor:pointer;letter-spacing:1px;transition:all 0.15s;box-shadow:0 1px 2px rgba(0,0,0,0.04);}
+.fb:hover{border-color:var(--blue);color:var(--blue);}
+.fb.act{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 2px 6px rgba(58,111,240,0.2);}
+.fb.act-g{background:var(--green);border-color:var(--green);color:#fff;}
+.fb.act-p{background:var(--purple);border-color:var(--purple);color:#fff;}
+.fb.act-gold{background:var(--gold);border-color:var(--gold);color:#fff;}
+.fb.act-t{background:var(--teal);border-color:var(--teal);color:#fff;}
+.fsep{width:1px;height:16px;background:var(--border);margin:0 3px;}
+
+/* GAME BLOCK */
+.game-block{background:var(--bg1);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden;animation:fadein 0.25s ease;}
+.game-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;transition:background 0.15s;}
+.game-hdr:hover{background:var(--bg3);}
+.game-left{display:flex;align-items:center;gap:12px;}
+.game-teams{display:flex;align-items:center;gap:8px;}
+.game-team{font-family:var(--mono);font-size:15px;font-weight:600;letter-spacing:2px;}
+.game-vs{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.game-meta{font-family:var(--mono);font-size:10px;color:var(--text2);}
+.game-badge{font-family:var(--mono);font-size:9px;background:#fef0d0;color:var(--gold);padding:2px 8px;border-radius:10px;border:1px solid #f0d880;letter-spacing:1px;}
+.game-tog{font-family:var(--mono);font-size:10px;color:var(--text3);transition:transform 0.2s;}
+.game-body{border-top:1px solid var(--border);}
+
+/* COL HEADER */
+.prow-hdr{display:grid;grid-template-columns:1fr 52px 52px 52px 52px 52px 52px 110px;padding:6px 16px;background:var(--bg3);}
+.prow-hdr span{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:1px;text-align:right;}
+.prow-hdr span:first-child{text-align:left;}
+
+/* PLAYER ROW */
+.prow{display:grid;grid-template-columns:1fr 52px 52px 52px 52px 52px 52px 110px;align-items:center;padding:9px 16px;border-top:1px solid var(--border);transition:background 0.1s;cursor:pointer;}
+.prow:hover{background:var(--bg3);}
+.prow.val{background:#fffbf0;}
+.prow.added{background:#f0faf5;}
+.prow-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.prow-name{font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.prow-meta{display:flex;gap:6px;align-items:center;}
+.prow-pos{font-family:var(--mono);font-size:8px;color:var(--text3);}
+.prow-team{font-family:var(--mono);font-size:8px;color:var(--text3);}
+.prow-cons{font-family:var(--mono);font-size:8px;display:flex;align-items:center;gap:3px;}
+.sd{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.sd-a{background:var(--green);} .sd-g{background:var(--gold);}
+
+/* STAT CELL */
+.stat-cell{text-align:right;border-radius:5px;padding:3px 4px;transition:background 0.1s;}
+.stat-cell.clickable{cursor:pointer;}
+.stat-cell.clickable:hover{background:rgba(58,111,240,0.08);}
+.stat-cell.has-val{background:#fffbf0;}
+.stat-cell.has-val:hover{background:#fff0c8;}
+.stat-cell.is-added{background:#e8f8ef;}
+.stat-cell.is-added .sc-avg{color:var(--green);}
+.sc-avg{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text);display:block;}
+.sc-line{font-family:var(--mono);font-size:8px;color:var(--text3);display:block;margin-top:1px;}
+.sc-edge{font-family:var(--mono);font-size:8px;color:var(--green);display:block;}
+.stat-cell.has-val .sc-line{color:var(--gold);}
+
+/* BEST PROP CELL */
+.prow-best{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.best-prop{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text2);}
+.best-prop.val{color:var(--gold);}
+.best-odds{font-family:var(--mono);font-size:9px;}
+.best-edge{font-family:var(--mono);font-size:8px;color:var(--green);}
+.best-val-badge{font-family:var(--mono);font-size:8px;background:#fef0d0;color:var(--gold);padding:1px 5px;border-radius:3px;border:1px solid #f0d880;animation:pulse 2s infinite;}
+
+/* EXPANDED DETAIL */
+.pdetail{border-top:1px solid var(--border);padding:14px 16px;background:var(--bg3);display:none;animation:fadein 0.15s ease;}
+.pdetail.open{display:block;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+/* LOG TABLE */
+.detail-log-title{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;display:flex;justify-content:space-between;}
+.log-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10px;}
+.log-table th{color:var(--text3);font-size:8px;letter-spacing:1px;padding:4px 6px;text-align:right;border-bottom:2px solid var(--border);background:var(--bg1);}
+.log-table th:first-child{text-align:left;}
+.log-table td{padding:4px 6px;text-align:right;color:var(--text2);border-bottom:1px solid var(--border);}
+.log-table td:first-child{text-align:left;color:var(--text3);font-size:9px;}
+.log-table tr:last-child td{border:none;}
+.log-table td.above{color:var(--green);font-weight:500;}
+.log-table td.below{color:var(--red);}
+.log-avgs td{color:var(--text);font-weight:500;border-top:2px solid var(--border);background:var(--bg1);}
+.log-avgs td.above{color:var(--green);}
+
+/* VARIANCE NOTE */
+.variance-note{font-family:var(--mono);font-size:9px;color:var(--purple);background:#f0f0fe;border-radius:4px;padding:5px 8px;margin-top:6px;}
+
+/* PROP BUTTONS */
+.detail-props-title{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:8px;}
+.prop-btn-grid{display:flex;flex-direction:column;gap:6px;}
+.prop-btn{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);cursor:pointer;transition:all 0.15s;width:100%;box-shadow:0 1px 2px rgba(0,0,0,0.04);}
+.prop-btn:hover{border-color:var(--border2);background:var(--bg3);}
+.prop-btn.val-prop{border-color:#f0d880;background:#fffbf0;}
+.prop-btn.val-prop:hover{background:#fff0c8;}
+.prop-btn.added-prop{border-color:var(--green);background:#f0faf5;}
+.prop-btn-left{display:flex;flex-direction:column;gap:2px;text-align:left;}
+.prop-btn-type{font-family:var(--mono);font-size:8px;color:var(--text3);letter-spacing:1px;}
+.prop-btn-line{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--text);}
+.prop-btn-line.val{color:var(--gold);}
+.prop-btn-right{display:flex;flex-direction:column;align-items:flex-end;gap:2px;}
+.prop-btn-odds{font-family:var(--mono);font-size:12px;font-weight:500;}
+.prop-btn-edge{font-family:var(--mono);font-size:9px;color:var(--green);}
+.prop-btn-add{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;background:var(--bg2);color:var(--text2);}
+.prop-btn.added-prop .prop-btn-add{background:var(--green);color:#fff;}
+.no-props{font-family:var(--mono);font-size:9px;color:var(--text3);padding:12px 0;}
+
+/* MISC */
+.loading-row{padding:20px 16px;font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:2px;animation:blink 1s infinite;}
+.no-data-row{padding:14px 16px;font-family:var(--mono);font-size:10px;color:var(--text3);}
+.empty-main{text-align:center;padding:60px 20px;font-family:var(--mono);font-size:12px;color:var(--text3);letter-spacing:2px;}
+.ts{font-family:var(--mono);font-size:8px;color:var(--text3);padding:0 16px 10px;border-top:1px solid var(--border);margin-top:4px;padding-top:6px;}
+.debug-panel{background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:10px;margin:8px 0;display:none;}
+.debug-panel.show{display:block;}
+.debug-log{font-family:var(--mono);font-size:10px;line-height:1.7;max-height:150px;overflow-y:auto;}
+.d-ok{color:var(--green);} .d-er{color:var(--red);} .d-info{color:var(--blue);} .d-warn{color:var(--gold);}
+
+@media(max-width:700px){
+  .shell{grid-template-columns:1fr;}
+  .sidebar{position:static;height:auto;}
+  .prow,.prow-hdr{grid-template-columns:1fr 48px 48px 48px 48px 90px;}
+  .prow .stat-cell:nth-child(5),.prow .stat-cell:nth-child(6),.prow-hdr span:nth-child(5),.prow-hdr span:nth-child(6){display:none;}
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes pulse{0%,100%{opacity:0.7}50%{opacity:1}}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside class="sidebar">
+  <div class="sb-logo">
+    <div class="sb-logo-text">🏀 WNBA PARLAY FINDER</div>
+    <div class="sb-logo-sub">INTEL SUITE // PLAYER PROPS</div>
+  </div>
+
+  <!-- KEYS -->
+  <div class="sb-sec">
+    <div class="sb-sec-title">API KEYS</div>
+    <div class="key-lbl">ODDS API</div>
+    <input class="key-inp" id="odds-key" placeholder="the-odds-api.com key"/>
+    <div class="key-lbl">ANTHROPIC</div>
+    <input class="key-inp" id="ai-key" placeholder="sk-ant-..." type="password"/>
+    <button class="sb-btn" onclick="saveKeys()">SAVE KEYS</button>
+    <div class="key-status" id="key-status">● NO KEYS SET</div>
+    <button class="sb-btn" onclick="toggleDebug()" style="margin-top:6px;background:var(--bg3);">TOGGLE DEBUG</button>
+    <div class="debug-panel" id="debug-panel"><div class="debug-log" id="debug-log"></div></div>
+  </div>
+
+  <!-- PARLAY BUILDER -->
+  <div class="parlay-sec">
+    <div class="parlay-hdr">
+      <div class="parlay-title">◈ PARLAY BUILDER</div>
+      <div class="parlay-count" id="leg-count">0 LEGS</div>
+    </div>
+    <div class="parlay-legs" id="parlay-legs">
+      <div class="p-empty">Click any prop line below to add a leg</div>
+    </div>
+    <div class="parlay-actions">
+      <button class="action-btn ab-analyze" onclick="analyzeParlay()">◈ ANALYZE PARLAY</button>
+      <button class="action-btn ab-auto" onclick="autoFind()">⚡ AUTO-BUILD PARLAY</button>
+      <button class="action-btn ab-clear" onclick="clearParlay()">✕ CLEAR</button>
+    </div>
+    <div class="leg-count-row">
+      <span class="lc-lbl">AUTO LEGS:</span>
+      <button class="lc-btn" id="lc-2" onclick="setLegCount(2)">2</button>
+      <button class="lc-btn" id="lc-3" onclick="setLegCount(3)">3</button>
+      <button class="lc-btn act" id="lc-4" onclick="setLegCount(4)">4</button>
+      <button class="lc-btn" id="lc-5" onclick="setLegCount(5)">5</button>
+      <button class="lc-btn" id="lc-6" onclick="setLegCount(6)">6</button>
+    </div>
+    <div id="ai-out" style="display:none;"></div>
+  </div>
+</aside>
+
+<!-- ═══════════ MAIN ═══════════ -->
+<main class="main">
+  <div class="main-hdr">
+    <div>
+      <div class="main-title">TODAY'S WNBA SLATE</div>
+      <div class="main-meta" id="main-meta">--</div>
+    </div>
+    <div class="main-controls">
+      <button class="ctrl-btn primary" onclick="loadGames()" id="load-btn">◈ LOAD TODAY</button>
+      <button class="ctrl-btn" onclick="loadGames(dayOffset+1)" id="next-btn" style="display:none;">NEXT DAY →</button>
+      <button class="ctrl-btn" onclick="loadGames(dayOffset-1)" id="prev-btn" style="display:none;">← PREV</button>
+    </div>
+  </div>
+
+  <div class="status-bar" id="status">SAVE YOUR API KEYS AND HIT LOAD TODAY TO START</div>
+
+  <div class="variance-banner">
+    <strong>WNBA Variance Note:</strong> WNBA props carry more game-to-game variance than NBA. The tool uses stricter edge thresholds — PTS needs 8%+, REB/AST 10%+, 3PM 25%+ — and weights consistency heavily in auto-build. Lines below L5 average with HIGH consistency are the strongest plays.
+  </div>
+
+  <!-- VALUE OVERVIEW -->
+  <div class="vo-card" id="val-overview" style="display:none;">
+    <div class="vo-hdr" onclick="togVO()">
+      <div class="vo-hdr-left">
+        <div class="vo-title">⚡ VALUE OVERVIEW</div>
+        <div class="vo-pill" id="vo-pill">0 PLAYS</div>
+      </div>
+      <div class="vo-stats">
+        <div class="vo-stat"><div class="vo-stat-val" style="color:var(--gold);" id="vo-count">0</div><div class="vo-stat-lbl">VALUE LEGS</div></div>
+        <div class="vo-stat"><div class="vo-stat-val" style="color:var(--blue);" id="vo-players">0</div><div class="vo-stat-lbl">PLAYERS</div></div>
+      </div>
+    </div>
+    <div id="vo-body" style="display:none;"></div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filter-bar" id="filter-bar" style="display:none;">
+    <span class="fl">SHOW:</span>
+    <button class="fb act" id="f-all"  onclick="setFilter('all')">ALL</button>
+    <button class="fb"     id="f-val"  onclick="setFilter('val')">⚡ VALUE</button>
+    <div class="fsep"></div>
+    <span class="fl">PROP:</span>
+    <button class="fb" id="f-pts" onclick="setPF('pts')">PTS</button>
+    <button class="fb" id="f-reb" onclick="setPF('reb')">REB</button>
+    <button class="fb" id="f-ast" onclick="setPF('ast')">AST</button>
+    <button class="fb" id="f-tpm" onclick="setPF('tpm')">3PM</button>
+    <div class="fsep"></div>
+    <span class="fl">MIN PTS:</span>
+    <button class="fb" id="f-10" onclick="setMin(10)">10+</button>
+    <button class="fb" id="f-15" onclick="setMin(15)">15+</button>
+    <button class="fb" id="f-20" onclick="setMin(20)">20+</button>
+    <div class="fsep"></div>
+    <span class="fl">CONSISTENCY:</span>
+    <button class="fb" id="f-ch" onclick="setCons('high')">HIGH</button>
+  </div>
+
+  <div id="games"></div>
+</main>
+</div>
+
+<script>
+// ══════════════════════════════════
+// CONFIG
+// ══════════════════════════════════
+// Stricter thresholds for WNBA due to higher variance
+const EDGE_THRESH = { pts:8, reb:10, ast:10, tpm:25 };
+const teamScheduleCache = {};
+
+let KEY='', AKEY='', legs=[], allP=[], dayOffset=0, autoLegCount=4;
+let curFilter='all', curPF='', curMin=0, curCons='';
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+KEY  = localStorage.getItem('wnba_odds_key')||'';
+AKEY = localStorage.getItem('wnba_ai_key')||'';
+if(KEY)  document.getElementById('odds-key').value=KEY;
+if(AKEY) document.getElementById('ai-key').value=AKEY;
+updateKeyStatus();
+
+// ══════════════════════════════════
+// DEBUG
+// ══════════════════════════════════
+let debugOn=false;
+function toggleDebug(){debugOn=!debugOn;document.getElementById('debug-panel').classList.toggle('show',debugOn);}
+function dbg(msg,type='info'){
+  if(!debugOn)return;
+  const el=document.getElementById('debug-log');
+  const cls=type==='ok'?'d-ok':type==='er'?'d-er':type==='warn'?'d-warn':'d-info';
+  el.innerHTML+=`<div class="${cls}">${new Date().toLocaleTimeString()} ${msg}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+// ══════════════════════════════════
+// KEYS
+// ══════════════════════════════════
+function saveKeys(){
+  KEY=document.getElementById('odds-key').value.trim();
+  AKEY=document.getElementById('ai-key').value.trim();
+  localStorage.setItem('wnba_odds_key',KEY);
+  localStorage.setItem('wnba_ai_key',AKEY);
+  updateKeyStatus();
+  dbg(`Keys saved. Odds:${KEY?'✓':'✗'} AI:${AKEY?'✓':'✗'}`,KEY&&AKEY?'ok':'warn');
+}
+function updateKeyStatus(){
+  const el=document.getElementById('key-status');
+  if(KEY&&AKEY){el.textContent='● BOTH KEYS SET';el.className='key-status ks-ok';}
+  else if(KEY||AKEY){el.textContent='● PARTIAL — ADD BOTH KEYS';el.className='key-status ks-warn';}
+  else{el.textContent='● NO KEYS SET';el.className='key-status ks-none';}
+}
+
+// ══════════════════════════════════
+// HELPERS
+// ══════════════════════════════════
+function ss(msg,type=''){const el=document.getElementById('status');el.textContent=msg;el.className='status-bar '+type;}
+function fmt(n){return n!=null?(+n).toFixed(1):'—';}
+function fmtOdds(o){return !o?'—':o>0?'+'+o:''+o;}
+function isVal(avg,line){return avg!=null&&line!=null&&avg>line;}
+function edgePct(avg,line){return(!line||!avg)?0:+((avg-line)/line*100).toFixed(1);}
+function isStrong(avg,line,k){return isVal(avg,line)&&edgePct(avg,line)>=(EDGE_THRESH[k]||8);}
+function goodOdds(o){return o!=null&&o>-400;}
+function ftime(){return new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});}
+
+function oddsQuality(o){
+  if(!o)return 0;
+  if(o>0)return 100+(o/10);
+  if(o>-150)return 80;
+  if(o>-200)return 60;
+  if(o>-300)return 40;
+  return 20;
+}
+
+// WNBA-specific consistency — same formula but we display it more prominently
+function consistencyScore(games,key){
+  if(!games||games.length<2)return 0;
+  const vals=games.map(g=>g[key]||0);
+  const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
+  if(avg===0)return 0;
+  const variance=vals.reduce((s,v)=>s+Math.pow(v-avg,2),0)/vals.length;
+  const cv=Math.sqrt(variance)/avg;
+  return Math.max(0,Math.round((1-Math.min(cv,1))*100));
+}
+function consPip(s){return s>=70?'pip-hi':s>=45?'pip-md':'pip-lo';}
+function consLabel(s){return s>=70?'CONSISTENT':s>=45?'MODERATE':'VOLATILE';}
+
+function getDate(offset=0){
+  const d=new Date();d.setDate(d.getDate()+offset);
+  const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),dy=String(d.getDate()).padStart(2,'0');
+  return{espn:`${y}${m}${dy}`,label:d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})};
+}
+
+// ══════════════════════════════════
+// VALUE OVERVIEW
+// ══════════════════════════════════
+let voOpen=false;
+function togVO(){voOpen=!voOpen;document.getElementById('vo-body').style.display=voOpen?'block':'none';}
+
+function updateOverview(){
+  const plays=[];
+  for(const p of allP){
+    if(!p.avgs)continue;
+    for(const k of['pts','reb','ast','tpm']){
+      const pd=p.props?.[k];
+      if(!pd||!isStrong(p.avgs[k],pd.line,k)||!goodOdds(pd.odds))continue;
+      const edge=edgePct(p.avgs[k],pd.line);
+      const cons=consistencyScore(p.games,k);
+      const oq=oddsQuality(pd.odds);
+      // WNBA: weight consistency more heavily than NBA (0.55 vs 0.4)
+      const score=edge*(oq/100+0.3)*(cons/100+0.4)*0.55+(edge*0.45);
+      plays.push({p,k,edge,cons,line:pd.line,odds:pd.odds,avg:p.avgs[k],score});
+    }
+  }
+  plays.sort((a,b)=>b.score-a.score);
+
+  const vo=document.getElementById('val-overview');
+  document.getElementById('vo-count').textContent=plays.length;
+  document.getElementById('vo-players').textContent=allP.filter(p=>p.avgs).length;
+  document.getElementById('vo-pill').textContent=plays.length+' PLAYS';
+  vo.style.display=plays.length?'block':'none';
+
+  const lbl={pts:'PTS',reb:'REB',ast:'AST',tpm:'3PM'};
+  const oddsClass=o=>o>0?'great':o>-150?'good':'ok';
+
+  const colHdr=`<div class="vo-col-hdr">
+    <span>PLAYER</span><span>LINE</span><span>L5 AVG</span><span>EDGE</span><span>ODDS</span><span>ADD</span>
+  </div>`;
+
+  const rows=plays.map(({p,k,edge,cons,line,odds,avg})=>{
+    const legKey=`${p.name}_${k}`;
+    const isAdded=legs.some(l=>l.key===legKey);
+    return`<div class="vo-row${isAdded?' added':''}" onclick="toggleLegFromVO('${p.name}','${p.teamAbbr}','${k}','${lbl[k]}',${line},${avg},${edge},${odds},${cons},'${legKey}',this)">
+      <div class="vo-player">
+        <div class="vo-name">${p.name} <span class="cons-pip ${consPip(cons)}"></span></div>
+        <div class="vo-sub">${p.teamAbbr} · ${lbl[k]} · ${consLabel(cons)}</div>
+      </div>
+      <div class="vo-line">O ${line}</div>
+      <div class="vo-avg">${fmt(avg)}</div>
+      <div class="vo-edge">+${edge}%</div>
+      <div class="vo-odds ${oddsClass(odds)}">${fmtOdds(odds)}</div>
+      <div class="vo-add"><button class="vo-add-btn${isAdded?' on':''}">${isAdded?'✓ IN':'+ ADD'}</button></div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('vo-body').innerHTML=colHdr+`<div>${rows}</div>`;
+}
+
+function toggleLegFromVO(name,team,prop,propLbl,line,avg,edge,odds,cons,key){
+  const exists=legs.findIndex(l=>l.key===key);
+  if(exists>=0)legs.splice(exists,1);
+  else legs.push({name,team,prop,propLbl,line,avg,edge,odds,cons,key});
+  renderLegs();updateOverview();refreshCells();
+}
+
+// ══════════════════════════════════
+// FILTERS
+// ══════════════════════════════════
+function setFilter(f){curFilter=f;['all','val'].forEach(k=>document.getElementById('f-'+k)?.classList.toggle('act',k===f));applyFilters();}
+function setPF(p){
+  curPF=curPF===p?'':p;
+  const map={pts:'act-g',reb:'act-gold',ast:'act-t',tpm:'act-p'};
+  ['pts','reb','ast','tpm'].forEach(k=>{const el=document.getElementById('f-'+k);if(!el)return;el.className='fb';if(k===curPF)el.classList.add(map[k]);});
+  applyFilters();
+}
+function setMin(n){curMin=curMin===n?0:n;['10','15','20'].forEach(k=>document.getElementById('f-'+k)?.classList.toggle('act',parseInt(k)===curMin));applyFilters();}
+function setCons(c){curCons=curCons===c?'':c;document.getElementById('f-ch')?.classList.toggle('act',curCons==='high');applyFilters();}
+function applyFilters(){
+  document.querySelectorAll('.prow').forEach(row=>{
+    const pts=parseFloat(row.dataset.pts||0),val=row.dataset.val==='true',cons=parseInt(row.dataset.cons||0);
+    const hasP=row.dataset['has_'+curPF]==='true';
+    let show=true;
+    if(curFilter==='val'&&!val)show=false;
+    if(curPF&&!hasP)show=false;
+    if(curMin>0&&pts<curMin)show=false;
+    if(curCons==='high'&&cons<70)show=false;
+    row.style.display=show?'':'none';
+    const det=document.getElementById('det-'+row.dataset.uid);
+    if(det&&!show)det.style.display='none';
+  });
+}
+
+// ══════════════════════════════════
+// PARLAY BUILDER
+// ══════════════════════════════════
+function toggleLeg(name,team,prop,propLbl,line,avg,edge,odds,cons,key){
+  const exists=legs.findIndex(l=>l.key===key);
+  if(exists>=0)legs.splice(exists,1);
+  else legs.push({name,team,prop,propLbl,line,avg,edge,odds,cons,key});
+  renderLegs();refreshCells();updateOverview();
+}
+
+function renderLegs(){
+  const el=document.getElementById('parlay-legs');
+  document.getElementById('leg-count').textContent=legs.length+' LEG'+(legs.length!==1?'S':'');
+  if(!legs.length){el.innerHTML='<div class="p-empty">Click any prop line below to add a leg</div>';return;}
+  el.innerHTML=legs.map(l=>{
+    const cons=l.cons||0;
+    const consColor=cons>=70?'var(--green)':cons>=45?'var(--gold)':'var(--red)';
+    return`<div class="p-leg">
+      <div class="p-leg-player">${l.name}</div>
+      <div class="p-leg-detail">${l.propLbl} O${l.line} · ${fmtOdds(l.odds)} · +${l.edge}% edge</div>
+      <div class="p-leg-cons" style="color:${consColor};">${consLabel(cons)} ${cons}/100</div>
+      <button class="p-leg-x" onclick="removeLeg('${l.key}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function removeLeg(key){legs=legs.filter(l=>l.key!==key);renderLegs();refreshCells();updateOverview();}
+
+function clearParlay(){
+  legs=[];renderLegs();refreshCells();updateOverview();
+  document.getElementById('ai-out').style.display='none';
+}
+
+function setLegCount(n){autoLegCount=n;[2,3,4,5,6].forEach(k=>document.getElementById('lc-'+k)?.classList.toggle('act',k===n));}
+
+function refreshCells(){
+  document.querySelectorAll('.stat-cell').forEach(cell=>{
+    const key=cell.dataset.key;if(!key)return;
+    cell.classList.toggle('is-added',legs.some(l=>l.key===key));
+  });
+  document.querySelectorAll('.prop-btn').forEach(btn=>{
+    const key=btn.dataset.key;if(!key)return;
+    const added=legs.some(l=>l.key===key);
+    btn.classList.toggle('added-prop',added);
+    const lbl=btn.querySelector('.prop-btn-add');
+    if(lbl)lbl.textContent=added?'✓ ADDED':'+ ADD';
+  });
+}
+
+// ══════════════════════════════════
+// AI ANALYSIS — WNBA-SPECIFIC
+// ══════════════════════════════════
+async function analyzeParlay(){
+  if(legs.length<2){ss('ADD AT LEAST 2 LEGS FIRST','er');return;}
+  if(!AKEY){ss('ADD YOUR ANTHROPIC API KEY FIRST','er');return;}
+  ss('RUNNING WNBA PARLAY ANALYSIS...','ld');
+  const el=document.getElementById('ai-out');
+  el.style.display='block';
+  el.innerHTML='<div class="ai-loading">◈ ANALYZING PARLAY...</div>';
+
+  const legsText=legs.map(l=>
+    `${l.name} (${l.team}) ${l.propLbl} Over ${l.line} | L5 avg: ${l.avg} | Edge: +${l.edge}% | Odds: ${fmtOdds(l.odds)} | Consistency score: ${l.cons}/100 (${consLabel(l.cons)})`
+  ).join('\n');
+
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':AKEY,'anthropic-dangerous-direct-browser-access':'true','anthropic-version':'2023-06-01'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:700,
+        system:`You are a sharp WNBA prop betting analyst with deep knowledge of WNBA player tendencies and variance.
+
+KEY WNBA CONTEXT you must apply:
+- WNBA games have higher variance than NBA: fewer possessions, smaller sample of players, star players face different defensive schemes each night
+- Consistency score (0-100) is critical: scores below 45 mean the player is VOLATILE even if L5 average looks good
+- Edge % thresholds used: PTS 8%+, REB/AST 10%+, 3PM 25%+ (stricter than NBA because of variance)
+- Injury/foul trouble is more impactful in WNBA due to smaller rosters
+- Matchup matters more in WNBA: defensive specialists, zone vs man-to-man, pace
+
+For each leg: assess whether the L5 average is truly predictive given WNBA variance, whether the consistency score gives you confidence, and whether the line is priced appropriately.
+
+Respond ONLY with JSON, no markdown, no extra text:
+{"confidence":"HIGH"|"MEDIUM"|"LOW","narrative":"2-3 sharp sentences specific to WNBA context and this parlay","legs":[{"name":"player name","verdict":"STRONG"|"OK"|"WEAK","note":"one sharp WNBA-specific observation"}],"caution":"one specific WNBA variance risk or empty string","wnba_note":"one sentence on why WNBA parlays need extra caution or empty string"}`,
+        messages:[{role:'user',content:`Analyze this WNBA over parlay:\n\n${legsText}`}]
+      })
+    });
+    if(!resp.ok){const t=await resp.text();ss(`AI ERROR: HTTP ${resp.status}`,'er');el.innerHTML='<div style="padding:10px;color:var(--red);font-family:var(--mono);font-size:10px;">API error — check key</div>';return;}
+    const data=await resp.json();
+    const raw=data.content?.[0]?.text||'';
+    const s=raw.indexOf('{'),e=raw.lastIndexOf('}');
+    const ai=JSON.parse(s>=0&&e>=0?raw.slice(s,e+1):raw);
+    renderAIResult(ai);
+    ss('ANALYSIS COMPLETE','ok');
+  }catch(ex){
+    ss('AI ERROR: '+ex.message,'er');
+    el.innerHTML=`<div style="padding:10px;color:var(--red);font-family:var(--mono);font-size:10px;">ERROR: ${ex.message}</div>`;
+  }
+}
+
+function renderAIResult(ai){
+  const el=document.getElementById('ai-out');
+  const conf=ai.confidence||'MEDIUM';
+  const legsHtml=(ai.legs||[]).map(l=>`
+    <div class="ai-leg-row">
+      <span class="v-${l.verdict}">${l.verdict}</span>
+      <span class="ai-leg-note"><strong>${l.name}</strong> — ${l.note}</span>
+    </div>
+  `).join('');
+  el.style.display='block';
+  el.innerHTML=`<div class="ai-result">
+    <div class="ai-result-hdr ai-conf-${conf}">
+      <span class="ai-conf-badge">${conf}</span>
+      <span class="ai-conf-label">CONFIDENCE</span>
+    </div>
+    <div class="ai-body">
+      <div class="ai-narrative">${ai.narrative}</div>
+      <div class="ai-legs">${legsHtml}</div>
+      ${ai.caution?`<div class="ai-caution">⚠ ${ai.caution}</div>`:''}
+      ${ai.wnba_note?`<div class="ai-wnba-note">🏀 ${ai.wnba_note}</div>`:''}
+    </div>
+  </div>`;
+}
+
+// ══════════════════════════════════
+// AUTO-BUILD — WNBA-WEIGHTED
+// ══════════════════════════════════
+function autoFind(){
+  const candidates=allP.flatMap(p=>{
+    return['pts','reb','ast','tpm'].filter(k=>{
+      const pd=p.props?.[k];
+      return pd&&isStrong(p.avgs?.[k],pd.line,k)&&goodOdds(pd.odds);
+    }).map(k=>{
+      const edge=edgePct(p.avgs[k],p.props[k].line);
+      const cons=consistencyScore(p.games,k);
+      const oq=oddsQuality(p.props[k].odds);
+      // WNBA: heavily weight consistency — volatile players are unreliable
+      const score=(edge*0.35)*(cons/100+0.5)*(oq/100+0.3);
+      return{p,k,edge,cons,oq,score,line:p.props[k].line,odds:p.props[k].odds};
+    });
+  }).sort((a,b)=>b.score-a.score).slice(0,autoLegCount);
+
+  if(!candidates.length){ss('NO STRONG VALUE PLAYS FOUND — LINES MAY NOT BE POSTED YET','er');return;}
+  clearParlay();
+  const lbl={pts:'PTS',reb:'REB',ast:'AST',tpm:'3PM'};
+  for(const c of candidates){
+    const key=`${c.p.name}_${c.k}`;
+    legs.push({name:c.p.name,team:c.p.teamAbbr,prop:c.k,propLbl:lbl[c.k],
+      line:c.line,avg:c.p.avgs[c.k],edge:c.edge,odds:c.odds,cons:c.cons,key});
+  }
+  renderLegs();refreshCells();updateOverview();
+  ss(`AUTO-BUILT ${candidates.length}-LEG PARLAY — HIT ANALYZE FOR AI READ`,'ok');
+
+  // Auto-trigger analysis if AI key is set
+  if(AKEY&&legs.length>=2) setTimeout(analyzeParlay,400);
+}
+
+// ══════════════════════════════════
+// ESPN — WNBA SCHEDULE
+// ══════════════════════════════════
+async function getSchedule(offset=0){
+  const dt=getDate(offset);
+  dbg(`Schedule ${dt.espn}...`);
+  const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard?dates=${dt.espn}`,{signal:AbortSignal.timeout(12000)});
+  const d=await r.json();
+  const games=(d.events||[]).map(e=>{
+    const comp=e.competitions?.[0]||{};
+    return{id:e.id,date:e.date,
+      teams:(comp.competitors||[]).map(c=>({id:c.team?.id,abbr:c.team?.abbreviation,name:c.team?.displayName,color:c.team?.color}))};
+  }).filter(g=>g.teams.length===2);
+  dbg(`${games.length} games`,'ok');
+  return games;
+}
+
+// ══════════════════════════════════
+// ESPN — WNBA ROSTER
+// ══════════════════════════════════
+async function getRoster(teamId){
+  const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams/${teamId}/roster`,{signal:AbortSignal.timeout(10000)});
+  const d=await r.json();
+  return(d.athletes||[]).map(a=>({id:a.id,name:a.displayName,pos:a.position?.abbreviation||'?',status:a.injuries?.[0]?.status||'Active'}));
+}
+
+// ══════════════════════════════════
+// ESPN — WNBA LAST 5 (box score method)
+// ══════════════════════════════════
+async function getTeamGames(teamId){
+  if(teamScheduleCache[teamId])return teamScheduleCache[teamId];
+  try{
+    const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams/${teamId}/schedule?season=2026`,{signal:AbortSignal.timeout(12000)});
+    const d=await r.json();
+    const played=(d.events||[]).filter(e=>e.competitions?.[0]?.status?.type?.completed===true).slice(-10).map(e=>e.id);
+    teamScheduleCache[teamId]=played;
+    return played;
+  }catch(e){return[];}
+}
+
+async function getLast5(playerId,teamId){
+  try{
+    const gameIds=await getTeamGames(teamId);
+    if(!gameIds.length)return[];
+    const games=[];
+    for(const eid of gameIds.slice().reverse()){
+      if(games.length>=5)break;
+      try{
+        const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/summary?event=${eid}`,{signal:AbortSignal.timeout(8000)});
+        const d=await r.json();
+        let found=false;
+        for(const team of(d.boxscore?.players||[])){
+          for(const sg of(team.statistics||[])){
+            for(const player of(sg.athletes||[])){
+              if(player.athlete?.id===String(playerId)){
+                const labels=sg.labels||[],stats=player.stats||[];
+                const sv={};labels.forEach((l,i)=>sv[l]=stats[i]||'0');
+                if(!sv['MIN']||sv['MIN']==='--'||sv['MIN']==='0:00'){found=true;break;}
+                const tpm=sv['3PT']?parseInt(sv['3PT'].split('-')[0])||0:0;
+                games.push({
+                  pts:parseFloat(sv['PTS'])||0,reb:parseFloat(sv['REB'])||0,
+                  ast:parseFloat(sv['AST'])||0,tpm,
+                  stl:parseFloat(sv['STL'])||0,blk:parseFloat(sv['BLK'])||0,
+                  min:sv['MIN']?parseFloat(sv['MIN'].replace(':','.'))||0:0,
+                });
+                found=true;break;
+              }
+            }
+            if(found)break;
+          }
+          if(found)break;
+        }
+      }catch(e){}
+    }
+    return games;
+  }catch(e){return[];}
+}
+
+function calcAvgs(games){
+  if(!games.length)return null;
+  const avg=k=>+((games.reduce((s,g)=>s+(g[k]||0),0)/games.length).toFixed(1));
+  return{pts:avg('pts'),reb:avg('reb'),ast:avg('ast'),tpm:avg('tpm'),stl:avg('stl'),blk:avg('blk'),min:avg('min')};
+}
+
+// ══════════════════════════════════
+// ODDS API — WNBA
+// ══════════════════════════════════
+async function getOddsEvents(){
+  if(!KEY){dbg('No key','warn');return[];}
+  try{
+    const r=await fetch(`https://api.the-odds-api.com/v4/sports/basketball_wnba/odds/?apiKey=${KEY}&regions=us&markets=h2h&oddsFormat=american`,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok){dbg(`Odds ${r.status}`,'er');return[];}
+    const d=await r.json();
+    dbg(`${Array.isArray(d)?d.length:0} events`,'ok');
+    return Array.isArray(d)?d:[];
+  }catch(e){dbg('getOddsEvents: '+e.message,'er');return[];}
+}
+
+async function getProps(oddsId){
+  if(!KEY||!oddsId)return{};
+  try{
+    const r=await fetch(`https://api.the-odds-api.com/v4/sports/basketball_wnba/events/${oddsId}/odds?apiKey=${KEY}&regions=us&markets=player_points,player_rebounds,player_assists,player_threes&oddsFormat=american&bookmakers=fanduel,draftkings`,{signal:AbortSignal.timeout(12000)});
+    if(!r.ok){dbg(`Props ${r.status}`,'er');return{};}
+    const d=await r.json();
+    if(d.message){dbg('Props: '+d.message,'er');return{};}
+    const out={};
+    for(const book of(d.bookmakers||[])){
+      for(const market of(book.markets||[])){
+        const pk={player_points:'pts',player_rebounds:'reb',player_assists:'ast',player_threes:'tpm'}[market.key];
+        if(!pk)continue;
+        for(const o of(market.outcomes||[])){
+          if(o.name!=='Over')continue;
+          const pname=(o.description||o.player||'').trim();
+          if(!pname)continue;
+          if(!out[pname])out[pname]={};
+          if(!out[pname][pk]||o.price>out[pname][pk].odds)out[pname][pk]={line:o.point,odds:o.price};
+        }
+      }
+    }
+    dbg(`Props: ${Object.keys(out).length} players`,'ok');
+    return out;
+  }catch(e){dbg('getProps: '+e.message,'er');return{};}
+}
+
+function matchGame(game,oddsEvents){
+  for(const oe of oddsEvents){
+    const home=oe.home_team.toLowerCase(),away=oe.away_team.toLowerCase();
+    const t1l=game.teams[0].name.split(' ').pop().toLowerCase(),t2l=game.teams[1].name.split(' ').pop().toLowerCase();
+    const t1a=game.teams[0].abbr.toLowerCase(),t2a=game.teams[1].abbr.toLowerCase();
+    if((home.includes(t1l)||home.includes(t1a))&&(away.includes(t2l)||away.includes(t2a)))return oe.id;
+    if((away.includes(t1l)||away.includes(t1a))&&(home.includes(t2l)||home.includes(t2a)))return oe.id;
+  }
+  return null;
+}
+
+function matchProps(name,propsMap){
+  if(propsMap[name])return propsMap[name];
+  const en=name.toLowerCase(),ep=en.split(' ');
+  const elast=ep[ep.length-1],efirst=ep[0];
+  for(const[pn,pd]of Object.entries(propsMap)){
+    const pp=pn.toLowerCase().split(' ');
+    if(pp[pp.length-1]===elast&&pp[0][0]===efirst[0])return pd;
+    if(pn.toLowerCase().includes(elast)&&pn.toLowerCase().includes(efirst))return pd;
+  }
+  return{};
+}
+
+// ══════════════════════════════════
+// RENDER
+// ══════════════════════════════════
+function renderGame(game,players){
+  const t1=game.teams[0],t2=game.teams[1];
+  const time=new Date(game.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',hour12:true});
+  const valCount=players.filter(p=>['pts','reb','ast','tpm'].some(k=>isStrong(p.avgs?.[k],p.props?.[k]?.line,k)&&goodOdds(p.props?.[k]?.odds))).length;
+  const rows=players.map(p=>renderRow(p)).filter(Boolean).join('');
+
+  return`<div class="game-block" id="gb-${game.id}">
+    <div class="game-hdr" onclick="togGame('${game.id}')">
+      <div class="game-left">
+        <div class="game-teams">
+          <span class="game-team" style="color:#${t1.color||'3a6ff0'}">${t1.abbr}</span>
+          <span class="game-vs">vs</span>
+          <span class="game-team" style="color:#${t2.color||'7a3af0'}">${t2.abbr}</span>
+        </div>
+        <span class="game-meta">${time}</span>
+        ${valCount>0?`<span class="game-badge">⚡ ${valCount} VALUE</span>`:''}
+      </div>
+      <span class="game-tog" id="tog-${game.id}">▼</span>
+    </div>
+    <div class="game-body" id="body-${game.id}">
+      <div class="prow-hdr">
+        <span>PLAYER</span>
+        <span>PTS</span><span>REB</span><span>AST</span><span>3PM</span><span>STL</span><span>BLK</span>
+        <span>BEST PROP</span>
+      </div>
+      ${rows||`<div class="no-data-row">${KEY?'NO PROP LINES — CHECK BACK CLOSER TO TIP':'ADD ODDS API KEY TO SEE PROP LINES'}</div>`}
+    </div>
+  </div>`;
+}
+
+function renderRow(player){
+  const avgs=player.avgs,props=player.props||{};
+  if(!avgs||avgs.min<6)return''; // WNBA min lower threshold
+  if(player.status.toLowerCase().includes('out'))return'';
+
+  const cons=Math.round((consistencyScore(player.games,'pts')+consistencyScore(player.games,'reb')+consistencyScore(player.games,'ast'))/3);
+  const ptsV=isStrong(avgs.pts,props.pts?.line,'pts')&&goodOdds(props.pts?.odds);
+  const rebV=isStrong(avgs.reb,props.reb?.line,'reb')&&goodOdds(props.reb?.odds);
+  const astV=isStrong(avgs.ast,props.ast?.line,'ast')&&goodOdds(props.ast?.odds);
+  const tpmV=isStrong(avgs.tpm,props.tpm?.line,'tpm')&&goodOdds(props.tpm?.odds);
+  const anyVal=ptsV||rebV||astV||tpmV;
+
+  let best=null,bestScore=-Infinity;
+  for(const[k,lbl]of[['pts','PTS'],['reb','REB'],['ast','AST'],['tpm','3PM']]){
+    if(props[k]&&isStrong(avgs[k],props[k].line,k)&&goodOdds(props[k].odds)){
+      const e=edgePct(avgs[k],props[k].line),c=consistencyScore(player.games,k),oq=oddsQuality(props[k].odds);
+      const s=(e*0.35)*(c/100+0.5)*(oq/100+0.3);
+      if(s>bestScore){bestScore=s;best={k,lbl,line:props[k].line,odds:props[k].odds,edge:e,cons:c};}
+    }
+  }
+
+  const uid=player.id;
+  const dot=player.status.toLowerCase().includes('question')?'sd-g':'sd-a';
+
+  function scell(k,avg,prop,valFlag){
+    const edge=prop?.line?edgePct(avg,prop.line):0;
+    const key=`${player.name}_${k}`;
+    const added=legs.some(l=>l.key===key);
+    const lbl={pts:'PTS',reb:'REB',ast:'AST',tpm:'3PM'}[k];
+    const c=consistencyScore(player.games,k);
+    return`<div class="stat-cell${prop?.line?' clickable':''}${valFlag?' has-val':''}${added?' is-added':''}" data-key="${key}"
+      ${prop?.line?`onclick="toggleLeg('${player.name}','${player.teamAbbr}','${k}','${lbl}',${prop.line},${avg},${edge},${prop.odds},${c},'${key}')"`:''}>
+      <span class="sc-avg">${fmt(avg)}</span>
+      ${prop?.line?`<span class="sc-line">${valFlag?'▲ ':''}L${prop.line}</span>`:''}
+      ${valFlag&&edge>0?`<span class="sc-edge">+${edge}%</span>`:''}
+    </div>`;
+  }
+
+  const bestCell=best?`<div class="prow-best">
+    ${anyVal?`<div class="best-val-badge">⚡ VALUE</div>`:''}
+    <div class="best-prop${anyVal?' val':''}">${best.lbl} O${best.line}</div>
+    <div class="best-odds" style="color:${best.odds>0?'var(--gold)':best.odds>-150?'var(--green)':'var(--text2)'};">${fmtOdds(best.odds)}</div>
+    <div class="best-edge">+${best.edge}% · <span style="color:${best.cons>=70?'var(--green)':best.cons>=45?'var(--gold)':'var(--red)'}">${consLabel(best.cons)}</span></div>
+  </div>`:`<div class="prow-best"><div style="font-family:var(--mono);font-size:9px;color:var(--text3);">NO LINES</div></div>`;
+
+  return`
+    <div class="prow${anyVal?' val':''}${legs.some(l=>l.name===player.name)?' added':''}"
+      data-uid="${uid}" data-pts="${avgs.pts}" data-val="${anyVal}" data-cons="${cons}"
+      data-has_pts="${!!props.pts}" data-has_reb="${!!props.reb}" data-has_ast="${!!props.ast}" data-has_tpm="${!!props.tpm}"
+      onclick="togDetail(event,'${uid}')">
+      <div class="prow-info">
+        <div class="prow-name"><span class="sd ${dot}"></span> ${player.name}</div>
+        <div class="prow-meta">
+          <span class="prow-pos">${player.pos}</span>
+          <span class="prow-team">${player.teamAbbr}</span>
+          <div class="prow-cons"><span class="cons-pip ${consPip(cons)}"></span><span style="color:${cons>=70?'var(--green)':cons>=45?'var(--gold)':'var(--red)'};">${cons}/100</span></div>
+        </div>
+      </div>
+      ${scell('pts',avgs.pts,props.pts,ptsV)}
+      ${scell('reb',avgs.reb,props.reb,rebV)}
+      ${scell('ast',avgs.ast,props.ast,astV)}
+      ${scell('tpm',avgs.tpm,props.tpm,tpmV)}
+      ${scell('stl',avgs.stl,null,false)}
+      ${scell('blk',avgs.blk,null,false)}
+      ${bestCell}
+    </div>
+    <div class="pdetail" id="det-${uid}">${buildDetail(player)}</div>
+  `;
+}
+
+function buildDetail(player){
+  const avgs=player.avgs,props=player.props||{};
+  const lbl={pts:'PTS',reb:'REB',ast:'AST',tpm:'3PM'};
+
+  // Variance analysis per stat
+  const varNote=(games,k)=>{
+    if(!games||games.length<3)return'';
+    const vals=games.map(g=>g[k]||0);
+    const avg=vals.reduce((s,v)=>s+v,0)/vals.length;
+    const max=Math.max(...vals),min=Math.min(...vals);
+    if(avg>0&&(max-min)/avg>0.8)return`⚠ High variance: range ${min}–${max}`;
+    return'';
+  };
+
+  const logRows=player.games.map((g,i)=>{
+    const pa=props.pts?g.pts>=props.pts.line?'above':'below':'';
+    const ra=props.reb?g.reb>=props.reb.line?'above':'below':'';
+    const aa=props.ast?g.ast>=props.ast.line?'above':'below':'';
+    const ta=props.tpm?g.tpm>=props.tpm.line?'above':'below':'';
+    return`<tr>
+      <td>G${player.games.length-i}</td>
+      <td class="${pa}">${g.pts}</td>
+      <td class="${ra}">${g.reb}</td>
+      <td class="${aa}">${g.ast}</td>
+      <td class="${ta}">${g.tpm}</td>
+      <td>${g.stl}</td><td>${g.blk}</td>
+      <td>${g.min}m</td>
+    </tr>`;
+  }).join('');
+
+  const consPts=consistencyScore(player.games,'pts');
+  const consReb=consistencyScore(player.games,'reb');
+  const consAst=consistencyScore(player.games,'ast');
+
+  const propBtns=['pts','reb','ast','tpm'].filter(k=>props[k]).map(k=>{
+    const pd=props[k],edge=edgePct(avgs[k],pd.line);
+    const isV=isStrong(avgs[k],pd.line,k)&&goodOdds(pd.odds);
+    const key=`${player.name}_${k}`;
+    const added=legs.some(l=>l.key===key);
+    const cons=consistencyScore(player.games,k);
+    const oddsColor=pd.odds>0?'var(--gold)':pd.odds>-150?'var(--green)':'var(--text2)';
+    return`<button class="prop-btn${isV?' val-prop':''}${added?' added-prop':''}" data-key="${key}"
+      onclick="toggleLeg('${player.name}','${player.teamAbbr}','${k}','${lbl[k]}',${pd.line},${avgs[k]},${edge},${pd.odds},${cons},'${key}');refreshCells();">
+      <div class="prop-btn-left">
+        <div class="prop-btn-type">${lbl[k]} OVER — ${consLabel(cons)} ${cons}/100</div>
+        <div class="prop-btn-line${isV?' val':''}">${pd.line}</div>
+      </div>
+      <div class="prop-btn-right">
+        <div class="prop-btn-odds" style="color:${oddsColor}">${fmtOdds(pd.odds)}</div>
+        ${isV?`<div class="prop-btn-edge">+${edge}% edge</div>`:`<div style="font-family:var(--mono);font-size:9px;color:var(--text3);">L5 avg ${fmt(avgs[k])}</div>`}
+        <div class="prop-btn-add">${added?'✓ ADDED':'+ ADD'}</div>
+      </div>
+    </button>`;
+  }).join('');
+
+  const varNotes=[varNote(player.games,'pts'),varNote(player.games,'reb'),varNote(player.games,'ast')].filter(Boolean);
+
+  return`<div class="detail-grid">
+    <div>
+      <div class="detail-log-title">
+        <span>L5 GAME LOG — Green = above line, Red = below</span>
+        <span>PTS CONS: ${consPts}/100 · REB: ${consReb}/100 · AST: ${consAst}/100</span>
+      </div>
+      <table class="log-table">
+        <thead><tr>
+          <th>GAME</th>
+          <th>PTS${props.pts?` L${props.pts.line}`:''}</th>
+          <th>REB${props.reb?` L${props.reb.line}`:''}</th>
+          <th>AST${props.ast?` L${props.ast.line}`:''}</th>
+          <th>3PM${props.tpm?` L${props.tpm.line}`:''}</th>
+          <th>STL</th><th>BLK</th><th>MIN</th>
+        </tr></thead>
+        <tbody>${logRows}</tbody>
+        <tr class="log-avgs">
+          <td>L5 AVG</td>
+          <td class="${isStrong(avgs.pts,props.pts?.line,'pts')?'above':''}">${fmt(avgs.pts)}</td>
+          <td class="${isStrong(avgs.reb,props.reb?.line,'reb')?'above':''}">${fmt(avgs.reb)}</td>
+          <td class="${isStrong(avgs.ast,props.ast?.line,'ast')?'above':''}">${fmt(avgs.ast)}</td>
+          <td class="${isStrong(avgs.tpm,props.tpm?.line,'tpm')?'above':''}">${fmt(avgs.tpm)}</td>
+          <td>${fmt(avgs.stl)}</td><td>${fmt(avgs.blk)}</td><td>${fmt(avgs.min)}m</td>
+        </tr>
+      </table>
+      ${varNotes.length?`<div class="variance-note">${varNotes.join(' · ')}</div>`:''}
+    </div>
+    <div>
+      <div class="detail-props-title">AVAILABLE PROPS — CLICK TO ADD/REMOVE</div>
+      <div class="prop-btn-grid">${propBtns||`<div class="no-props">No prop lines loaded</div>`}</div>
+    </div>
+  </div>`;
+}
+
+function togDetail(e,uid){
+  if(e.target.closest('.stat-cell.clickable'))return;
+  const det=document.getElementById('det-'+uid);if(!det)return;
+  const open=det.classList.contains('open');
+  det.classList.toggle('open',!open);
+  det.style.display=open?'none':'block';
+}
+
+function togGame(id){
+  const b=document.getElementById('body-'+id),t=document.getElementById('tog-'+id);
+  b.style.display=b.style.display==='none'?'':'none';
+  t.style.transform=b.style.display==='none'?'rotate(-90deg)':'';
+}
+
+// ══════════════════════════════════
+// LOAD
+// ══════════════════════════════════
+async function loadGames(offset=0){
+  dayOffset=offset;
+  const dt=getDate(offset);
+  Object.keys(teamScheduleCache).forEach(k=>delete teamScheduleCache[k]);
+  document.getElementById('load-btn').disabled=true;
+  document.getElementById('games').innerHTML='';
+  document.getElementById('val-overview').style.display='none';
+  document.getElementById('filter-bar').style.display='none';
+  document.getElementById('next-btn').style.display='none';
+  document.getElementById('prev-btn').style.display='none';
+  allP=[];
+  ss(`LOADING ${dt.label} WNBA SLATE...`,'ld');
+  dbg(`=== LOAD offset=${offset} ===`);
+
+  try{
+    const games=await getSchedule(offset);
+    if(!games.length){ss(`NO WNBA GAMES ON ${dt.label}`,'er');document.getElementById('load-btn').disabled=false;return;}
+    document.getElementById('main-meta').textContent=dt.label.toUpperCase()+' · '+games.length+' GAMES';
+    ss(`${games.length} GAMES — FETCHING ODDS...`,'ld');
+
+    const oddsEvents=await getOddsEvents();
+    ss('LOADING ROSTERS & STATS...','ld');
+
+    const container=document.getElementById('games');
+    for(const game of games){
+      const ph=document.createElement('div');
+      ph.className='game-block';ph.id='ph-'+game.id;
+      ph.innerHTML=`<div class="game-hdr" style="cursor:default;"><div class="game-left"><div class="game-teams">
+        <span class="game-team">${game.teams[0].abbr}</span>
+        <span class="game-vs">vs</span>
+        <span class="game-team">${game.teams[1].abbr}</span>
+      </div></div></div><div class="loading-row">LOADING PLAYERS...</div>`;
+      container.appendChild(ph);
+      loadOneGame(game,oddsEvents,ph,container);
+    }
+  }catch(e){dbg('loadGames: '+e.message,'er');ss('ERROR: '+e.message,'er');}
+  document.getElementById('load-btn').disabled=false;
+}
+
+async function loadOneGame(game,oddsEvents,ph,container){
+  try{
+    const[r1,r2]=await Promise.all([getRoster(game.teams[0].id),getRoster(game.teams[1].id)]);
+    const oddsId=matchGame(game,oddsEvents);
+    const props=oddsId?await getProps(oddsId):{};
+
+    const roster=[
+      ...r1.map(p=>({...p,teamAbbr:game.teams[0].abbr,teamId:game.teams[0].id})),
+      ...r2.map(p=>({...p,teamAbbr:game.teams[1].abbr,teamId:game.teams[1].id})),
+    ].filter(p=>!p.status.toLowerCase().includes('out'));
+
+    const players=await Promise.all(roster.map(async p=>{
+      const games=await getLast5(p.id,p.teamId);
+      const avgs=calcAvgs(games);
+      const mp=avgs?matchProps(p.name,props):{};
+      return{...p,games,avgs,props:mp};
+    }));
+
+    allP.push(...players);
+    const html=renderGame(game,players);
+    const newEl=document.createElement('div');
+    newEl.innerHTML=html;
+    if(ph.parentNode)container.replaceChild(newEl.firstElementChild,ph);
+
+    updateOverview();
+    document.getElementById('filter-bar').style.display='flex';
+    document.getElementById('next-btn').style.display='';
+    document.getElementById('prev-btn').style.display='';
+    document.getElementById('main-meta').textContent=getDate(dayOffset).label.toUpperCase()+' · '+ftime();
+    ss(`LOADED — ${allP.filter(p=>p.avgs).length} PLAYERS — ${allP.filter(p=>Object.keys(p.props||{}).length>0).length} WITH PROP LINES`,'ok');
+  }catch(e){
+    dbg('loadOneGame: '+e.message,'er');
+    if(ph.parentNode)ph.innerHTML=`<div style="padding:14px 16px;font-family:var(--mono);font-size:10px;color:var(--red);">ERROR: ${game.teams[0].abbr} vs ${game.teams[1].abbr}</div>`;
+  }
+}
+</script>
+</body>
+</html>
