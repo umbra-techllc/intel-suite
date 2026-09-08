@@ -57,8 +57,6 @@ main{flex:1;max-width:1080px;width:100%;margin:0 auto;padding:44px 20px 60px;}
 .tool .open{border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:7px 13px;font-size:.82rem;font-weight:700;color:var(--ink);}
 .tool:hover .open{background:var(--c);border-color:var(--c);color:#fff;}
 
-.note{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 22px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;font-size:.86rem;color:var(--ink2);}
-.note b{display:block;font-family:var(--display);font-weight:700;color:var(--ink);font-size:.95rem;margin-bottom:4px;}
 
 footer{border-top:1px solid var(--line);}
 .foot-inner{max-width:1080px;margin:0 auto;padding:18px 20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:.78rem;color:var(--ink3);}
@@ -67,7 +65,6 @@ footer a:hover{color:var(--teal);text-decoration:underline;}
 
 @media (max-width:760px){
   .tools{grid-template-columns:1fr;}
-  .note{grid-template-columns:1fr;}
   main{padding:30px 16px 48px;}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;}}
@@ -79,15 +76,15 @@ footer a:hover{color:var(--teal);text-decoration:underline;}
   <div class="top-inner">
     <span class="mark" aria-hidden="true"></span>
     <div class="brand"><span class="co">Umbra Tech</span><h1>Intel Suite</h1></div>
-    <span class="r">Free browser tools, no login</span>
+    <span class="r">Free to use, no login</span>
   </div>
 </header>
 
 <main>
   <section class="hero">
-    <h2>Screens for markets and player props, built to run in a tab.</h2>
-    <p>Four tools that pull live data, score what they see, and show you the math behind every call. Nothing runs on a server: your watchlists, alerts, and any API keys stay in your browser.</p>
-    <p>Everything here is for information only, not financial or betting advice.</p>
+    <h2>Tools for tracking crypto, defense stocks, and player props.</h2>
+    <p>Each tool pulls live data, gives a signal, and shows the numbers it was based on. Everything runs in your browser. Watchlists, alerts, and API keys are saved locally and never leave your device.</p>
+    <p>For information only, not financial or betting advice.</p>
   </section>
 
   <section class="group">
@@ -147,11 +144,6 @@ footer a:hover{color:var(--teal);text-decoration:underline;}
     </div>
   </section>
 
-  <section class="note">
-    <div><b>How the calls are made</b>Every signal is computed from numbers you can see on the page. Open any row and the score breaks down into its parts.</div>
-    <div><b>Your keys, your browser</b>Optional API keys unlock extra features. They're saved in local storage on your device and never sent anywhere except the provider.</div>
-    <div><b>Data sources</b>Free public APIs. If one of them rate-limits or goes down, the tool says so rather than showing stale numbers as fresh.</div>
-  </section>
 </main>
 
 <footer>
