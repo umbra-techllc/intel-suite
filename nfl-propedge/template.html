@@ -1,0 +1,1374 @@
+<title>NFL PropEdge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: three-column work surface (slate | props | slip), stacking to one column on phones. Light theme only, by design. */
+:root {
+  color-scheme: light;
+  --bg: #EEF1EC;
+  --surface: #FFFFFF;
+  --surface-2: #F6F8F4;
+  --ink: #1B2921;
+  --muted: #55645B;
+  --line: #D3DCD4;
+  --line-strong: #B9C6BC;
+  --accent: #1E4C86;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E2EAF5;
+  --field: #2D6A3E;
+  --field-soft: #E3EFE5;
+  --good: #19703D;
+  --good-soft: #DDF0E3;
+  --bad: #A3311E;
+  --bad-soft: #F7E3DE;
+  --warn: #8A5800;
+  --warn-soft: #F6EBD2;
+  --f-display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Public Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --f-data: "Red Hat Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 8px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45; margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+
+.wrap { max-width: 1440px; margin: 0 auto; padding-inline: 16px; padding-block: 0 40px; }
+
+/* Header */
+.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1440px; margin: 0 auto; padding-inline: 16px; padding-block: 14px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 24px; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.mark { width: 34px; height: 34px; border-radius: 7px; background: var(--field); display: grid; place-items: center; flex: none; }
+.mark svg { display: block; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 28px; letter-spacing: 0.01em; line-height: 1; margin: 0; text-transform: uppercase; }
+.brand .by { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; }
+.meta b { color: var(--ink); font-weight: 600; }
+
+.slate-check { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.top-in .slate-check { width: 100%; justify-content: flex-end; }
+.stale { margin-top: 14px; padding: 10px 14px; border: 1px solid #E6CF9C; background: var(--warn-soft); color: var(--warn); border-radius: var(--r); font-size: 13.5px; }
+.stale b { color: var(--ink); }
+.stale code { font-family: var(--f-data); font-size: 12.5px; color: var(--ink); }
+.chip.live { background: var(--surface-2); border-color: var(--line-strong); color: var(--ink); }
+.game.done { opacity: 0.6; }
+.lines-bar { margin-block: 14px; padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; }
+.lines-bar h2 { font-family: var(--f-display); font-size: 18px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 2px; }
+.lines-bar p { margin: 0; max-width: 80ch; }
+.lines-bar p b { color: var(--ink); font-weight: 600; }
+.lb-controls { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; justify-content: flex-end; }
+.lb-controls input, .lb-controls select { border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); padding: 6px 9px; font-size: 13px; color: var(--ink); }
+.lb-controls input { width: 170px; font-family: var(--f-data); }
+.lb-meta { grid-column: 1 / -1; }
+.lb-meta:empty { display: none; }
+.src { font-size: 11px; font-weight: 600; color: var(--accent); }
+@media (max-width: 900px) { .lines-bar { grid-template-columns: 1fr; } .lb-controls { justify-content: flex-start; } }
+
+/* Grid */
+.grid { display: grid; grid-template-columns: 260px minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+.panel-h h2 { font-family: var(--f-display); font-size: 18px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin: 0; }
+.panel-h .sub { font-size: 12px; color: var(--muted); }
+.sticky { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+
+/* Slate */
+.games { display: flex; flex-direction: column; padding: 6px; gap: 2px; max-height: calc(100vh - 140px); overflow-y: auto; }
+.game { text-align: left; border: 1px solid transparent; background: none; border-radius: 6px; padding: 9px 10px; display: grid; gap: 3px; }
+.game:hover { background: var(--surface-2); }
+.game[aria-pressed="true"] { background: var(--accent-soft); border-color: #BCCDE6; }
+.game .g1 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.game .mu { font-family: var(--f-display); font-weight: 600; font-size: 17px; letter-spacing: 0.03em; }
+.game .ko { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.game .g2 { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted); }
+.game .g2 .num { color: var(--ink); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.wet { background: var(--accent-soft); border-color: #BCCDE6; color: var(--accent); }
+.chip.q { background: var(--warn-soft); border-color: #E6CF9C; color: var(--warn); }
+.chip.dome { background: var(--field-soft); border-color: #BFD8C4; color: var(--field); }
+
+/* Controls */
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.tabs { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+.tabs button { border: 0; background: var(--surface); padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.tabs button + button { border-left: 1px solid var(--line-strong); }
+.tabs button[aria-selected="true"] { background: var(--ink); color: #FFFFFF; }
+.field { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.field input[type="search"], .field select { border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); padding: 6px 9px; font-size: 13px; color: var(--ink); }
+.field input[type="search"] { width: 170px; }
+.count { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+/* Prop rows */
+.rows { display: flex; flex-direction: column; }
+.props-panel { container-type: inline-size; min-width: 0; }
+.row-head, .row-main { display: grid; grid-template-columns: minmax(150px, 1.7fr) 62px 80px 54px 112px minmax(90px, 1fr) 70px; gap: 10px; align-items: center; padding: 9px 14px; }
+.row-head { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.row { border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row-main { cursor: pointer; }
+.row-main:hover { background: var(--surface-2); }
+.row.open .row-main { background: var(--surface-2); }
+.who { min-width: 0; display: flex; gap: 10px; align-items: center; }
+.tm { flex: none; width: 38px; height: 26px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--line); display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
+.who-t { min-width: 0; }
+.who .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who .ctx { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.mkt-m { font-weight: 600; }
+.proj { font-family: var(--f-data); font-weight: 600; font-size: 15px; }
+.line-in { width: 100%; border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 6px; font-family: var(--f-data); font-size: 14px; text-align: right; background: var(--surface); }
+.line-in.est { border-style: dashed; color: var(--muted); }
+.pct { font-family: var(--f-data); font-size: 14px; }
+.pick { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 12px; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 5px; white-space: nowrap; }
+.pick.over { background: var(--good-soft); color: var(--good); }
+.pick.under { background: var(--bad-soft); color: var(--bad); }
+.pick.none { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.pick .num { font-weight: 500; }
+.pick.est { background: transparent; border: 1px dashed currentColor; }
+
+/* Score bar drawn as a field: 0 to 100 with ten-yard lines */
+.score { display: flex; align-items: center; gap: 8px; }
+.score .val { font-family: var(--f-data); font-weight: 600; width: 24px; text-align: right; }
+.yard { position: relative; flex: 1; height: 12px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden;
+  background-image: repeating-linear-gradient(90deg, transparent 0, transparent calc(10% - 1px), var(--line) calc(10% - 1px), var(--line) 10%); }
+.yard i { position: absolute; inset: 0 auto 0 0; background: var(--field); opacity: 0.85; }
+.yard i.mid { background: #7D9A84; }
+.yard i.low { background: #B9C6BC; }
+
+.adds { display: flex; gap: 4px; justify-content: flex-end; }
+.add { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 5px; padding: 4px 7px; font-size: 12px; font-weight: 700; }
+.add:hover { border-color: var(--accent); color: var(--accent); }
+.add.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.hits { display: flex; gap: 3px; margin-top: 4px; }
+.hits span { width: 14px; height: 5px; border-radius: 2px; background: var(--line); }
+.hits span.o { background: var(--good); }
+.hits span.u { background: var(--bad); opacity: 0.75; }
+
+/* Detail */
+.detail { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 18px; padding: 6px 14px 16px; background: var(--surface-2); }
+.detail h3 { font-family: var(--f-display); font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 8px 0 8px; }
+.why { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; }
+.why li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed var(--line); padding-bottom: 5px; }
+.why li span:last-child { font-family: var(--f-data); white-space: nowrap; }
+.why .up { color: var(--good); }
+.why .dn { color: var(--bad); }
+.note { font-size: 12px; color: var(--warn); margin-top: 8px; }
+.ladder { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ladder td { padding: 4px 0; border-bottom: 1px dashed var(--line); }
+.ladder td:first-child { font-family: var(--f-data); width: 62px; }
+.ladder td:last-child { font-family: var(--f-data); text-align: right; width: 46px; }
+.lb { height: 8px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.lb i { display: block; height: 100%; background: var(--field); opacity: 0.8; }
+.ladder tr.cur td { font-weight: 700; }
+.odds-in { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.odds-in label { font-size: 12px; color: var(--muted); display: grid; gap: 3px; }
+.odds-in input { width: 78px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 6px; font-family: var(--f-data); text-align: right; background: var(--surface); }
+.logchart svg { width: 100%; height: auto; display: block; }
+
+.empty { padding: 30px 14px; text-align: center; color: var(--muted); }
+
+/* Slip */
+.slip-legs { display: flex; flex-direction: column; }
+.leg { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.leg .lt { font-weight: 600; min-width: 0; }
+.leg .ls { font-size: 12px; color: var(--muted); }
+.leg .lr { display: flex; align-items: center; gap: 6px; }
+.leg input { width: 62px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 3px 5px; font-family: var(--f-data); font-size: 13px; text-align: right; background: var(--surface); }
+.rm { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 4px; }
+.rm:hover { color: var(--bad); }
+.slip-empty { padding: 18px 14px; color: var(--muted); font-size: 13px; }
+.corr { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; }
+.corr h3, .totals h3 { font-family: var(--f-display); font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.cp { font-size: 12.5px; display: flex; gap: 8px; align-items: flex-start; }
+.cp .tag { flex: none; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 4px; margin-top: 1px; }
+.cp .tag.pos { background: var(--good-soft); color: var(--good); }
+.cp .tag.neg { background: var(--bad-soft); color: var(--bad); }
+.totals { padding: 12px 14px; display: grid; gap: 8px; }
+.tot { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+.tot .num { font-size: 15px; font-weight: 600; }
+.tot.big .num { font-size: 22px; }
+.ev.pos { color: var(--good); }
+.ev.neg { color: var(--bad); }
+.fine { font-size: 12px; color: var(--muted); }
+.clear { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; }
+
+/* Umbra Read */
+.read { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.detail > .read { grid-column: 1 / -1; margin-top: 10px; }
+.read-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.read-h h3 { margin: 0; font-family: var(--f-display); font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink); }
+.read-btn { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; }
+.read-btn.ghost { background: var(--surface); color: var(--accent); }
+.read-btn:disabled { opacity: 0.55; cursor: default; }
+.read-out { font-size: 13.5px; line-height: 1.5; max-width: 75ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.read-out:empty { display: none; }
+.read-out.wait { color: var(--muted); font-style: italic; }
+.read-out.err { color: var(--bad); }
+.read-out .watch { display: block; margin-top: 6px; color: var(--warn); }
+.read-meta { font-size: 11.5px; color: var(--muted); }
+.vd { display: inline-flex; gap: 6px; align-items: center; font-weight: 700; font-size: 12px; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 5px; text-transform: uppercase; background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.vd.over, .vd.play { background: var(--good-soft); color: var(--good); border-color: transparent; }
+.vd.under { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+.vd.trim { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.vd .cf { font-weight: 500; }
+.build { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; background: var(--surface-2); }
+.build-r { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.build select { border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); padding: 5px 8px; font-size: 13px; }
+.build .fine b { color: var(--ink); font-weight: 600; }
+.slip .read { margin: 0 14px 14px; }
+.keybox { margin-top: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.keybox .build-r input { flex: 1; min-width: 200px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 9px; font-family: var(--f-data); font-size: 13px; background: var(--surface); }
+
+/* Method */
+.method { margin-top: 16px; }
+.method summary { cursor: pointer; padding: 12px 14px; font-family: var(--f-display); font-size: 17px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.method .mb { padding: 0 14px 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; font-size: 13px; color: var(--muted); }
+.method .mb p { margin: 0; max-width: 62ch; }
+.method .mb b { color: var(--ink); }
+.foot { margin-top: 14px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+/* Responsive */
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: 230px minmax(0, 1fr); }
+  .slip { grid-column: 1 / -1; }
+  .sticky.slipbox { position: static; }
+}
+@container (max-width: 720px) {
+  .row-head { display: none; }
+  .row-main { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "who proj adds" "line pct pick" "score score score"; gap: 8px 12px; }
+  .row-main > .who { grid-area: who; }
+  .row-main > .projc { grid-area: proj; text-align: right; }
+  .row-main > .linec { grid-area: line; display: flex; align-items: center; gap: 6px; }
+  .row-main > .linec::before { content: "Line"; font-size: 12px; color: var(--muted); }
+  .row-main > .linec .line-in { width: 84px; }
+  .row-main > .pctc { grid-area: pct; text-align: right; }
+  .row-main > .pickc { grid-area: pick; text-align: right; }
+  .row-main > .scorec { grid-area: score; }
+  .row-main > .adds { grid-area: adds; }
+  .projc::before { content: "Proj "; font-family: var(--f-body); font-size: 12px; color: var(--muted); font-weight: 400; }
+  .pctc::before { content: "Hit "; font-family: var(--f-body); font-size: 12px; color: var(--muted); }
+}
+@container (max-width: 900px) {
+  .detail { grid-template-columns: 1fr 1fr; }
+  .detail > .why-col { grid-column: 1 / -1; }
+}
+@container (max-width: 560px) {
+  .detail { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .sticky { position: static; }
+  .games { flex-direction: row; overflow-x: auto; max-height: none; padding: 8px; gap: 6px; }
+  .game { flex: none; width: 200px; border-color: var(--line); }
+  .field input[type="search"] { width: 140px; }
+  .count { margin-left: 0; width: 100%; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .yard i { transition: width .25s ease; }
+}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 22 22"><g stroke="#FFFFFF" stroke-width="1.6" fill="none" stroke-linecap="round"><ellipse cx="11" cy="11" rx="9" ry="5.6" transform="rotate(-35 11 11)"/><path d="M8.3 13.7l5.4-5.4M9.6 9.9l1.5 1.5M11 8.5l1.5 1.5M8.2 11.3l1.5 1.5"/></g></svg>
+      </div>
+      <div>
+        <h1>NFL PropEdge</h1>
+        <div class="by">Umbra Tech</div>
+      </div>
+    </div>
+    <div class="meta" id="meta"></div>
+    <div class="slate-check" id="slateCheck" hidden>
+      <button class="read-btn ghost" id="checkSlate" type="button">Check for new slate</button>
+      <span class="read-meta" id="slateMsg" role="status"></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="stale" id="stale" role="status" hidden></div>
+  <section class="panel lines-bar" aria-label="Sportsbook lines">
+    <div class="lb-text">
+      <h2>Sportsbook lines</h2>
+      <p class="fine" id="linesStatus"><b>Dashed lines are estimates</b>, set halfway between the player's recent average and the projection. Load live lines with an Odds API key, or type your book's line into any row.</p>
+    </div>
+    <div class="lb-controls">
+      <label class="field" for="oddsKey">Odds API key
+        <input type="password" id="oddsKey" placeholder="Paste key" autocomplete="off">
+      </label>
+      <label class="field" for="oddsBook">Book
+        <select id="oddsBook">
+          <option value="best">Best price</option>
+          <option value="draftkings">DraftKings</option>
+          <option value="fanduel">FanDuel</option>
+          <option value="betmgm">BetMGM</option>
+          <option value="williamhill_us">Caesars</option>
+          <option value="espnbet">ESPN BET</option>
+          <option value="betrivers">BetRivers</option>
+        </select>
+      </label>
+      <button class="read-btn" id="loadLines" type="button">Load lines</button>
+      <button class="read-btn ghost" id="resetLines" type="button">Back to estimates</button>
+    </div>
+    <div class="lb-meta read-meta" id="linesMeta"></div>
+  </section>
+
+  <div class="grid">
+    <aside class="panel sticky" aria-label="Games">
+      <div class="panel-h"><h2>Slate</h2><span class="sub" id="slateSub"></span></div>
+      <div class="games" id="games"></div>
+    </aside>
+
+    <section class="panel props-panel" aria-label="Player props">
+      <div class="panel-h"><h2 id="propsTitle">All games</h2><span class="sub">Tap a row for the breakdown</span></div>
+      <div class="controls">
+        <div class="tabs" role="tablist" id="tabs">
+          <button role="tab" data-k="all" aria-selected="true">All</button>
+          <button role="tab" data-k="pass" aria-selected="false">Passing</button>
+          <button role="tab" data-k="rush" aria-selected="false">Rushing</button>
+          <button role="tab" data-k="rec" aria-selected="false">Receiving</button>
+        </div>
+        <label class="field" for="q">Find <input type="search" id="q" placeholder="Player or team"></label>
+        <label class="field" for="sort">Sort
+          <select id="sort">
+            <option value="score">Play score</option>
+            <option value="proj">Projection</option>
+            <option value="edge">Edge vs line</option>
+            <option value="kick">Kickoff</option>
+          </select>
+        </label>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="row-head" aria-hidden="true">
+        <span>Player</span><span>Proj</span><span>Line</span><span>Hit %</span><span>Pick</span><span>Play score</span><span style="text-align:right">Add</span>
+      </div>
+      <div class="rows" id="rows"></div>
+    </section>
+
+    <aside class="panel sticky slipbox slip" aria-label="Parlay slip">
+      <div class="panel-h"><h2>Parlay slip</h2><button class="clear" id="clear" type="button">Clear</button></div>
+      <div class="build" id="build" hidden>
+        <div class="build-r">
+          <label class="field" for="buildSize">Size
+            <select id="buildSize">
+              <option value="2">2 legs, safer</option>
+              <option value="3" selected>3 legs</option>
+              <option value="4">4 legs</option>
+              <option value="5">5 legs, long shot</option>
+            </select>
+          </label>
+          <button class="read-btn" id="buildBtn" type="button">Build a parlay</button>
+        </div>
+        <div class="fine">Umbra Read picks from the top-rated props in <b id="buildScope">all games</b> and replaces what's on the slip.</div>
+        <div class="read-out" id="buildOut"></div>
+      </div>
+      <div class="slip-legs" id="legs"></div>
+      <div class="corr" id="corr" hidden></div>
+      <div class="totals" id="totals" hidden></div>
+      <div class="read" id="pread" hidden>
+        <div class="read-h"><h3>Umbra Read</h3><button class="read-btn" id="preadBtn" type="button">Read this parlay</button></div>
+        <div class="read-out" id="preadOut"></div>
+      </div>
+    </aside>
+  </div>
+
+  <details class="panel method">
+    <summary>How the projections work</summary>
+    <div class="mb">
+      <p><b>Usage first.</b> Receiving yards start from target share times projected team pass attempts. Rushing yards start from carry share times projected team carries. Passing yards start from projected attempts times yards per attempt. Share and efficiency are more stable week to week than raw yardage.</p>
+      <p><b>Small samples get pulled toward a baseline.</b> Recent games count more, but every rate is blended with the player's 2025 numbers (or a position average) until the 2026 sample is big enough to stand on its own.</p>
+      <p><b>Game script from the market.</b> The spread moves volume: favorites run more and throw less, underdogs do the opposite. The implied team total nudges efficiency up or down.</p>
+      <p><b>Opponent.</b> Each defense's yards allowed versus league average, by unit and by receiving position, shrunk toward average over its first four games.</p>
+      <p><b>Injuries.</b> Players listed Out, Doubtful or on IR are removed. When a team's remaining receivers or backs account for less than a normal share of the work, their shares are scaled up to cover what was vacated.</p>
+      <p><b>Hit rates.</b> Outcomes are modeled with a right-skewed distribution centered on the projection, since yardage has a hard floor and a long upper tail. Edge is the model's hit rate minus the break-even rate implied by the odds.</p>
+      <p><b>Parlays.</b> Legs from the same game are adjusted for correlation (a QB and his receivers move together, a big-favorite run game pulls against its own passing). Legs from different games are treated as independent.</p>
+      <p><b>Umbra Read.</b> A written take on a prop or a parlay, generated from the same numbers on this page: the projection, drivers, line, odds, game context and game log. It doesn't see news beyond the injury report, so treat it as a second opinion on the model, not new information.</p>
+    </div>
+  </details>
+
+  <div class="panel keybox" id="keybox" hidden>
+    <div class="read-h"><h3>Umbra Read setup</h3></div>
+    <div class="fine">On a self-hosted copy, Umbra Read runs on your own API key. It's saved only in this browser.</div>
+    <div class="build-r">
+      <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" aria-label="API key">
+      <button class="read-btn" id="saveKey" type="button">Save key</button>
+      <button class="read-btn ghost" id="clearKey" type="button">Remove</button>
+    </div>
+    <div class="read-meta" id="keyMsg"></div>
+  </div>
+
+  <div class="foot">
+    <span>Stats: nflverse. Schedule, odds, weather and injuries: ESPN.</span>
+    <span>21+. For research and entertainment. Not betting advice.</span>
+    <span>Umbra Technologies LLC</span>
+  </div>
+</main>
+
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+// Newest published build. The refresh workflow writes this file next to the page on GitHub Pages.
+const PE_DATA_URL = 'https://umbra-techllc.github.io/intel-suite/nfl_propedge_data.json';
+const PE_CAN_FETCH = !window.claude;
+async function peLatest(timeoutMs) {
+  if (!PE_CAN_FETCH) return null;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(PE_DATA_URL + '?t=' + Date.now(), { cache: 'no-store', signal: ctl.signal });
+    if (!r.ok) return null;
+    const j = await r.json();
+    return j && Array.isArray(j.games) && Array.isArray(j.props) && j.built ? j : null;
+  } catch (e) { return null; } finally { clearTimeout(timer); }
+}
+(async function () {
+  let D = JSON.parse(document.getElementById('data').textContent);
+  const fresh = await peLatest(3500);
+  if (fresh && fresh.built > D.built) D = fresh;
+  const KIND = { pass: 'Pass yds', rush: 'Rush yds', rec: 'Rec yds' };
+  const STEP = { pass: 15, rush: 10, rec: 10 };
+  const games = Object.fromEntries(D.games.map(g => [g.id, g]));
+  const props = Object.fromEntries(D.props.map(p => [p.id, p]));
+
+  // ---------- persisted per-viewer state ----------
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('pe-nfl-' + D.season + '-' + D.week + '-' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('pe-nfl-' + D.season + '-' + D.week + '-' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const S = {
+    game: 'all', kind: 'all', q: '', sort: 'score', open: null,
+    lines: store.get('lines', {}),   // id -> number
+    src: store.get('src', {}),       // id -> book title for lines loaded from the Odds API
+    odds: store.get('odds', {}),     // id -> {o, u}
+    slip: store.get('slip', []),     // [{id, side}]
+    reads: {},                       // id -> {status, text, err, line}
+    pread: null                      // {sig, status, text, err}
+  };
+  S.slip = S.slip.filter(l => props[l.id]);
+
+  // ---------- math ----------
+  function gammaln(x) {
+    const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+    let y = x, tmp = x + 5.5; tmp -= (x + 0.5) * Math.log(tmp);
+    let ser = 1.000000000190015;
+    for (let j = 0; j < 6; j++) ser += c[j] / ++y;
+    return -tmp + Math.log(2.5066282746310005 * ser / x);
+  }
+  function gammp(a, x) { // regularized lower incomplete gamma P(a, x)
+    if (x <= 0) return 0;
+    const gln = gammaln(a);
+    if (x < a + 1) {
+      let ap = a, sum = 1 / a, del = sum;
+      for (let n = 0; n < 500; n++) { ap += 1; del *= x / ap; sum += del; if (Math.abs(del) < Math.abs(sum) * 1e-12) break; }
+      return sum * Math.exp(-x + a * Math.log(x) - gln);
+    }
+    const FP = 1e-300;
+    let b = x + 1 - a, c = 1 / FP, d = 1 / b, h = d;
+    for (let i = 1; i < 500; i++) {
+      const an = -i * (i - a); b += 2;
+      d = an * d + b; if (Math.abs(d) < FP) d = FP;
+      c = b + an / c; if (Math.abs(c) < FP) c = FP;
+      d = 1 / d; const del = d * c; h *= del;
+      if (Math.abs(del - 1) < 1e-12) break;
+    }
+    return 1 - Math.exp(-x + a * Math.log(x) - gln) * h;
+  }
+  const pOver = (p, line) => 1 - gammp(p.k, line / p.theta);
+  const dec = o => (o > 0 ? 1 + o / 100 : 1 + 100 / Math.abs(o));
+  const breakeven = o => 1 / dec(o);
+  const fmtOdds = o => (o > 0 ? '+' + o : String(o));
+  const pct = x => (x * 100).toFixed(0) + '%';
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const lineOf = p => (S.lines[p.id] != null ? S.lines[p.id] : p.estLine);
+  const isEst = p => S.lines[p.id] == null;
+  const oddsOf = p => S.odds[p.id] || { o: -110, u: -110 };
+
+  function evaluate(p) {
+    const line = lineOf(p), od = oddsOf(p);
+    const po = pOver(p, line), pu = 1 - po;
+    const eo = po - breakeven(od.o), eu = pu - breakeven(od.u);
+    const side = eo >= eu ? 'over' : 'under';
+    const edge = Math.max(eo, eu);
+    let score = 50 + edge * 160;
+    if (p.status === 'Questionable') score -= 8;
+    if (p.n <= 2) score -= 6;
+    score = Math.max(0, Math.min(99, Math.round(score)));
+    const hits = p.logs.map(l => (l[p.kind] > line ? 'o' : 'u'));
+    return { line, po, pu, side, edge, score, hits, od };
+  }
+
+  // ---------- header ----------
+  const fmtKick = iso => new Date(iso).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET';
+  const built = new Date(D.built).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+  document.getElementById('meta').innerHTML =
+    `<span><b>${D.season} Week ${D.week}</b></span><span><b id="openCount">${D.games.length}</b> games open</span><span>Stats through Week ${D.statsThrough}</span><span>Updated ${esc(built)} ET</span>`;
+  document.getElementById('slateSub').textContent = 'Spread · total · team totals';
+
+  // ---------- slate freshness ----------
+  // Kickoff + 4 hours is treated as finished. The page only knows the week it was built for.
+  const GAME_LEN = 4 * 3600 * 1000;
+  const startedAt = g => Date.parse(g.kickoff);
+  const hasStarted = g => Date.now() >= startedAt(g);
+  const isOver = g => Date.now() >= startedAt(g) + GAME_LEN;
+  function renderStale() {
+    const el = document.getElementById('stale');
+    const left = D.games.filter(g => !isOver(g)).length;
+    document.getElementById('openCount').textContent = D.games.filter(g => !hasStarted(g)).length;
+    const lastEnd = Math.max(...D.games.map(g => startedAt(g) + GAME_LEN));
+    if (!left) {
+      const ago = Math.max(1, Math.round((Date.now() - lastEnd) / 86400000));
+      el.innerHTML = `<b>This page still has the Week ${D.week} slate, and those games are over</b> (the last one ended about ${ago} day${ago === 1 ? '' : 's'} ago). ${PE_CAN_FETCH ? 'Click <b>Check for new slate</b> at the top to load the newest build. A new week is published automatically every morning and evening once its lines are posted.' : 'A new build is published automatically every morning and evening once the next week\'s lines are posted.'}`;
+      el.hidden = false;
+    } else if (D.games.some(hasStarted)) {
+      const n = D.games.filter(hasStarted).length;
+      el.innerHTML = `<b>${n} of ${D.games.length} Week ${D.week} game${n === 1 ? ' has' : 's have'} already kicked off.</b> Finished games are dimmed in the slate, and games under way are skipped when loading lines.`;
+      el.hidden = false;
+    } else el.hidden = true;
+  }
+
+  // ---------- slate ----------
+  function teamSpread(g) {
+    const fav = g.homeSpread <= 0 ? g.home : g.away;
+    const v = Math.abs(g.homeSpread);
+    return v === 0 ? 'Pick' : `${fav} −${v}`;
+  }
+  function wxChip(g) {
+    if (g.indoor) return '<span class="chip dome">Dome</span>';
+    if (g.wet) return `<span class="chip wet">${esc(g.weather)}</span>`;
+    if (g.temp == null && !g.weather) return '';
+    return `<span class="chip">${g.temp != null ? g.temp + '°' : ''} ${esc(g.weather || '')}</span>`;
+  }
+  function renderGames() {
+    const el = document.getElementById('games');
+    const sorted = D.games.slice().sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+    let html = `<button class="game" data-g="all" aria-pressed="${S.game === 'all'}"><div class="g1"><span class="mu">All games</span><span class="ko">${D.props.length} props</span></div></button>`;
+    for (const g of sorted) {
+      const st = isOver(g) ? '<span class="chip live">Final</span>' : hasStarted(g) ? '<span class="chip live">In progress</span>' : '';
+      html += `<button class="game${isOver(g) ? ' done' : ''}" data-g="${g.id}" aria-pressed="${S.game === g.id}">
+        <div class="g1"><span class="mu">${g.away} @ ${g.home}</span><span class="ko">${st || fmtKick(g.kickoff)}</span></div>
+        <div class="g2"><span class="num">${teamSpread(g)}</span><span>O/U <span class="num">${g.total}</span></span></div>
+        <div class="g2"><span>${g.away} <span class="num">${g.awayITT}</span></span><span>${g.home} <span class="num">${g.homeITT}</span></span>${wxChip(g)}</div>
+      </button>`;
+    }
+    el.innerHTML = html;
+  }
+  document.getElementById('games').addEventListener('click', e => {
+    const b = e.target.closest('.game'); if (!b) return;
+    S.game = b.dataset.g; S.open = null; renderGames(); renderRows();
+  });
+
+  // ---------- rows ----------
+  function filtered() {
+    const q = S.q.trim().toLowerCase();
+    let list = D.props.filter(p =>
+      (S.game === 'all' || p.game === S.game) &&
+      (S.kind === 'all' || p.kind === S.kind) &&
+      (!q || p.name.toLowerCase().includes(q) || p.team.toLowerCase() === q || p.opp.toLowerCase() === q));
+    const ev = Object.fromEntries(list.map(p => [p.id, evaluate(p)]));
+    const by = {
+      score: (a, b) => ev[b.id].score - ev[a.id].score,
+      proj: (a, b) => b.mu - a.mu,
+      edge: (a, b) => ev[b.id].edge - ev[a.id].edge,
+      kick: (a, b) => games[a.game].kickoff.localeCompare(games[b.game].kickoff) || ev[b.id].score - ev[a.id].score
+    }[S.sort];
+    list.sort(by);
+    return { list, ev };
+  }
+
+  function rowMain(p, e) {
+    const inSlip = side => S.slip.some(l => l.id === p.id && l.side === side);
+    const tier = e.score >= 70 ? '' : e.score >= 58 ? 'mid' : 'low';
+    const pickLabel = e.edge > 0.01 ? `<span class="pick ${e.side}${isEst(p) ? ' est' : ''}" title="${isEst(p) ? 'Based on the estimated line. Enter your book line for the real edge.' : ''}">${e.side === 'over' ? 'OVER' : 'UNDER'} <span class="num">+${(e.edge * 100).toFixed(1)}</span></span>` : '<span class="pick none">NO EDGE</span>';
+    const status = p.status === 'Questionable' ? '<span class="chip q">Q</span>' : '';
+    const ha = p.home ? 'vs' : '@';
+    return `<div class="row-main" data-id="${p.id}">
+      <div class="who"><span class="tm">${p.team}</span><div class="who-t"><div class="nm">${esc(p.name)}</div>
+        <div class="ctx"><span>${p.pos} ${ha} ${p.opp}</span>${status}<span class="mkt-m">${KIND[p.kind]}</span></div>
+        <div class="hits" title="Last ${e.hits.length} games vs this line">${e.hits.map(h => `<span class="${h}"></span>`).join('')}</div></div></div>
+      <span class="proj projc">${p.median.toFixed(1)}</span>
+      <span class="linec"><input class="line-in${isEst(p) ? ' est' : ''}" id="line-${p.id}" data-id="${p.id}" type="number" inputmode="decimal" step="0.5" value="${e.line}" aria-label="Line for ${esc(p.name)} ${KIND[p.kind]}"></span>
+      <span class="pct pctc">${pct(e.side === 'over' ? e.po : e.pu)}</span>
+      <span class="pickc">${pickLabel}</span>
+      <span class="score scorec"><span class="val">${e.score}</span><span class="yard"><i class="${tier}" style="width:${e.score}%"></i></span></span>
+      <span class="adds"><button class="add${inSlip('over') ? ' on' : ''}" data-add="over" data-id="${p.id}" type="button" aria-label="Add over to slip">O</button><button class="add${inSlip('under') ? ' on' : ''}" data-add="under" data-id="${p.id}" type="button" aria-label="Add under to slip">U</button></span>
+    </div>`;
+  }
+
+  function whyList(p) {
+    const d = p.drivers, L = D.league, out = [];
+    const f = (x, digits = 1) => Number(x).toFixed(digits);
+    const signed = (m, txt) => { const v = (m - 1) * 100; const cls = v > 0.5 ? 'up' : v < -0.5 ? 'dn' : ''; return `<span class="${cls}">${txt} ${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)}%</span>`; };
+    const fav = d.spreadFor > 0 ? `Favored by ${f(d.spreadFor)}` : d.spreadFor < 0 ? `Underdog by ${f(-d.spreadFor)}` : 'Pick em';
+    if (p.kind === 'pass') {
+      out.push(['Projected pass attempts', f(d.att)]);
+      out.push(['Yards per attempt (blended)', f(d.ypa, 2)]);
+      out.push([`Game script: ${fav}`, signed(d.scriptPass, 'volume')]);
+      out.push([`${p.opp} pass defense`, signed(d.oppF, 'yards')]);
+      out.push([`Team total ${f(d.itt)} (avg ${f(L.pts)})`, signed(d.ittF, 'efficiency')]);
+    } else if (p.kind === 'rush') {
+      out.push(['Carry share', pct(d.cshare)]);
+      out.push(['Projected team carries', f(d.teamCar)]);
+      out.push(['Projected carries', f(d.car)]);
+      out.push(['Yards per carry (blended)', f(d.ypc, 2)]);
+      out.push([`Game script: ${fav}`, signed(d.scriptRush, 'volume')]);
+      out.push([`${p.opp} run defense`, signed(d.oppF, 'yards')]);
+      if (d.boost > 1.01) out.push(['Vacated carries picked up', signed(d.boost, 'share')]);
+    } else {
+      out.push(['Target share', pct(d.tshare)]);
+      out.push(['Projected team pass attempts', f(d.teamAtt)]);
+      out.push(['Projected targets', f(d.tgt)]);
+      out.push(['Yards per target (blended)', f(d.ypt, 2)]);
+      out.push([`${p.opp} vs ${p.pos}s`, signed(d.oppF, 'yards')]);
+      out.push([`Game script: ${fav}`, signed(d.scriptPass, 'volume')]);
+      if (d.boost > 1.01) out.push(['Vacated targets picked up', signed(d.boost, 'share')]);
+    }
+    if (d.wet) out.push(['Rain in the forecast', '<span class="dn">yards −5%</span>']);
+    return out.map(([a, b]) => `<li><span>${a}</span><span>${b}</span></li>`).join('');
+  }
+
+  function ladder(p, e) {
+    const step = STEP[p.kind];
+    const center = Math.floor(p.median / 5) * 5 + 0.5;
+    const rows = [];
+    for (let i = -3; i <= 3; i++) {
+      const ln = Math.max(0.5, center + i * step);
+      rows.push(ln);
+    }
+    rows.push(e.line);
+    const uniq = [...new Set(rows)].sort((a, b) => a - b);
+    rows.length = 0; rows.push(...uniq);
+    return `<table class="ladder"><tbody>${rows.map(ln => {
+      const po = pOver(p, ln);
+      return `<tr class="${ln === e.line ? 'cur' : ''}"><td>${ln.toFixed(1)}</td><td><div class="lb"><i style="width:${(po * 100).toFixed(1)}%"></i></div></td><td>${pct(po)}</td></tr>`;
+    }).join('')}</tbody></table>`;
+  }
+
+  function logChart(p, e) {
+    const logs = p.logs, W = 300, H = 150, padL = 30, padB = 22, padT = 10, padR = 6;
+    const vals = logs.map(l => l[p.kind]);
+    const top = Math.max(e.line, p.median, ...vals) * 1.15 || 10;
+    const niceStep = top > 300 ? 100 : top > 150 ? 50 : top > 60 ? 25 : 10;
+    const yMax = Math.ceil(top / niceStep) * niceStep;
+    const y = v => padT + (H - padT - padB) * (1 - v / yMax);
+    const n = Math.max(logs.length, 1), bw = (W - padL - padR) / n;
+    let g = '';
+    for (let t = 0; t <= yMax; t += niceStep) {
+      g += `<line x1="${padL}" x2="${W - padR}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="1"/>`;
+      g += `<text x="${padL - 5}" y="${y(t) + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-data)">${t}</text>`;
+    }
+    logs.forEach((l, i) => {
+      const v = l[p.kind], x = padL + i * bw + bw * 0.2, w = bw * 0.6, over = v > e.line;
+      g += `<rect x="${x}" y="${y(v)}" width="${w}" height="${Math.max(0, y(0) - y(v))}" rx="2" fill="${over ? 'var(--good)' : 'var(--bad)'}" fill-opacity="${over ? 0.85 : 0.6}"/>`;
+      g += `<text x="${x + w / 2}" y="${y(v) - 4}" text-anchor="middle" font-size="10.5" fill="var(--ink)" font-family="var(--f-data)">${v}</text>`;
+      g += `<text x="${x + w / 2}" y="${H - 7}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="var(--f-body)">W${l.wk} ${l.opp}</text>`;
+    });
+    g += `<line x1="${padL}" x2="${W - padR}" y1="${y(e.line)}" y2="${y(e.line)}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    g += `<text x="${padL + 4}" y="${y(e.line) - 4}" text-anchor="start" font-size="10" font-weight="600" fill="var(--accent)" stroke="var(--surface-2)" stroke-width="3" paint-order="stroke" font-family="var(--f-data)">line ${e.line}</text>`;
+    const vol = p.kind === 'pass' ? logs.map(l => `${l.att} att`) : p.kind === 'rush' ? logs.map(l => `${l.car} car`) : logs.map(l => `${l.tgt} tgt`);
+    return `<div class="logchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Game log">${g}</svg></div>
+      <div class="fine" style="margin-top:4px">Volume by game: ${vol.join(' · ')}</div>`;
+  }
+
+  function detail(p, e) {
+    const od = e.od;
+    const rd = S.reads[p.id];
+    const readBlock = aiOn() ? `<div class="read" id="read-${p.id}">
+        <div class="read-h"><h3>Umbra Read</h3><button class="read-btn${rd && rd.status === 'done' ? ' ghost' : ''}" data-read="${p.id}" type="button"${rd && (rd.status === 'wait' || rd.status === 'stream') ? ' disabled' : ''}>${rd && rd.status === 'done' ? 'Read again' : 'Get the read'}</button>${rd && rd.status === 'done' && rd.line !== e.line ? '<span class="read-meta">Line changed since this read</span>' : ''}</div>
+        <div class="read-out" id="readout-${p.id}"></div>
+      </div>` : '';
+    return `<div class="detail">
+      ${readBlock}
+      <div class="why-col"><h3>What drives the number</h3><ul class="why">${whyList(p)}</ul>
+        <div class="fine" style="margin-top:8px">Projected average ${p.mu.toFixed(1)}, median ${p.median.toFixed(1)}.</div>
+        ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}</div>
+      <div><h3>Alt lines · chance of over</h3>${ladder(p, e)}
+        <div class="odds-in">
+          <label for="oo-${p.id}">Over odds<input id="oo-${p.id}" data-odds="o" data-id="${p.id}" type="number" step="5" value="${od.o}"></label>
+          <label for="uo-${p.id}">Under odds<input id="uo-${p.id}" data-odds="u" data-id="${p.id}" type="number" step="5" value="${od.u}"></label>
+        </div>
+        <div class="fine" style="margin-top:6px">Break-even: over ${pct(breakeven(od.o))}, under ${pct(breakeven(od.u))}</div>
+        <div class="fine">${isEst(p) ? 'Line: estimate' : S.src[p.id] ? `Line and odds: <span class="src">${esc(S.src[p.id])}</span>` : 'Line: entered by you'}</div></div>
+      <div><h3>Game log</h3>${logChart(p, e)}</div>
+    </div>`;
+  }
+
+  function renderRows() {
+    const { list, ev } = filtered();
+    const el = document.getElementById('rows');
+    document.getElementById('count').textContent = `${list.length} props`;
+    const g = games[S.game];
+    document.getElementById('propsTitle').textContent = g ? `${g.away} @ ${g.home}` : 'All games';
+    if (!list.length) { el.innerHTML = '<div class="empty">No props match. Clear the search or pick another game.</div>'; return; }
+    el.innerHTML = list.map(p => `<div class="row${S.open === p.id ? ' open' : ''}" id="r-${p.id}">${rowMain(p, ev[p.id])}${S.open === p.id ? detail(p, ev[p.id]) : ''}</div>`).join('');
+    if (S.open) paintRead(S.open);
+    const bs = document.getElementById('buildScope');
+    if (bs) bs.textContent = g ? `${g.away} @ ${g.home}` : 'all games';
+  }
+
+  function refreshRow(id) {
+    const p = props[id], row = document.getElementById('r-' + id);
+    if (!row) return;
+    const e = evaluate(p);
+    const focused = document.activeElement && document.activeElement.id;
+    row.innerHTML = rowMain(p, e) + (S.open === id ? detail(p, e) : '');
+    if (S.open === id) paintRead(id);
+    if (focused) { const f = document.getElementById(focused); if (f) { f.focus(); if (f.select && f.type !== 'number') f.select(); } }
+  }
+
+  const rowsEl = document.getElementById('rows');
+  rowsEl.addEventListener('click', e => {
+    const rb = e.target.closest('[data-read]');
+    if (rb) { runPropRead(rb.dataset.read); return; }
+    const add = e.target.closest('[data-add]');
+    if (add) { toggleLeg(add.dataset.id, add.dataset.add); return; }
+    if (e.target.closest('input, label, .detail')) return;
+    const r = e.target.closest('.row-main'); if (!r) return;
+    const prev = S.open; S.open = S.open === r.dataset.id ? null : r.dataset.id;
+    if (prev) refreshRow(prev);
+    if (S.open) refreshRow(S.open);
+  });
+  rowsEl.addEventListener('change', e => {
+    const t = e.target;
+    if (t.classList.contains('line-in')) {
+      const v = parseFloat(t.value);
+      if (isNaN(v)) delete S.lines[t.dataset.id]; else S.lines[t.dataset.id] = v;
+      delete S.src[t.dataset.id]; store.set('src', S.src);
+      store.set('lines', S.lines); refreshRow(t.dataset.id); renderSlip();
+    } else if (t.dataset.odds) {
+      const v = parseInt(t.value, 10), id = t.dataset.id;
+      if (!isNaN(v) && Math.abs(v) >= 100) { S.odds[id] = Object.assign({}, oddsOf(props[id]), { [t.dataset.odds]: v }); store.set('odds', S.odds); }
+      refreshRow(id); renderSlip();
+    }
+  });
+
+  document.getElementById('tabs').addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    S.kind = b.dataset.k; S.open = null;
+    document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-selected', x === b));
+    renderRows();
+  });
+  document.getElementById('q').addEventListener('input', e => { S.q = e.target.value; renderRows(); });
+  document.getElementById('sort').addEventListener('change', e => { S.sort = e.target.value; renderRows(); });
+
+  // ---------- parlay ----------
+  function toggleLeg(id, side) {
+    const i = S.slip.findIndex(l => l.id === id);
+    if (i >= 0 && S.slip[i].side === side) S.slip.splice(i, 1);
+    else if (i >= 0) S.slip[i].side = side;
+    else S.slip.push({ id, side });
+    store.set('slip', S.slip); refreshRow(id); renderSlip();
+  }
+
+  // Correlation between two legs, written for over/over and flipped when sides differ
+  function corr(a, b) {
+    const pa = props[a.id], pb = props[b.id];
+    if (pa.game !== pb.game) return null;
+    let rho = 0, why = '';
+    const qbPass = p => p.kind === 'pass';
+    const same = pa.pid === pb.pid, team = pa.team === pb.team;
+    const pair = (k1, k2) => (pa.kind === k1 && pb.kind === k2) || (pa.kind === k2 && pb.kind === k1);
+    const recOf = () => (pa.kind === 'rec' ? pa : pb);
+    if (same) {
+      if (pair('pass', 'rush')) { rho = -0.05; why = 'Same QB: scrambles come from dropbacks that are not completions'; }
+      else if (pair('rush', 'rec')) { rho = 0.10; why = 'Same back: more snaps lift both'; }
+    } else if (team) {
+      if (pair('pass', 'rec')) { const r = recOf(); rho = r.pos === 'RB' ? 0.18 : 0.38; why = `${r.name.split(' ').slice(-1)[0]}'s catches are his QB's yards`; }
+      else if (pair('rec', 'rec')) { rho = 0.05; why = 'Same passing game: more volume helps both, but they share targets'; }
+      else if (pair('pass', 'rush')) { rho = -0.15; why = 'Same team: when the run game is working, the QB throws less'; }
+      else if (pair('rush', 'rec')) { rho = -0.08; why = 'Same team: run-heavy scripts cut into receiving volume'; }
+      else if (pair('rush', 'rush')) { rho = -0.15; why = 'Same backfield: they split the carries'; }
+    } else {
+      if (pair('pass', 'pass')) { rho = 0.22; why = 'Both QBs: a shootout lifts both'; }
+      else if (pair('pass', 'rec')) { rho = 0.15; why = 'Opposing sides: if one offense scores, the other has to throw'; }
+      else if (pair('rec', 'rec')) { rho = 0.10; why = 'Opposing receivers: high-scoring game helps both'; }
+      else if (pair('rush', 'pass') || pair('rush', 'rec')) { rho = 0.08; why = 'A back running with a lead forces the other side to pass'; }
+      else if (pair('rush', 'rush')) { rho = -0.05; why = 'Opposing backs: usually only one team gets to lean on the run'; }
+    }
+    if (!rho) return null;
+    if (a.side !== b.side) { rho = -rho; why += ', and you have them on opposite sides'; }
+    return { rho, why };
+  }
+
+  function renderSlip() {
+    const legsEl = document.getElementById('legs'), corrEl = document.getElementById('corr'), totEl = document.getElementById('totals');
+    if (!S.slip.length) {
+      legsEl.innerHTML = '<div class="slip-empty">Add legs with the O and U buttons. The slip checks how same-game legs affect each other and shows the true combined chance next to the payout.</div>';
+      corrEl.hidden = true; totEl.hidden = true; renderPread(); return;
+    }
+    const legs = S.slip.map(l => {
+      const p = props[l.id], e = evaluate(p);
+      const prob = l.side === 'over' ? e.po : e.pu;
+      const odds = l.side === 'over' ? e.od.o : e.od.u;
+      return { ...l, p, prob, odds, line: e.line };
+    });
+    legsEl.innerHTML = legs.map((l, i) => `<div class="leg">
+      <div class="lt">${esc(l.p.name)} ${l.side === 'over' ? 'Over' : 'Under'} ${l.line}</div>
+      <div class="lr"><input id="lo-${i}" data-leg="${i}" type="number" step="5" value="${l.odds}" aria-label="Odds"><button class="rm" data-rm="${i}" type="button" aria-label="Remove leg">×</button></div>
+      <div class="ls">${KIND[l.p.kind]} · ${l.p.team} ${l.p.home ? 'vs' : '@'} ${l.p.opp} · model ${pct(l.prob)}</div><div></div>
+    </div>`).join('');
+
+    // correlation
+    let factor = 1; const notes = [];
+    for (let i = 0; i < legs.length; i++) for (let j = i + 1; j < legs.length; j++) {
+      const c = corr(legs[i], legs[j]); if (!c) continue;
+      const pi = legs[i].prob, pj = legs[j].prob;
+      const joint = Math.max(0.0001, pi * pj + c.rho * Math.sqrt(pi * (1 - pi) * pj * (1 - pj)));
+      factor *= joint / (pi * pj);
+      notes.push({ c, a: legs[i].p, b: legs[j].p });
+    }
+    if (notes.length) {
+      corrEl.hidden = false;
+      corrEl.innerHTML = '<h3>Same-game check</h3>' + notes.map(n => `<div class="cp"><span class="tag ${n.c.rho > 0 ? 'pos' : 'neg'}">${n.c.rho > 0 ? 'HELPS' : 'HURTS'}</span><span>${esc(n.a.name.split(' ').slice(-1)[0])} + ${esc(n.b.name.split(' ').slice(-1)[0])}: ${esc(n.c.why)}</span></div>`).join('');
+    } else corrEl.hidden = true;
+
+    const indep = legs.reduce((a, l) => a * l.prob, 1);
+    const minP = Math.min(...legs.map(l => l.prob));
+    const trueP = Math.min(minP, indep * factor);
+    const payout = legs.reduce((a, l) => a * dec(l.odds), 1);
+    const ev = trueP * payout - 1;
+    const needEach = Math.pow(1 / payout, 1 / legs.length);
+    const sameGame = legs.length > 1 && legs.every(l => l.p.game === legs[0].p.game);
+    const american = payout >= 2 ? '+' + Math.round((payout - 1) * 100) : '−' + Math.round(100 / (payout - 1));
+    totEl.hidden = false;
+    totEl.innerHTML = `<h3>${legs.length}-leg ${sameGame ? 'same-game ' : ''}parlay</h3>
+      <div class="tot big"><span>Chance all legs hit</span><span class="num">${(trueP * 100).toFixed(1)}%</span></div>
+      ${notes.length ? `<div class="tot"><span>If legs were independent</span><span class="num">${(indep * 100).toFixed(1)}%</span></div>` : ''}
+      <div class="tot"><span>Payout at these odds</span><span class="num">${american} (${payout.toFixed(2)}x)</span></div>
+      <div class="tot"><span>Break-even chance</span><span class="num">${(100 / payout).toFixed(1)}%</span></div>
+      <div class="tot"><span>Expected return per $1</span><span class="num ev ${ev >= 0 ? 'pos' : 'neg'}">${ev >= 0 ? '+' : '−'}$${Math.abs(ev).toFixed(2)}</span></div>
+      <div class="fine">To break even, each leg needs about a ${pct(needEach)} chance on average.${sameGame || notes.length ? ' Books price same-game correlation into SGP odds, so the payout offered on a same-game parlay will usually be lower than the straight math above.' : ''}</div>`;
+    S.slipCalc = { legs, notes, trueP, indep, payout, ev, american };
+    renderPread();
+  }
+
+  const legsEl = document.getElementById('legs');
+  legsEl.addEventListener('click', e => {
+    const b = e.target.closest('[data-rm]'); if (!b) return;
+    const l = S.slip.splice(+b.dataset.rm, 1)[0]; store.set('slip', S.slip); refreshRow(l.id); renderSlip();
+  });
+  legsEl.addEventListener('change', e => {
+    const t = e.target; if (t.dataset.leg == null) return;
+    const v = parseInt(t.value, 10), l = S.slip[+t.dataset.leg];
+    if (!isNaN(v) && Math.abs(v) >= 100) { const k = l.side === 'over' ? 'o' : 'u'; S.odds[l.id] = Object.assign({}, oddsOf(props[l.id]), { [k]: v }); store.set('odds', S.odds); }
+    refreshRow(l.id); renderSlip();
+  });
+  document.getElementById('clear').addEventListener('click', () => {
+    const ids = S.slip.map(l => l.id); S.slip = []; store.set('slip', S.slip); ids.forEach(refreshRow); renderSlip();
+  });
+
+  // ---------- Umbra Read ----------
+  // In the hosted viewer it uses the viewer's own account through the page runtime.
+  // On a self-hosted copy (GitHub Pages) it falls back to an API key saved in this browser.
+  const API_MODEL = 'claude-sonnet-5-5';
+  const AI = { mode: 'checking', sample: null };
+  const keyGet = () => { try { return localStorage.getItem('umbra-read-key') || ''; } catch (e) { return ''; } };
+  const keySet = v => { try { v ? localStorage.setItem('umbra-read-key', v) : localStorage.removeItem('umbra-read-key'); } catch (e) {} };
+  function aiOn() { return AI.mode === 'sample' || AI.mode === 'key'; }
+
+  async function initAI() {
+    if (window.claude && typeof window.claude.use === 'function') {
+      try { AI.sample = await window.claude.use('sample'); } catch (e) { AI.sample = null; }
+      AI.mode = AI.sample ? 'sample' : (keyGet() ? 'key' : 'off');
+    } else {
+      AI.mode = keyGet() ? 'key' : 'needkey';
+    }
+    applyAI();
+  }
+  function applyAI() {
+    document.getElementById('build').hidden = !aiOn();
+    document.getElementById('keybox').hidden = !(AI.mode === 'needkey' || AI.mode === 'key');
+    document.getElementById('keyMsg').textContent = AI.mode === 'key' ? 'Key saved. Umbra Read is on.' : AI.mode === 'needkey' ? 'Add a key to turn on Umbra Read.' : '';
+    if (S.open) refreshRow(S.open);
+    renderPread();
+  }
+
+  function aiError(e) {
+    const c = e && e.code;
+    if (['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(c)) {
+      if (AI.mode === 'sample') { AI.mode = 'off'; setTimeout(applyAI, 0); }
+      return 'Umbra Read is not available in this view.';
+    }
+    if (c === 'rate_limited') return 'Too many reads in a short time. Try again in a minute.';
+    if (c === 'session_expired') return 'Your session expired. Sign in again to use Umbra Read.';
+    if (c === 'refused') return 'No read for this one. Try a different prop.';
+    if (c === 'bad_key') return 'That API key was rejected. Check it in Umbra Read setup below.';
+    if (c === 'invalid_json') return 'The answer came back in the wrong shape. Try again.';
+    if (c === 'cancelled') return '';
+    return 'The read did not finish. Try again.';
+  }
+
+  async function ask(prompt, opts = {}) {
+    if (AI.mode === 'sample') {
+      const o = { onText: opts.onText, modelTier: opts.tier || 'default' };
+      if (opts.cache === false) o.cache = false;
+      return AI.sample(prompt, o);
+    }
+    if (AI.mode === 'key') {
+      let r;
+      try {
+        r = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-api-key': keyGet(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+          body: JSON.stringify({ model: API_MODEL, max_tokens: 1200, messages: [{ role: 'user', content: prompt }] })
+        });
+      } catch (e) { throw { code: 'upstream_error', message: String(e) }; }
+      if (r.status === 401 || r.status === 403) throw { code: 'bad_key', message: 'auth' };
+      if (r.status === 429) throw { code: 'rate_limited', message: 'rate' };
+      if (!r.ok) throw { code: 'upstream_error', message: 'HTTP ' + r.status };
+      const j = await r.json();
+      const text = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      if (!text) throw { code: 'empty_completion', message: 'empty' };
+      if (opts.onText) opts.onText({ text, delta: text });
+      return { text, truncated: j.stop_reason === 'max_tokens' };
+    }
+    throw { code: 'not_granted', message: 'off' };
+  }
+  // Pull the first JSON object out of a reply, even when it is wrapped in prose or a code fence
+  function extractJSON(text) {
+    const t = String(text || '').replace(/```(?:json)?/gi, '');
+    try { return JSON.parse(t.trim()); } catch (e) {}
+    for (let start = t.indexOf('{'); start !== -1; start = t.indexOf('{', start + 1)) {
+      let depth = 0, inStr = false, escNext = false;
+      for (let i = start; i < t.length; i++) {
+        const ch = t[i];
+        if (inStr) { if (escNext) escNext = false; else if (ch === '\\') escNext = true; else if (ch === '"') inStr = false; continue; }
+        if (ch === '"') inStr = true;
+        else if (ch === '{') depth++;
+        else if (ch === '}' && --depth === 0) {
+          try { return JSON.parse(t.slice(start, i + 1)); } catch (e) { break; }
+        }
+      }
+    }
+    return null;
+  }
+  // Returns {data, text}; data is null when nothing parseable came back
+  async function askJSON(prompt, opts = {}) {
+    const { text } = await ask(prompt, Object.assign({ cache: false }, opts));
+    return { data: extractJSON(text), text };
+  }
+
+  const VOICE = 'Write like a sharp bettor texting a friend: direct, specific, built on the numbers given. No hype, no emojis, no em dashes, no hedging boilerplate, no disclaimers, and never mention being an AI or a model. Use only the data provided; do not invent injuries, news or stats.';
+
+  function propBrief(p, e) {
+    const g = games[p.game], d = p.drivers, L = D.league;
+    const lines = [];
+    lines.push(`Player: ${p.name}, ${p.pos}, ${p.team} ${p.home ? 'vs' : 'at'} ${p.opp}, kickoff ${fmtKick(g.kickoff)}`);
+    lines.push(`Market: ${KIND[p.kind]} ${e.line} (${isEst(p) ? 'ESTIMATED line, not from a sportsbook' : S.src[p.id] ? 'live line from ' + S.src[p.id] : 'line entered by the user from their sportsbook'}). Odds over ${fmtOdds(e.od.o)}, under ${fmtOdds(e.od.u)}. Break-even over ${pct(breakeven(e.od.o))}, under ${pct(breakeven(e.od.u))}.`);
+    lines.push(`Model: projected average ${p.mu.toFixed(1)}, median ${p.median.toFixed(1)}. Chance over ${pct(e.po)}, under ${pct(e.pu)}. Best side ${e.side} with edge ${(e.edge * 100).toFixed(1)} points. Play score ${e.score}/100.`);
+    if (p.kind === 'pass') lines.push(`Drivers: ${d.att} projected attempts, ${d.ypa} yards per attempt blended with 2025, opponent pass defense factor ${d.oppF}, script volume factor ${d.scriptPass}, team total efficiency factor ${d.ittF}.`);
+    if (p.kind === 'rush') lines.push(`Drivers: carry share ${pct(d.cshare)}, ${d.teamCar} projected team carries, ${d.car} projected carries, ${d.ypc} yards per carry blended, opponent run defense factor ${d.oppF}, script volume factor ${d.scriptRush}${d.boost > 1.01 ? `, share boosted ${((d.boost - 1) * 100).toFixed(0)}% for vacated carries` : ''}.`);
+    if (p.kind === 'rec') lines.push(`Drivers: target share ${pct(d.tshare)}, ${d.teamAtt} projected team pass attempts, ${d.tgt} projected targets, ${d.ypt} yards per target blended, opponent factor vs ${p.pos}s ${d.oppF}, script volume factor ${d.scriptPass}${d.boost > 1.01 ? `, share boosted ${((d.boost - 1) * 100).toFixed(0)}% for vacated targets` : ''}.`);
+    lines.push(`Game: ${p.team} ${d.spreadFor > 0 ? 'favored by ' + d.spreadFor : d.spreadFor < 0 ? 'underdog by ' + (-d.spreadFor) : 'pick em'}, total ${g.total}, ${p.team} implied team total ${d.itt} (league average ${L.pts}). Weather: ${g.indoor ? 'dome' : (g.temp != null ? g.temp + 'F ' : '') + (g.weather || 'unknown')}.`);
+    lines.push(`Injury status: ${p.status && p.status !== 'Active' ? p.status + (p.note ? '. ' + p.note : '') : 'no designation'}.`);
+    lines.push('Game log 2026: ' + p.logs.map(l => `W${l.wk} vs ${l.opp}: ${l[p.kind]} ${p.kind} yds` + (p.kind === 'pass' ? ` on ${l.att} att` : p.kind === 'rush' ? ` on ${l.car} car` : ` on ${l.tgt} tgt (${pct(l.ts)} share)`)).join('; ') + '.');
+    return lines.join('\n');
+  }
+
+  function parseVerdict(text, kinds) {
+    const m = text.match(/^\s*VERDICT:\s*([A-Za-z]+)\s*(?:\|\s*([A-Za-z]+))?\s*\n?/);
+    if (!m) return { v: null, rest: text };
+    const v = m[1].toLowerCase();
+    return { v: kinds.includes(v) ? v : null, conf: m[2] || '', rest: text.slice(m[0].length) };
+  }
+  function readHTML(state, kinds) {
+    if (!state) return { cls: '', html: '' };
+    if (state.status === 'wait') return { cls: 'wait', html: 'Reading the numbers...' };
+    if (state.status === 'error') return { cls: 'err', html: esc(state.err || '') };
+    const { v, conf, rest } = parseVerdict(state.text || '', kinds);
+    let body = esc(rest.trim());
+    body = body.replace(/^(Watch:|Weakest leg:|Swap idea:)/gm, '<b>$1</b>').replace(/^(<b>Watch:<\/b>.*)$/m, '<span class="watch">$1</span>');
+    const chip = v ? `<span class="vd ${v}">${v}${conf ? ` <span class="cf">· ${esc(conf.toLowerCase())} confidence</span>` : ''}</span>\n` : '';
+    return { cls: '', html: chip + body };
+  }
+  function paintRead(id) {
+    const out = document.getElementById('readout-' + id);
+    if (!out) return;
+    const r = readHTML(S.reads[id], ['over', 'under', 'pass']);
+    out.className = 'read-out' + (r.cls ? ' ' + r.cls : '');
+    out.innerHTML = r.html;
+  }
+
+  async function runPropRead(id) {
+    const p = props[id], e = evaluate(p);
+    const st = S.reads[id] = { status: 'wait', text: '', line: e.line };
+    refreshRow(id);
+    const prompt = `You are the analyst voice of NFL PropEdge, a player prop research tool. Give a short read on one player prop. ${VOICE}
+If the line is estimated, end the Watch line by telling the reader to check their book's number.
+
+Reply in exactly this format and nothing else:
+VERDICT: <Over or Under or Pass> | <High or Medium or Low>
+<Two or three sentences on why, citing the two or three numbers that matter most.>
+Watch: <one specific risk to this pick>
+
+DATA
+${propBrief(p, e)}`;
+    try {
+      const res = await ask(prompt, { onText: ({ text }) => { if (S.reads[id] !== st) return; st.status = 'stream'; st.text = text; paintRead(id); } });
+      if (S.reads[id] !== st) return;
+      st.status = 'done'; st.text = res.text;
+    } catch (err) {
+      if (S.reads[id] !== st) return;
+      if (err && err.text) { st.status = 'done'; st.text = err.text; }
+      else { st.status = 'error'; st.err = aiError(err); }
+    }
+    refreshRow(id);
+  }
+
+  // Parlay read
+  const slipSig = () => S.slip.map(l => `${l.id}:${l.side}:${lineOf(props[l.id])}:${JSON.stringify(oddsOf(props[l.id]))}`).join('|');
+  function renderPread() {
+    const box = document.getElementById('pread');
+    if (!box) return;
+    const show = aiOn() && S.slip.length >= 2;
+    box.hidden = !show;
+    if (!show) return;
+    const st = S.pread && S.pread.sig === slipSig() ? S.pread : null;
+    const btn = document.getElementById('preadBtn');
+    btn.disabled = !!(st && (st.status === 'wait' || st.status === 'stream'));
+    btn.textContent = st && st.status === 'done' ? 'Read again' : 'Read this parlay';
+    btn.classList.toggle('ghost', !!(st && st.status === 'done'));
+    const out = document.getElementById('preadOut');
+    const r = readHTML(st, ['play', 'trim', 'pass']);
+    out.className = 'read-out' + (r.cls ? ' ' + r.cls : '');
+    out.innerHTML = r.html;
+  }
+  function candidateList(gameIds, exclude, n) {
+    return D.props
+      .filter(p => (!gameIds || gameIds.includes(p.game)) && !exclude.has(p.id))
+      .map(p => ({ p, e: evaluate(p) }))
+      .filter(x => x.e.edge > 0.01)
+      // On estimated lines, skip thin samples, small roles and lines far from the projection:
+      // those edges come from the stand-in line, not from anything a book would post
+      .filter(x => !isEst(x.p) || (x.p.n >= 2 && x.p.mu >= (x.p.kind === 'pass' ? 150 : 35) && Math.abs(x.e.line - x.p.median) / x.p.median <= 0.25))
+      .sort((a, b) => b.e.score - a.e.score)
+      .slice(0, n);
+  }
+  async function runParlayRead() {
+    const c = S.slipCalc; if (!c || c.legs.length < 2) return;
+    const st = S.pread = { sig: slipSig(), status: 'wait', text: '' };
+    renderPread();
+    const legTxt = c.legs.map((l, i) => {
+      const e = evaluate(l.p);
+      return `Leg ${i + 1}: ${l.p.name} (${l.p.pos}, ${l.p.team} ${l.p.home ? 'vs' : 'at'} ${l.p.opp}) ${l.side} ${l.line} ${KIND[l.p.kind]} at ${fmtOdds(l.odds)}. Model chance ${pct(l.prob)}, projection median ${l.p.median.toFixed(1)}, ${isEst(l.p) ? 'estimated line' : 'book line'}, play score ${e.score}.`;
+    }).join('\n');
+    const corrTxt = c.notes.length ? c.notes.map(n => `${n.a.name} + ${n.b.name}: ${n.c.rho > 0 ? 'helps' : 'hurts'} (${n.c.why})`).join('\n') : 'No same-game links between legs.';
+    const gids = [...new Set(c.legs.map(l => l.p.game))];
+    const cands = candidateList(gids, new Set(c.legs.map(l => l.id)), 10)
+      .map(x => `${x.p.name} ${x.e.side} ${x.e.line} ${KIND[x.p.kind]} (model ${pct(x.e.side === 'over' ? x.e.po : x.e.pu)}, score ${x.e.score})`).join('\n') || 'None';
+    const prompt = `You are the analyst voice of NFL PropEdge, a player prop research tool. Give a short read on the parlay below. ${VOICE}
+
+Reply in exactly this format and nothing else:
+VERDICT: <Play or Trim or Pass>
+<Two sentences on the parlay as a whole: is the combined chance worth the payout, and do the legs work together.>
+Weakest leg: <name the leg and say why in one sentence>
+Swap idea: <one specific replacement from the candidates list and why, or "None">
+
+PARLAY
+${legTxt}
+Same-game links:
+${corrTxt}
+Combined chance (correlation adjusted): ${(c.trueP * 100).toFixed(1)}%. If independent: ${(c.indep * 100).toFixed(1)}%. Payout ${c.american} (${c.payout.toFixed(2)}x). Break-even ${(100 / c.payout).toFixed(1)}%. Expected return per $1: ${c.ev.toFixed(2)}.
+
+CANDIDATES FROM THE SAME GAMES
+${cands}`;
+    try {
+      const res = await ask(prompt, { onText: ({ text }) => { if (S.pread !== st) return; st.status = 'stream'; st.text = text; renderPread(); } });
+      if (S.pread !== st) return;
+      st.status = 'done'; st.text = res.text;
+    } catch (err) {
+      if (S.pread !== st) return;
+      if (err && err.text) { st.status = 'done'; st.text = err.text; }
+      else { st.status = 'error'; st.err = aiError(err); }
+    }
+    renderPread();
+  }
+  document.getElementById('preadBtn').addEventListener('click', runParlayRead);
+
+  // Parlay builder
+  async function runBuilder() {
+    const btn = document.getElementById('buildBtn'), out = document.getElementById('buildOut');
+    const size = +document.getElementById('buildSize').value;
+    const gids = S.game === 'all' ? null : [S.game];
+    const cands = candidateList(gids, new Set(), 40);
+    if (cands.length < size) { out.className = 'read-out err'; out.textContent = 'Not enough props with an edge here. Pick another game or a smaller size.'; return; }
+    btn.disabled = true; btn.textContent = 'Building...';
+    out.className = 'read-out wait'; out.textContent = 'Reading the board...';
+    // Short tags (P1, P2...) are far easier to copy back exactly than the long internal ids
+    const tag = i => 'P' + (i + 1);
+    const list = cands.map((x, i) => {
+      const g = games[x.p.game];
+      return `${tag(i)} | ${x.p.name} ${x.p.pos} ${x.p.team} | game ${g.away}@${g.home} | ${KIND[x.p.kind]} ${x.e.side} ${x.e.line} | model ${pct(x.e.side === 'over' ? x.e.po : x.e.pu)} | odds ${fmtOdds(x.e.side === 'over' ? x.e.od.o : x.e.od.u)} | score ${x.e.score} | ${isEst(x.p) ? 'est line' : 'book line'}${x.p.status === 'Questionable' ? ' | questionable' : ''}`;
+    }).join('\n');
+    const prompt = `You are the analyst voice of NFL PropEdge. Build one ${size}-leg player prop parlay from the candidates below. ${VOICE}
+Rules: exactly ${size} legs, each a different player, using the side shown for each candidate. Favor high model chance and play score. Same-game legs are fine when they help each other (a QB's passing over with his own receiver's over; both QBs' passing overs in a high total). Never pair legs that work against each other (a QB's passing over with his own running back's rushing over; two backs from the same team). Prefer book lines over estimated ones when they are close. Avoid questionable players unless clearly the best option.
+
+Reply with one JSON object and nothing else, no code fence, in exactly this shape:
+{"legs":["P3","P8","P12"],"why":"Two plain sentences on how the legs fit together."}
+"legs" holds exactly ${size} tags copied from the first column below.
+
+CANDIDATES (tag | player | game | market and side | model chance | odds | score | line source)
+${list}`;
+
+    // Turn whatever came back into legs: JSON tags first, then any P-tags mentioned in the text
+    function pickLegs(data, text) {
+      const byTag = Object.fromEntries(cands.map((x, i) => [tag(i), x]));
+      const byName = Object.fromEntries(cands.map(x => [normName(x.p.name), x]));
+      let raw = data && Array.isArray(data.legs) ? data.legs : [];
+      if (!raw.length) raw = (String(text || '').match(/\bP\d{1,2}\b/g) || []);
+      const seen = new Set(), legs = [];
+      for (const l of raw) {
+        const v = typeof l === 'string' ? l : (l && (l.tag || l.id || l.player || l.name)) || '';
+        const x = byTag[String(v).trim().toUpperCase()] || byName[normName(v)];
+        if (!x || seen.has(x.p.pid)) continue;
+        seen.add(x.p.pid); legs.push({ id: x.p.id, side: x.e.side });
+        if (legs.length === size) break;
+      }
+      return legs;
+    }
+    // Backup when the answer is unusable: top play scores, skipping repeats and legs that work against each other
+    function fallbackLegs() {
+      const legs = [];
+      for (const x of cands) {
+        if (legs.some(l => props[l.id].pid === x.p.pid)) continue;
+        const leg = { id: x.p.id, side: x.e.side };
+        if (legs.some(l => { const c = corr(l, leg); return c && c.rho <= -0.1; })) continue;
+        legs.push(leg);
+        if (legs.length === size) break;
+      }
+      return legs;
+    }
+
+    let legs = [], why = '', note = '';
+    try {
+      const { data, text } = await askJSON(prompt);
+      legs = pickLegs(data, text);
+      why = data && typeof data.why === 'string' ? data.why.trim() : '';
+      if (legs.length >= 2 && legs.length < size) {
+        const short = size - legs.length;
+        for (const l of fallbackLegs()) {
+          if (legs.length === size) break;
+          if (legs.some(x => props[x.id].pid === props[l.id].pid)) continue;
+          if (legs.some(x => { const c = corr(x, l); return c && c.rho <= -0.1; })) continue;
+          legs.push(l);
+        }
+        note = (why ? why + ' ' : '') + `The last ${short === 1 ? 'leg was' : short + ' legs were'} filled from the top play scores.`;
+        why = '';
+      } else if (legs.length < size) {
+        console.warn('Umbra Read builder: unusable reply', text);
+        legs = fallbackLegs(); why = '';
+        note = `Umbra Read didn't return a usable slip this time, so these are the top ${legs.length} play scores that don't work against each other.`;
+      }
+    } catch (err) {
+      const msg = aiError(err);
+      if (!msg) { btn.disabled = false; btn.textContent = 'Build a parlay'; out.className = 'read-out'; out.textContent = ''; return; }
+      if (err && ['rate_limited', 'bad_key', 'session_expired', 'refused', 'upstream_error', 'empty_completion'].includes(err.code || 'upstream_error')) {
+        legs = fallbackLegs();
+        note = `${msg} In the meantime, these are the top ${legs.length} play scores that don't work against each other.`;
+      } else {
+        out.className = 'read-out err'; out.textContent = msg;
+        btn.disabled = false; btn.textContent = 'Build a parlay'; return;
+      }
+    }
+    const old = S.slip.map(l => l.id);
+    S.slip = legs; store.set('slip', S.slip);
+    old.concat(legs.map(l => l.id)).forEach(refreshRow);
+    renderSlip();
+    out.className = 'read-out' + (note ? ' wait' : '');
+    out.textContent = note || why;
+    btn.disabled = false; btn.textContent = 'Build a parlay';
+  }
+  document.getElementById('buildBtn').addEventListener('click', runBuilder);
+
+  // Self-hosted key setup
+  document.getElementById('saveKey').addEventListener('click', () => {
+    const v = document.getElementById('apiKey').value.trim();
+    if (!v) { document.getElementById('keyMsg').textContent = 'Paste a key first.'; return; }
+    keySet(v); document.getElementById('apiKey').value = '';
+    if (AI.mode !== 'sample') AI.mode = 'key';
+    applyAI();
+  });
+  document.getElementById('clearKey').addEventListener('click', () => {
+    keySet(''); if (AI.mode === 'key') AI.mode = window.claude ? 'off' : 'needkey'; applyAI();
+  });
+
+  // ---------- Sportsbook lines (The Odds API) ----------
+  // Runs in the browser on a self-hosted copy. The key is saved only in this browser.
+  const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/americanfootball_nfl';
+  const MARKETS = { player_pass_yds: 'pass', player_rush_yds: 'rush', player_reception_yds: 'rec' };
+  const TEAM_NAMES = {
+    ARI: 'Arizona Cardinals', ATL: 'Atlanta Falcons', BAL: 'Baltimore Ravens', BUF: 'Buffalo Bills', CAR: 'Carolina Panthers',
+    CHI: 'Chicago Bears', CIN: 'Cincinnati Bengals', CLE: 'Cleveland Browns', DAL: 'Dallas Cowboys', DEN: 'Denver Broncos',
+    DET: 'Detroit Lions', GB: 'Green Bay Packers', HOU: 'Houston Texans', IND: 'Indianapolis Colts', JAX: 'Jacksonville Jaguars',
+    KC: 'Kansas City Chiefs', LV: 'Las Vegas Raiders', LAC: 'Los Angeles Chargers', LA: 'Los Angeles Rams', MIA: 'Miami Dolphins',
+    MIN: 'Minnesota Vikings', NE: 'New England Patriots', NO: 'New Orleans Saints', NYG: 'New York Giants', NYJ: 'New York Jets',
+    PHI: 'Philadelphia Eagles', PIT: 'Pittsburgh Steelers', SF: 'San Francisco 49ers', SEA: 'Seattle Seahawks',
+    TB: 'Tampa Bay Buccaneers', TEN: 'Tennessee Titans', WAS: 'Washington Commanders'
+  };
+  const oddsKeyGet = () => { try { return localStorage.getItem('umbra-odds-key') || ''; } catch (e) { return ''; } };
+  const oddsKeySet = v => { try { v ? localStorage.setItem('umbra-odds-key', v) : localStorage.removeItem('umbra-odds-key'); } catch (e) {} };
+  const normName = s => String(s).toLowerCase().replace(/[.'’]/g, '').replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/\s+/g, ' ').trim();
+  const inViewer = !!window.claude;
+  const linesMeta = document.getElementById('linesMeta');
+  const bookSel = document.getElementById('oddsBook');
+  const keyIn = document.getElementById('oddsKey');
+  bookSel.value = store.get('book', 'best');
+  if (oddsKeyGet()) keyIn.placeholder = 'Key saved';
+
+  function linesStatusText() {
+    const info = store.get('linesInfo', null);
+    const n = Object.keys(S.src).length;
+    const el = document.getElementById('linesStatus');
+    if (n && info) {
+      el.innerHTML = `<b>${n} props on live lines</b> from ${esc(info.book)}, loaded ${esc(info.at)}. Props the book doesn't offer stay on estimates (dashed). Typing a line into a row overrides it.`;
+    } else {
+      el.innerHTML = '<b>Dashed lines are estimates</b>, set halfway between the player\'s recent average and the projection. Load live lines with an Odds API key, or type your book\'s line into any row.';
+    }
+  }
+  function creditsNote(r) {
+    const left = r && r.headers.get('x-requests-remaining'), used = r && r.headers.get('x-requests-used');
+    return left != null ? ` Credits left: ${left}${used != null ? ` (used ${used})` : ''}.` : '';
+  }
+
+  async function oddsGet(path, params) {
+    const u = new URL(ODDS_BASE + path);
+    Object.entries(Object.assign({ apiKey: oddsKeyGet() }, params || {})).forEach(([k, v]) => u.searchParams.set(k, v));
+    let r;
+    try { r = await fetch(u.toString()); } catch (e) { throw { msg: inViewer ? 'This preview cannot reach outside sites. Live lines load on your self-hosted copy.' : 'Could not reach The Odds API. Check your connection and try again.' }; }
+    if (r.status === 401) throw { msg: 'The Odds API rejected that key. Check it and try again.' };
+    if (r.status === 429) throw { msg: 'Out of credits or rate limited on The Odds API.' + creditsNote(r) };
+    if (r.status === 422) return { r, data: null };
+    if (!r.ok) throw { msg: `The Odds API returned an error (${r.status}).` };
+    return { r, data: await r.json() };
+  }
+
+  // Pick the line and prices for one player market across the returned books
+  function pickLine(byBook, book) {
+    if (book !== 'best') {
+      const b = byBook.find(x => x.key === book);
+      return b && b.point != null && b.o != null && b.u != null ? { point: b.point, o: b.o, u: b.u, title: b.title } : null;
+    }
+    const full = byBook.filter(x => x.point != null && x.o != null && x.u != null);
+    if (!full.length) return null;
+    const counts = {};
+    full.forEach(x => { counts[x.point] = (counts[x.point] || 0) + 1; });
+    const point = +Object.keys(counts).sort((a, b) => counts[b] - counts[a] || Math.abs(a) - Math.abs(b))[0];
+    const at = full.filter(x => x.point === point);
+    const bestO = at.reduce((a, x) => (dec(x.o) > dec(a.o) ? x : a));
+    const bestU = at.reduce((a, x) => (dec(x.u) > dec(a.u) ? x : a));
+    return { point, o: bestO.o, u: bestU.u, title: bestO.key === bestU.key ? bestO.title : `${bestO.title} over, ${bestU.title} under` };
+  }
+
+  async function loadLines() {
+    const typed = keyIn.value.trim();
+    if (typed) { oddsKeySet(typed); keyIn.value = ''; keyIn.placeholder = 'Key saved'; }
+    if (!oddsKeyGet()) { linesMeta.textContent = 'Paste your Odds API key first.'; return; }
+    const book = bookSel.value; store.set('book', book);
+    const picked = S.game === 'all' ? D.games : [games[S.game]];
+    const scope = picked.filter(g => !hasStarted(g));
+    if (!scope.length) {
+      linesMeta.textContent = D.games.every(isOver)
+        ? `Every game on this page (Week ${D.week}) is over, so there are no lines to load. The page needs to be rebuilt for the current week.`
+        : 'That game has already kicked off. Pick an upcoming game or All games.';
+      return;
+    }
+    const btn = document.getElementById('loadLines');
+    btn.disabled = true; btn.textContent = 'Loading...';
+    try {
+      linesMeta.textContent = 'Finding games...';
+      const { data: events } = await oddsGet('/events');
+      const evFor = g => (events || []).find(ev => ev.home_team === TEAM_NAMES[g.home] && ev.away_team === TEAM_NAMES[g.away]);
+      const propIndex = {};
+      D.props.forEach(p => { propIndex[`${p.game}|${normName(p.name)}|${p.kind}`] = p; });
+      let matched = 0, gamesDone = 0, lastResp = null, missing = 0;
+      const newSrc = {};
+      for (const g of scope) {
+        const ev = evFor(g);
+        if (!ev) { missing++; continue; }
+        linesMeta.textContent = `Loading ${g.away} @ ${g.home} (${gamesDone + 1} of ${scope.length})...`;
+        const { r, data } = await oddsGet(`/events/${ev.id}/odds`, { regions: 'us', markets: Object.keys(MARKETS).join(','), oddsFormat: 'american' });
+        lastResp = r; gamesDone++;
+        if (!data) continue;
+        const grouped = {}; // "player|kind" -> [{key,title,point,o,u}]
+        for (const bk of data.bookmakers || []) {
+          for (const m of bk.markets || []) {
+            const kind = MARKETS[m.key]; if (!kind) continue;
+            for (const oc of m.outcomes || []) {
+              const k = `${normName(oc.description)}|${kind}`;
+              grouped[k] = grouped[k] || {};
+              const row = grouped[k][bk.key] = grouped[k][bk.key] || { key: bk.key, title: bk.title, point: null, o: null, u: null };
+              if (oc.point != null) row.point = oc.point;
+              if (/^over$/i.test(oc.name)) row.o = oc.price;
+              if (/^under$/i.test(oc.name)) row.u = oc.price;
+            }
+          }
+        }
+        for (const [k, books] of Object.entries(grouped)) {
+          const [nm, kind] = k.split('|');
+          const p = propIndex[`${g.id}|${nm}|${kind}`]; if (!p) continue;
+          const pick = pickLine(Object.values(books), book); if (!pick) continue;
+          S.lines[p.id] = pick.point; S.odds[p.id] = { o: pick.o, u: pick.u }; newSrc[p.id] = pick.title;
+          matched++;
+        }
+      }
+      // Lines from an earlier load for games in this scope that no longer have a market go back to estimates
+      for (const id of Object.keys(S.src)) {
+        if (scope.some(g => g.id === props[id].game) && !newSrc[id]) { delete S.src[id]; delete S.lines[id]; delete S.odds[id]; }
+      }
+      Object.assign(S.src, newSrc);
+      store.set('lines', S.lines); store.set('odds', S.odds); store.set('src', S.src);
+      const bookLabel = book === 'best' ? 'the best price across books' : bookSel.options[bookSel.selectedIndex].text;
+      store.set('linesInfo', { book: bookLabel, at: new Date().toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) });
+      if (!gamesDone) {
+        linesMeta.textContent = `None of this page's Week ${D.week} games are listed at The Odds API right now. If the page is from an earlier week, it needs to be rebuilt; otherwise the books may not have posted these games yet.`;
+      } else {
+        const skipped = picked.length - scope.length;
+        linesMeta.textContent = `Matched ${matched} props across ${gamesDone} game${gamesDone === 1 ? '' : 's'}.` + (missing ? ` ${missing} game${missing === 1 ? ' was' : 's were'} not listed yet.` : '') + (skipped ? ` Skipped ${skipped} game${skipped === 1 ? '' : 's'} already under way.` : '') + creditsNote(lastResp);
+      }
+    } catch (e) {
+      linesMeta.textContent = (e && e.msg) || 'Loading lines failed. Try again.';
+    }
+    btn.disabled = false; btn.textContent = 'Load lines';
+    linesStatusText(); renderRows(); renderSlip();
+  }
+  document.getElementById('loadLines').addEventListener('click', loadLines);
+  document.getElementById('resetLines').addEventListener('click', () => {
+    for (const id of Object.keys(S.src)) { delete S.lines[id]; delete S.odds[id]; }
+    S.src = {}; store.set('lines', S.lines); store.set('odds', S.odds); store.set('src', S.src); store.set('linesInfo', null);
+    linesMeta.textContent = 'Live lines cleared. Lines you typed in yourself are kept.';
+    linesStatusText(); renderRows(); renderSlip();
+  });
+  keyIn.addEventListener('keydown', e => { if (e.key === 'Enter') loadLines(); });
+  if (inViewer) linesMeta.textContent = 'Live lines load on your self-hosted copy. This preview cannot reach outside sites.';
+  linesStatusText();
+
+  // ---------- check for a newer published slate ----------
+  if (PE_CAN_FETCH) {
+    const box = document.getElementById('slateCheck'), btn = document.getElementById('checkSlate'), msg = document.getElementById('slateMsg');
+    box.hidden = false;
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; msg.textContent = 'Checking...';
+      const f = await peLatest(8000);
+      btn.disabled = false;
+      if (!f) { msg.textContent = "Couldn't reach the published slate. Check your connection and try again."; return; }
+      if (f.built > D.built) {
+        msg.textContent = `Loading Week ${f.week}...`;
+        location.reload();
+        return;
+      }
+      const when = new Date(D.built).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+      msg.textContent = `You have the latest build (Week ${D.week}, ${when} ET). New builds publish about 9am and 5pm ET.`;
+    });
+  }
+
+  renderStale(); renderGames(); renderRows(); renderSlip();
+  initAI();
+})();
+</script>

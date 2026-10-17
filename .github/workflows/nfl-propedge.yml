@@ -1,0 +1,71 @@
+# Rebuilds nfl_propedge.html (and nfl_propedge_data.json, which the page's
+# "Check for new slate" button reads) with the current week's slate, stats, odds and injuries.
+# Runs twice a day, plus Sunday late morning after inactives are announced.
+# To run it by hand: Actions tab > NFL PropEdge refresh > Run workflow.
+name: NFL PropEdge refresh
+
+on:
+  schedule:
+    - cron: "17 13 * * *"   # about 9:17am ET every day
+    - cron: "17 21 * * *"   # about 5:17pm ET every day
+    - cron: "47 15 * * 0"   # about 11:47am ET Sunday, after inactives
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "Week to build (leave blank for the current week)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nfl-propedge
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: pip install pandas scipy requests
+
+      - name: Build the slate
+        id: build
+        working-directory: nfl-propedge
+        run: |
+          set +e
+          if [ -n "${{ github.event.inputs.week }}" ]; then
+            python build_data.py --week "${{ github.event.inputs.week }}"
+          else
+            python build_data.py
+          fi
+          code=$?
+          set -e
+          if [ "$code" = "3" ]; then
+            echo "Nothing to build right now, keeping the current page."
+            echo "built=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" != "0" ]; then exit "$code"; fi
+          python make_page.py data.json --site ../nfl_propedge.html
+          cp data.json ../nfl_propedge_data.json
+          echo "built=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Commit the new page
+        if: steps.build.outputs.built == 'yes'
+        run: |
+          git config user.name "umbra-propedge-bot"
+          git config user.email "umbra-propedge-bot@users.noreply.github.com"
+          git add nfl_propedge.html nfl_propedge_data.json
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "NFL PropEdge: refresh slate"
+            git push
+          fi
