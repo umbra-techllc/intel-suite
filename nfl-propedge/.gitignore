@@ -2,3 +2,4 @@ data.json
 __pycache__/
 research/cache/
 backtest_*.csv
+index.html
