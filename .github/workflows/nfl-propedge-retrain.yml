@@ -1,0 +1,51 @@
+# Retrains the NFL PropEdge models every Tuesday, after Monday night's stats are published,
+# so each week's results feed the next week's projections. Takes about 30 minutes.
+# To run it by hand: Actions tab > NFL PropEdge retrain > Run workflow.
+name: NFL PropEdge retrain
+
+on:
+  schedule:
+    - cron: "23 13 * * 2"   # about 9:23am ET every Tuesday
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nfl-propedge-retrain
+  cancel-in-progress: false
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: pip install pandas scipy requests lightgbm scikit-learn
+
+      - name: Rebuild the training data (every week since 2019, using only pre-game information)
+        working-directory: nfl-propedge
+        run: python research/make_dataset.py
+
+      - name: Retrain and save the models
+        working-directory: nfl-propedge
+        run: python research/fit_models.py
+
+      - name: Commit the new models
+        run: |
+          git config user.name "umbra-propedge-bot"
+          git config user.email "umbra-propedge-bot@users.noreply.github.com"
+          git add nfl-propedge/model
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "NFL PropEdge: weekly model retrain"
+            git pull --rebase origin main
+            git push
+          fi

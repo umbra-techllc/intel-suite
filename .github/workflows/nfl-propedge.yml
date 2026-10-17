@@ -33,7 +33,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install packages
-        run: pip install pandas scipy requests
+        run: pip install pandas scipy requests lightgbm
 
       - name: Build the slate
         id: build
@@ -67,5 +67,6 @@ jobs:
             echo "No changes."
           else
             git commit -m "NFL PropEdge: refresh slate"
+            git pull --rebase origin main
             git push
           fi

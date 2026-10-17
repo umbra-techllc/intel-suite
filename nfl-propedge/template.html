@@ -169,6 +169,9 @@ button { cursor: pointer; }
 .why li span:last-child { font-family: var(--f-data); white-space: nowrap; }
 .why .up { color: var(--good); }
 .why .dn { color: var(--bad); }
+.why.factors { margin-bottom: 14px; }
+.why.factors li.tot { border-bottom: 0; font-weight: 600; }
+.why.factors li.tot span:last-child { font-weight: 600; }
 .note { font-size: 12px; color: var(--warn); margin-top: 8px; }
 .ladder { width: 100%; border-collapse: collapse; font-size: 13px; }
 .ladder td { padding: 4px 0; border-bottom: 1px dashed var(--line); }
@@ -395,11 +398,13 @@ button { cursor: pointer; }
   <details class="panel method">
     <summary>How the projections work</summary>
     <div class="mb">
+      <p><b>A model trained on eight seasons.</b> Each projection comes from models trained on about 24,000 player-games from 2019 to this season, using only what was known before each game. They weigh about 45 inputs: recent games, how often a player gets the ball and what he does with it, last season, his quarterback, his team's play calling, expected scoring, the opponent, injured teammates, and a basic estimate from his share of plays (described below). Tested on seasons they never saw, they were about 4 to 6% more accurate than that basic estimate alone. "Biggest factors" shows how each projection was reached, in yards.</p>
+      <p><b>Each player's own range.</b> For runs and catches, a second model predicts how widely each player's results swing, so a deep-threat receiver gets a wider range than a short-pass target. For passing, ranges come from how quarterbacks with similar projections actually finished.</p>
       <p><b>Opportunities first.</b> Receiving yards start from how often passes go to a player times how many passes his team throws. Rushing yards start from his share of the team's runs. Passing yards start from expected passes times yards per pass. How often a player gets the ball is steadier week to week than how many yards he gains.</p>
       <p><b>Small samples get pulled toward a baseline.</b> Recent games count more, but every rate is blended with last season's numbers (or a position average) until this season's sample can stand on its own.</p>
       <p><b>Opponent and expected scoring.</b> Each defense's yards allowed against league average, by type of play and position, plus how many points the team is expected to score. Teams favored to win run a bit more.</p>
       <p><b>Injuries and backups.</b> Players ruled out, doubtful or on injured reserve are removed. Their share of the work moves to teammates by rules measured on every 2024-25 game where a regular sat out: running backs pick up a real share of a missing back's runs, while receivers gain less than you'd expect because the offense as a whole tends to get worse. Starting quarterbacks come from the team's depth chart, so a backup who hasn't played yet still gets a projection.</p>
-      <p><b>Chances are measured, not assumed.</b> The chance of going over a line comes from how players with similar projections actually finished across the 2024 and 2025 seasons, replayed week by week. Tested on a season it wasn't fit on, it was off by about 3 points on average.</p>
+      <p><b>Chances are measured, not assumed.</b> Outcome ranges are fit on predictions made for seasons the models were not trained on, so the chances reflect real errors. On 2024 and 2025, the over/under calls scored better than the previous version in every market.</p>
       <p><b>The sportsbook gets half the say.</b> Sportsbook lines are sharp, so the chance shown is half the projection's view and half the book's (with the book's cut removed). A pick needs at least a 2-point edge over break-even (Lean) or 4 points (Play). If the two disagree by more than 25 points, the prop is marked "Check news" instead, since that usually means something the projection hasn't seen.</p>
       <p><b>When there's no pick.</b> No sportsbook line, fewer than two games this season, or a small role.</p>
       <p><b>Parlays.</b> Legs from the same game are adjusted by how they actually moved together in 2024-25: a quarterback and his own receivers tend to hit together, two opposing quarterbacks a little, and most other pairs barely affect each other. The builder picks by rule from the strongest edges and never pairs legs that work against each other.</p>
@@ -496,7 +501,18 @@ async function peLatest(timeoutMs) {
   // Outcome ranges measured from two seasons of results: actual yards / projected average, by market and size of role
   const CAL = D.calib;
   function calTier(p) { return CAL[p.kind].cuts.reduce((n, x) => n + (p.mu > x ? 1 : 0), 0); }
+  // Each prop carries its own outcome range from the learned models: yards at every 2% of outcomes
+  function gridCdf(q, x) {
+    const n = q.length - 1;
+    if (x < q[0]) return 0;
+    if (x >= q[n]) return 1;
+    let i = 0;
+    while (i < n - 1 && q[i + 1] <= x) i++;
+    const lo = q[i], hi = q[i + 1];
+    return (i + (hi === lo ? 0 : (x - lo) / (hi - lo))) / n;
+  }
   function pOver(p, line) {
+    if (p.q) return 1 - gridCdf(p.q, line);
     if (!CAL || !CAL[p.kind]) return 1 - gammp(p.k, line / p.theta);
     const q = CAL[p.kind].q[calTier(p)], r = line / p.mu;
     if (r < q[0]) return 1;
@@ -507,6 +523,7 @@ async function peLatest(timeoutMs) {
     return 1 - (i + (hi === lo ? 0 : (r - lo) / (hi - lo))) / 100;
   }
   function yardsAt(p, f) { // yards at a given point of the outcome range (0.25 = a quarter of games come in lower)
+    if (p.q) { const n = p.q.length - 1, x = f * n, i = Math.min(n - 1, Math.floor(x)); return p.q[i] + (p.q[i + 1] - p.q[i]) * (x - i); }
     if (!CAL || !CAL[p.kind]) return null;
     const q = CAL[p.kind].q[calTier(p)], x = f * 100, i = Math.min(99, Math.floor(x));
     return p.mu * (q[i] + (q[i + 1] - q[i]) * (x - i));
@@ -683,6 +700,19 @@ async function peLatest(timeoutMs) {
     return out.map(([a, b]) => `<li><span>${a}</span><span>${b}</span></li>`).join('');
   }
 
+  // How the learned model got from a typical result to this player's projection, in yards
+  function factorBlock(p) {
+    const f = p.factors;
+    if (!f) return '';
+    const typical = { pass: 'starting quarterback', rush: 'player getting runs', rec: 'player catching passes' }[p.kind];
+    const rows = f.top.slice(0, 4).map(x => `<li><span>${esc(x.label)}</span><span class="${x.yards > 0 ? 'up' : 'dn'}">${x.yards > 0 ? '+' : '−'}${Math.abs(x.yards).toFixed(0)} yds</span></li>`).join('');
+    const rest = p.mu - f.base - f.top.slice(0, 4).reduce((a, x) => a + x.yards, 0);
+    return `<h3>Biggest factors</h3><ul class="why factors">
+      <li><span>Typical result for a ${typical}</span><span>${f.base.toFixed(0)} yds</span></li>${rows}
+      ${Math.abs(rest) >= 1 ? `<li><span>Everything else</span><span class="${rest > 0 ? 'up' : 'dn'}">${rest > 0 ? '+' : '−'}${Math.abs(rest).toFixed(0)} yds</span></li>` : ''}
+      <li class="tot"><span>Projection (average outcome)</span><span>${p.mu.toFixed(0)} yds</span></li></ul>`;
+  }
+
   function ladder(p, e) {
     const step = STEP[p.kind];
     const center = Math.floor(p.median / 5) * 5 + 0.5;
@@ -736,7 +766,7 @@ async function peLatest(timeoutMs) {
       </div>` : '';
     return `<div class="detail">
       ${readBlock}
-      <div class="why-col"><h3>What drives the number</h3><ul class="why">${whyList(p)}</ul>
+      <div class="why-col">${factorBlock(p)}<h3>${p.factors ? 'The numbers behind it' : 'What drives the number'}</h3><ul class="why">${whyList(p)}</ul>
         <div class="fine" style="margin-top:8px">Most likely: about ${p.median.toFixed(0)} yards. In half of games like this he lands between ${Math.round(yardsAt(p, 0.25) ?? p.median * 0.6)} and ${Math.round(yardsAt(p, 0.75) ?? p.median * 1.4)}.</div>
         ${e.est ? '' : `<div class="fine">Model alone: ${pct(e.mo)} over. Sportsbook: ${pct(e.mk)} over. Blended: ${pct(e.po)}.</div>`}
         ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}</div>
@@ -1081,6 +1111,7 @@ Rules:
     if (p.kind === 'rush') lines.push(`Why: expected to get about ${d.car} runs (${pct(d.cshare)} of the team's runs), averaging ${d.ypc} yards per run. ${p.opp}'s run defense allows ${Math.abs(Math.round((d.oppF - 1) * 100))}% ${d.oppF >= 1 ? 'more' : 'fewer'} yards per run than average. ${d.spreadFor > 0 ? 'His team is favored, and teams with a lead tend to run more.' : d.spreadFor < 0 ? 'His team is expected to trail, and teams that fall behind tend to run less.' : ''}`);
     if (p.kind === 'rec') lines.push(`Why: about ${d.tgt} passes are expected to be thrown his way (${pct(d.tshare)} of the team's passes), and he averages ${d.ypt} yards per pass thrown to him. ${p.opp} allows ${Math.abs(Math.round((d.oppF - 1) * 100))}% ${d.oppF >= 1 ? 'more' : 'fewer'} receiving yards to ${({ WR: 'wide receivers', TE: 'tight ends', RB: 'running backs' })[p.pos]} than average.`);
     lines.push(`Game: ${fav}. Weather: ${g.indoor ? 'indoors' : (g.temp != null ? g.temp + ' degrees, ' : '') + (g.weather || 'unknown')}.`);
+    if (p.factors) lines.push(`Biggest factors in the projection, starting from ${p.factors.base.toFixed(0)} yards for a typical player in this spot: ` + p.factors.top.slice(0, 4).map(x => `${x.label} ${x.yards > 0 ? '+' : '-'}${Math.abs(x.yards).toFixed(0)} yards`).join('; ') + `. Projection: ${p.mu.toFixed(0)} yards on average.`);
     const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
     lines.push('This season, game by game: ' + (p.logs.length ? p.logs.map(l => `week ${l.wk} vs ${l.opp}: ${l[p.kind]} yards` + (p.kind === 'pass' ? ` on ${pl(l.att, 'pass', 'passes')}` : p.kind === 'rush' ? ` on ${pl(l.car, 'run', 'runs')}` : ` on ${pl(l.tgt, 'pass', 'passes')} thrown his way`)).join('; ') : 'no games yet') + '.');
     lines.push('INJURIES');
@@ -1118,7 +1149,7 @@ DECISION (do not change it): ${verdict.say}
 
 Reply in exactly this format, about 110 words in total, and nothing else:
 Bottom line: <one sentence that states the decision above and the single biggest reason>
-Why: <two sentences using the most important numbers below, explained in plain terms>
+Why: <two sentences using the biggest factors and the most important numbers below, explained in plain terms>
 Injuries: <one or two sentences on who is out or questionable for his team and exactly how that changes his chances; if nobody relevant is out, say so in a few words>
 What could go wrong: <one specific, realistic risk for this decision>
 
