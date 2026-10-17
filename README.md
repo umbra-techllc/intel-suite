@@ -10,7 +10,7 @@ Live site: https://umbra-techllc.github.io/intel-suite/
 |---|---|---|
 | Crypto Intel | `crypto_intel_tracker.html` | Watchlist screener. Scores each coin 0 to 100 from momentum, trend, strength vs BTC, liquidity, ATH distance, and hourly RSI, then gives a Buy, Hold, or Sell signal with the breakdown shown. Market tape, price alerts, auto refresh, coin search, headlines, and an optional Umbra Read. |
 | Defense Intel | `defense_stock_tracker.html` | Small and mid-cap defense stock tracker with 52-week range, volume signals, multi-day returns, news, verdicts, and an ITA ETF holdings explorer. |
-| NFL PropEdge | `nfl_propedge.html` | Projects passing, rushing, and receiving yards for the week's slate from usage, opponent, and the betting market, with over/under chances, alt lines, live sportsbook lines via The Odds API, a parlay slip that checks same-game correlation, and an optional Umbra Read. The slate is rebuilt automatically (see below). |
+| NFL PropEdge | `nfl_propedge.html` | Projects passing, rushing, and receiving yards for the week's slate from how often each player gets the ball, the opponent, expected scoring, and confirmed injuries (with backups' bigger roles). Over/under chances are measured on the 2024 and 2025 seasons and blended with the sportsbook line; picks only appear on real lines. Parlay builder with measured same-game correlations, live lines via The Odds API, and a plain-English Umbra Read. The slate is rebuilt automatically (see below). |
 | NBA Parlay Finder | `nba_parlay_finder.html` | Compares last-five averages against prop lines across points, rebounds, assists, threes, and PRA. Value scoring, ESPN box scores, parlay builder. |
 | WNBA Parlay Finder | `wnba_parlay_finder.html` | Same approach for the WNBA with a recency-weighted stats engine and a composite Play Score per prop. |
 
@@ -28,6 +28,8 @@ pip install pandas scipy requests
 python build_data.py            # current week, detected from ESPN
 python make_page.py data.json --site ../nfl_propedge.html
 ```
+
+To re-measure the outcome ranges and injury rules on past seasons: `python backtest.py 2024`, `python backtest.py 2025`, then `python research/fit_calibration.py` (writes `calibration.json`).
 
 ## Running locally
 

@@ -51,6 +51,17 @@ button { cursor: pointer; }
 .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; }
 .meta b { color: var(--ink); font-weight: 600; }
 
+.inj { padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); display: grid; gap: 8px; font-size: 13px; }
+.inj h3 { margin: 0; font-family: var(--f-display); font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.inj-team { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 2px 10px; align-items: start; }
+.inj-team .tm { grid-row: span 3; }
+.inj-team .ln { min-width: 0; }
+.inj-team .ln b { font-weight: 600; }
+.inj .lbl { color: var(--muted); }
+.inj .up { color: var(--good); font-family: var(--f-data); }
+.chip.role { background: var(--accent-soft); border-color: #BCCDE6; color: var(--accent); }
+.vd.none { background: var(--surface-2); color: var(--muted); }
+.muted { color: var(--muted); }
 .slate-check { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .top-in .slate-check { width: 100%; justify-content: flex-end; }
 .stale { margin-top: 14px; padding: 10px 14px; border: 1px solid #E6CF9C; background: var(--warn-soft); color: var(--warn); border-radius: var(--r); font-size: 13.5px; }
@@ -107,7 +118,7 @@ button { cursor: pointer; }
 /* Prop rows */
 .rows { display: flex; flex-direction: column; }
 .props-panel { container-type: inline-size; min-width: 0; }
-.row-head, .row-main { display: grid; grid-template-columns: minmax(150px, 1.7fr) 62px 80px 54px 112px minmax(90px, 1fr) 70px; gap: 10px; align-items: center; padding: 9px 14px; }
+.row-head, .row-main { display: grid; grid-template-columns: minmax(150px, 1.6fr) 58px 80px 50px 150px minmax(80px, 1fr) 70px; gap: 10px; align-items: center; padding: 9px 14px; }
 .row-head { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--surface-2); }
 .row { border-bottom: 1px solid var(--line); }
 .row:last-child { border-bottom: 0; }
@@ -298,7 +309,7 @@ button { cursor: pointer; }
   <section class="panel lines-bar" aria-label="Sportsbook lines">
     <div class="lb-text">
       <h2>Sportsbook lines</h2>
-      <p class="fine" id="linesStatus"><b>Dashed lines are estimates</b>, set halfway between the player's recent average and the projection. Load live lines with an Odds API key, or type your book's line into any row.</p>
+      <p class="fine" id="linesStatus"><b>Picks need real sportsbook lines.</b> Until a line is loaded, dashed boxes sit at the projection and no pick is shown. Load live lines with an Odds API key, or type your book's line into any row.</p>
     </div>
     <div class="lb-controls">
       <label class="field" for="oddsKey">Odds API key
@@ -347,6 +358,7 @@ button { cursor: pointer; }
         </label>
         <span class="count" id="count"></span>
       </div>
+      <div class="inj" id="inj" hidden></div>
       <div class="row-head" aria-hidden="true">
         <span>Player</span><span>Proj</span><span>Line</span><span>Hit %</span><span>Pick</span><span>Play score</span><span style="text-align:right">Add</span>
       </div>
@@ -367,7 +379,7 @@ button { cursor: pointer; }
           </label>
           <button class="read-btn" id="buildBtn" type="button">Build a parlay</button>
         </div>
-        <div class="fine">Umbra Read picks from the top-rated props in <b id="buildScope">all games</b> and replaces what's on the slip.</div>
+        <div class="fine">Picks the strongest edges on real lines in <b id="buildScope">all games</b> and replaces what's on the slip.</div>
         <div class="read-out" id="buildOut"></div>
       </div>
       <div class="slip-legs" id="legs"></div>
@@ -383,14 +395,15 @@ button { cursor: pointer; }
   <details class="panel method">
     <summary>How the projections work</summary>
     <div class="mb">
-      <p><b>Usage first.</b> Receiving yards start from target share times projected team pass attempts. Rushing yards start from carry share times projected team carries. Passing yards start from projected attempts times yards per attempt. Share and efficiency are more stable week to week than raw yardage.</p>
-      <p><b>Small samples get pulled toward a baseline.</b> Recent games count more, but every rate is blended with the player's 2025 numbers (or a position average) until the 2026 sample is big enough to stand on its own.</p>
-      <p><b>Game script from the market.</b> The spread moves volume: favorites run more and throw less, underdogs do the opposite. The implied team total nudges efficiency up or down.</p>
-      <p><b>Opponent.</b> Each defense's yards allowed versus league average, by unit and by receiving position, shrunk toward average over its first four games.</p>
-      <p><b>Injuries.</b> Players listed Out, Doubtful or on IR are removed. When a team's remaining receivers or backs account for less than a normal share of the work, their shares are scaled up to cover what was vacated.</p>
-      <p><b>Hit rates.</b> Outcomes are modeled with a right-skewed distribution centered on the projection, since yardage has a hard floor and a long upper tail. Edge is the model's hit rate minus the break-even rate implied by the odds.</p>
-      <p><b>Parlays.</b> Legs from the same game are adjusted for correlation (a QB and his receivers move together, a big-favorite run game pulls against its own passing). Legs from different games are treated as independent.</p>
-      <p><b>Umbra Read.</b> A written take on a prop or a parlay, generated from the same numbers on this page: the projection, drivers, line, odds, game context and game log. It doesn't see news beyond the injury report, so treat it as a second opinion on the model, not new information.</p>
+      <p><b>Opportunities first.</b> Receiving yards start from how often passes go to a player times how many passes his team throws. Rushing yards start from his share of the team's runs. Passing yards start from expected passes times yards per pass. How often a player gets the ball is steadier week to week than how many yards he gains.</p>
+      <p><b>Small samples get pulled toward a baseline.</b> Recent games count more, but every rate is blended with last season's numbers (or a position average) until this season's sample can stand on its own.</p>
+      <p><b>Opponent and expected scoring.</b> Each defense's yards allowed against league average, by type of play and position, plus how many points the team is expected to score. Teams favored to win run a bit more.</p>
+      <p><b>Injuries and backups.</b> Players ruled out, doubtful or on injured reserve are removed. Their share of the work moves to teammates by rules measured on every 2024-25 game where a regular sat out: running backs pick up a real share of a missing back's runs, while receivers gain less than you'd expect because the offense as a whole tends to get worse. Starting quarterbacks come from the team's depth chart, so a backup who hasn't played yet still gets a projection.</p>
+      <p><b>Chances are measured, not assumed.</b> The chance of going over a line comes from how players with similar projections actually finished across the 2024 and 2025 seasons, replayed week by week. Tested on a season it wasn't fit on, it was off by about 3 points on average.</p>
+      <p><b>The sportsbook gets half the say.</b> Sportsbook lines are sharp, so the chance shown is half the projection's view and half the book's (with the book's cut removed). A pick needs at least a 2-point edge over break-even (Lean) or 4 points (Play). If the two disagree by more than 25 points, the prop is marked "Check news" instead, since that usually means something the projection hasn't seen.</p>
+      <p><b>When there's no pick.</b> No sportsbook line, fewer than two games this season, or a small role.</p>
+      <p><b>Parlays.</b> Legs from the same game are adjusted by how they actually moved together in 2024-25: a quarterback and his own receivers tend to hit together, two opposing quarterbacks a little, and most other pairs barely affect each other. The builder picks by rule from the strongest edges and never pairs legs that work against each other.</p>
+      <p><b>Umbra Read.</b> A plain-English explanation of the pick the numbers already made, including who is out and how that changes things. It only uses the data on this page and the injury report, so it explains the projection rather than adding news.</p>
     </div>
   </details>
 
@@ -480,7 +493,24 @@ async function peLatest(timeoutMs) {
     }
     return 1 - Math.exp(-x + a * Math.log(x) - gln) * h;
   }
-  const pOver = (p, line) => 1 - gammp(p.k, line / p.theta);
+  // Outcome ranges measured from two seasons of results: actual yards / projected average, by market and size of role
+  const CAL = D.calib;
+  function calTier(p) { return CAL[p.kind].cuts.reduce((n, x) => n + (p.mu > x ? 1 : 0), 0); }
+  function pOver(p, line) {
+    if (!CAL || !CAL[p.kind]) return 1 - gammp(p.k, line / p.theta);
+    const q = CAL[p.kind].q[calTier(p)], r = line / p.mu;
+    if (r < q[0]) return 1;
+    if (r >= q[100]) return 0;
+    let i = 0;
+    while (i < 99 && q[i + 1] <= r) i++;
+    const lo = q[i], hi = q[i + 1];
+    return 1 - (i + (hi === lo ? 0 : (r - lo) / (hi - lo))) / 100;
+  }
+  function yardsAt(p, f) { // yards at a given point of the outcome range (0.25 = a quarter of games come in lower)
+    if (!CAL || !CAL[p.kind]) return null;
+    const q = CAL[p.kind].q[calTier(p)], x = f * 100, i = Math.min(99, Math.floor(x));
+    return p.mu * (q[i] + (q[i + 1] - q[i]) * (x - i));
+  }
   const dec = o => (o > 0 ? 1 + o / 100 : 1 + 100 / Math.abs(o));
   const breakeven = o => 1 / dec(o);
   const fmtOdds = o => (o > 0 ? '+' + o : String(o));
@@ -491,18 +521,36 @@ async function peLatest(timeoutMs) {
   const isEst = p => S.lines[p.id] == null;
   const oddsOf = p => S.odds[p.id] || { o: -110, u: -110 };
 
+  // The model and the sportsbook each get half the say. Books are sharp, so a pick needs the model to disagree clearly.
+  const BLEND = 0.5, GAP_FLAG = 0.25, LEAN_EDGE = 0.02, PLAY_EDGE = 0.04;
+  function eligibility(p) {
+    if (p.n === 0) return 'No games yet';
+    if (p.n < 2) return 'One game so far';
+    if (p.mu < (p.kind === 'pass' ? 150 : 30)) return 'Small role';
+    return '';
+  }
   function evaluate(p) {
-    const line = lineOf(p), od = oddsOf(p);
-    const po = pOver(p, line), pu = 1 - po;
+    const line = lineOf(p), od = oddsOf(p), est = isEst(p);
+    const mo = pOver(p, line);
+    const vo = 1 / dec(od.o), vu = 1 / dec(od.u), mk = vo / (vo + vu); // book's chance of over, with its cut removed
+    const po = est ? mo : BLEND * mo + (1 - BLEND) * mk, pu = 1 - po;
     const eo = po - breakeven(od.o), eu = pu - breakeven(od.u);
     const side = eo >= eu ? 'over' : 'under';
     const edge = Math.max(eo, eu);
-    let score = 50 + edge * 160;
-    if (p.status === 'Questionable') score -= 8;
-    if (p.n <= 2) score -= 6;
-    score = Math.max(0, Math.min(99, Math.round(score)));
+    const gap = est ? 0 : Math.abs(mo - mk);
+    const why = est ? 'Needs a line' : eligibility(p) || (gap > GAP_FLAG ? 'Check news' : '');
+    const grade = why ? 'none' : edge >= PLAY_EDGE ? 'play' : edge >= LEAN_EDGE ? 'lean' : 'pass';
+    const score = grade === 'play' || grade === 'lean' ? Math.max(0, Math.min(99, Math.round(50 + edge * 500))) : 0;
     const hits = p.logs.map(l => (l[p.kind] > line ? 'o' : 'u'));
-    return { line, po, pu, side, edge, score, hits, od };
+    return { line, po, pu, mo, mk, side, edge, gap, why, grade, score, hits, od, est };
+  }
+  function roleChip(p) {
+    const r = p.role;
+    if (!r) return '';
+    if (r.replacing) return `<span class="chip role" title="Starting in place of ${esc(r.replacing)}">Starting for ${esc(r.replacing.split(' ').slice(-1)[0])}</span>`;
+    if (r.firstStart) return '<span class="chip role">First game this season</span>';
+    if (r.from && r.from.length) return `<span class="chip role" title="Picks up work from ${esc(r.from.map(f => f.name).join(', '))}">Bigger role</span>`;
+    return '';
   }
 
   // ---------- header ----------
@@ -574,9 +622,9 @@ async function peLatest(timeoutMs) {
       (!q || p.name.toLowerCase().includes(q) || p.team.toLowerCase() === q || p.opp.toLowerCase() === q));
     const ev = Object.fromEntries(list.map(p => [p.id, evaluate(p)]));
     const by = {
-      score: (a, b) => ev[b.id].score - ev[a.id].score,
+      score: (a, b) => ev[b.id].score - ev[a.id].score || (ev[a.id].est - ev[b.id].est) || b.mu - a.mu,
       proj: (a, b) => b.mu - a.mu,
-      edge: (a, b) => ev[b.id].edge - ev[a.id].edge,
+      edge: (a, b) => (ev[a.id].est - ev[b.id].est) || ev[b.id].edge - ev[a.id].edge,
       kick: (a, b) => games[a.game].kickoff.localeCompare(games[b.game].kickoff) || ev[b.id].score - ev[a.id].score
     }[S.sort];
     list.sort(by);
@@ -585,9 +633,12 @@ async function peLatest(timeoutMs) {
 
   function rowMain(p, e) {
     const inSlip = side => S.slip.some(l => l.id === p.id && l.side === side);
-    const tier = e.score >= 70 ? '' : e.score >= 58 ? 'mid' : 'low';
-    const pickLabel = e.edge > 0.01 ? `<span class="pick ${e.side}${isEst(p) ? ' est' : ''}" title="${isEst(p) ? 'Based on the estimated line. Enter your book line for the real edge.' : ''}">${e.side === 'over' ? 'OVER' : 'UNDER'} <span class="num">+${(e.edge * 100).toFixed(1)}</span></span>` : '<span class="pick none">NO EDGE</span>';
-    const status = p.status === 'Questionable' ? '<span class="chip q">Q</span>' : '';
+    const tier = e.grade === 'play' ? '' : 'mid';
+    const whyTip = { 'Needs a line': 'Load sportsbook lines or type in your book\'s line to get a pick.', 'No games yet': 'No games played this season, so there is too little to go on.', 'One game so far': 'Only one game this season, too little to go on.', 'Small role': 'Too small a role for a reliable projection.', 'Check news': 'The model and the sportsbook disagree by a lot. That usually means news the model has not seen.' };
+    const pickLabel = e.why ? `<span class="pick none" title="${whyTip[e.why] || ''}">${e.why}</span>`
+      : e.grade === 'pass' ? '<span class="pick none">No edge</span>'
+      : `<span class="pick ${e.side}">${e.side === 'over' ? 'OVER' : 'UNDER'} · ${e.grade === 'play' ? 'PLAY' : 'LEAN'} <span class="num">+${(e.edge * 100).toFixed(1)}</span></span>`;
+    const status = (p.status === 'Questionable' ? '<span class="chip q" title="Listed as questionable: may not play">Q</span>' : '') + roleChip(p);
     const ha = p.home ? 'vs' : '@';
     return `<div class="row-main" data-id="${p.id}">
       <div class="who"><span class="tm">${p.team}</span><div class="who-t"><div class="nm">${esc(p.name)}</div>
@@ -595,9 +646,9 @@ async function peLatest(timeoutMs) {
         <div class="hits" title="Last ${e.hits.length} games vs this line">${e.hits.map(h => `<span class="${h}"></span>`).join('')}</div></div></div>
       <span class="proj projc">${p.median.toFixed(1)}</span>
       <span class="linec"><input class="line-in${isEst(p) ? ' est' : ''}" id="line-${p.id}" data-id="${p.id}" type="number" inputmode="decimal" step="0.5" value="${e.line}" aria-label="Line for ${esc(p.name)} ${KIND[p.kind]}"></span>
-      <span class="pct pctc">${pct(e.side === 'over' ? e.po : e.pu)}</span>
+      <span class="pct pctc">${e.est ? '<span class="muted">–</span>' : pct(e.side === 'over' ? e.po : e.pu)}</span>
       <span class="pickc">${pickLabel}</span>
-      <span class="score scorec"><span class="val">${e.score}</span><span class="yard"><i class="${tier}" style="width:${e.score}%"></i></span></span>
+      <span class="score scorec"><span class="val">${e.score || '–'}</span><span class="yard"><i class="${tier}" style="width:${e.score}%"></i></span></span>
       <span class="adds"><button class="add${inSlip('over') ? ' on' : ''}" data-add="over" data-id="${p.id}" type="button" aria-label="Add over to slip">O</button><button class="add${inSlip('under') ? ' on' : ''}" data-add="under" data-id="${p.id}" type="button" aria-label="Add under to slip">U</button></span>
     </div>`;
   }
@@ -606,29 +657,27 @@ async function peLatest(timeoutMs) {
     const d = p.drivers, L = D.league, out = [];
     const f = (x, digits = 1) => Number(x).toFixed(digits);
     const signed = (m, txt) => { const v = (m - 1) * 100; const cls = v > 0.5 ? 'up' : v < -0.5 ? 'dn' : ''; return `<span class="${cls}">${txt} ${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(0)}%</span>`; };
-    const fav = d.spreadFor > 0 ? `Favored by ${f(d.spreadFor)}` : d.spreadFor < 0 ? `Underdog by ${f(-d.spreadFor)}` : 'Pick em';
+    const r = p.role;
+    if (r && r.replacing) out.push([`Starting in place of ${esc(r.replacing)}`, r.firstStart ? 'no games yet this season' : '']);
+    else if (r && r.firstStart) out.push(['First game this season', 'projection leans on last season']);
     if (p.kind === 'pass') {
-      out.push(['Projected pass attempts', f(d.att)]);
-      out.push(['Yards per attempt (blended)', f(d.ypa, 2)]);
-      out.push([`Game script: ${fav}`, signed(d.scriptPass, 'volume')]);
-      out.push([`${p.opp} pass defense`, signed(d.oppF, 'yards')]);
-      out.push([`Team total ${f(d.itt)} (avg ${f(L.pts)})`, signed(d.ittF, 'efficiency')]);
+      out.push(['Passes he is expected to throw', f(d.att)]);
+      out.push(['Yards per pass (this season, blended with last)', f(d.ypa, 2)]);
+      out.push([`${p.opp} pass defense vs league average`, signed(d.oppF, 'yards')]);
+      out.push([`Points ${p.team} is expected to score: ${f(d.itt)} (average ${f(L.pts)})`, signed(d.ittF, 'yards')]);
     } else if (p.kind === 'rush') {
-      out.push(['Carry share', pct(d.cshare)]);
-      out.push(['Projected team carries', f(d.teamCar)]);
-      out.push(['Projected carries', f(d.car)]);
-      out.push(['Yards per carry (blended)', f(d.ypc, 2)]);
-      out.push([`Game script: ${fav}`, signed(d.scriptRush, 'volume')]);
-      out.push([`${p.opp} run defense`, signed(d.oppF, 'yards')]);
-      if (d.boost > 1.01) out.push(['Vacated carries picked up', signed(d.boost, 'share')]);
+      out.push([`His share of ${p.team}'s runs`, pct(d.cshare)]);
+      if (r && r.from && r.from.length) out.push([`Picking up runs from ${esc(r.from.map(x => x.name).join(', '))}`, `${pct(r.base)} → ${pct(r.now)}`]);
+      out.push([`Runs he is expected to get`, f(d.car)]);
+      out.push(['Yards per run (this season, blended with last)', f(d.ypc, 2)]);
+      out.push([d.spreadFor > 0 ? `${p.team} favored by ${f(d.spreadFor)}: teams with a lead run more` : d.spreadFor < 0 ? `${p.team} expected to trail by ${f(-d.spreadFor)}: fewer runs` : 'Even matchup', signed(d.scriptRush, 'runs')]);
+      out.push([`${p.opp} run defense vs league average`, signed(d.oppF, 'yards')]);
     } else {
-      out.push(['Target share', pct(d.tshare)]);
-      out.push(['Projected team pass attempts', f(d.teamAtt)]);
-      out.push(['Projected targets', f(d.tgt)]);
-      out.push(['Yards per target (blended)', f(d.ypt, 2)]);
-      out.push([`${p.opp} vs ${p.pos}s`, signed(d.oppF, 'yards')]);
-      out.push([`Game script: ${fav}`, signed(d.scriptPass, 'volume')]);
-      if (d.boost > 1.01) out.push(['Vacated targets picked up', signed(d.boost, 'share')]);
+      out.push([`Share of ${p.team}'s passes thrown to him`, pct(d.tshare)]);
+      if (r && r.from && r.from.length) out.push([`Picking up passes meant for ${esc(r.from.map(x => x.name).join(', '))}`, `${pct(r.base)} → ${pct(r.now)}`]);
+      out.push([`Passes expected to be thrown his way`, f(d.tgt)]);
+      out.push(['Yards per pass thrown his way', f(d.ypt, 2)]);
+      out.push([`${p.opp} vs ${p.pos}s, compared to league average`, signed(d.oppF, 'yards')]);
     }
     if (d.wet) out.push(['Rain in the forecast', '<span class="dn">yards −5%</span>']);
     return out.map(([a, b]) => `<li><span>${a}</span><span>${b}</span></li>`).join('');
@@ -672,9 +721,10 @@ async function peLatest(timeoutMs) {
     });
     g += `<line x1="${padL}" x2="${W - padR}" y1="${y(e.line)}" y2="${y(e.line)}" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/>`;
     g += `<text x="${padL + 4}" y="${y(e.line) - 4}" text-anchor="start" font-size="10" font-weight="600" fill="var(--accent)" stroke="var(--surface-2)" stroke-width="3" paint-order="stroke" font-family="var(--f-data)">line ${e.line}</text>`;
-    const vol = p.kind === 'pass' ? logs.map(l => `${l.att} att`) : p.kind === 'rush' ? logs.map(l => `${l.car} car`) : logs.map(l => `${l.tgt} tgt`);
+    if (!logs.length) return '<div class="fine">No games this season yet.</div>';
+    const vol = p.kind === 'pass' ? logs.map(l => `${l.att} passes`) : p.kind === 'rush' ? logs.map(l => `${l.car} runs`) : logs.map(l => `${l.tgt} thrown his way`);
     return `<div class="logchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Game log">${g}</svg></div>
-      <div class="fine" style="margin-top:4px">Volume by game: ${vol.join(' · ')}</div>`;
+      <div class="fine" style="margin-top:4px">By game: ${vol.join(' · ')}</div>`;
   }
 
   function detail(p, e) {
@@ -687,7 +737,8 @@ async function peLatest(timeoutMs) {
     return `<div class="detail">
       ${readBlock}
       <div class="why-col"><h3>What drives the number</h3><ul class="why">${whyList(p)}</ul>
-        <div class="fine" style="margin-top:8px">Projected average ${p.mu.toFixed(1)}, median ${p.median.toFixed(1)}.</div>
+        <div class="fine" style="margin-top:8px">Most likely: about ${p.median.toFixed(0)} yards. In half of games like this he lands between ${Math.round(yardsAt(p, 0.25) ?? p.median * 0.6)} and ${Math.round(yardsAt(p, 0.75) ?? p.median * 1.4)}.</div>
+        ${e.est ? '' : `<div class="fine">Model alone: ${pct(e.mo)} over. Sportsbook: ${pct(e.mk)} over. Blended: ${pct(e.po)}.</div>`}
         ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}</div>
       <div><h3>Alt lines · chance of over</h3>${ladder(p, e)}
         <div class="odds-in">
@@ -695,12 +746,43 @@ async function peLatest(timeoutMs) {
           <label for="uo-${p.id}">Under odds<input id="uo-${p.id}" data-odds="u" data-id="${p.id}" type="number" step="5" value="${od.u}"></label>
         </div>
         <div class="fine" style="margin-top:6px">Break-even: over ${pct(breakeven(od.o))}, under ${pct(breakeven(od.u))}</div>
-        <div class="fine">${isEst(p) ? 'Line: estimate' : S.src[p.id] ? `Line and odds: <span class="src">${esc(S.src[p.id])}</span>` : 'Line: entered by you'}</div></div>
+        <div class="fine">${isEst(p) ? 'Line: placeholder at the projection, not a sportsbook number' : S.src[p.id] ? `Line and odds: <span class="src">${esc(S.src[p.id])}</span>` : 'Line: entered by you'}</div></div>
       <div><h3>Game log</h3>${logChart(p, e)}</div>
     </div>`;
   }
 
+  // Who is out this week and who picks up the work
+  function renderInj() {
+    const el = document.getElementById('inj');
+    const inj = D.injuries || { out: {}, questionable: {} };
+    const g = games[S.game];
+    if (!g) {
+      const teams = Object.keys(inj.out).filter(t => D.games.some(x => x.home === t || x.away === t));
+      const n = teams.reduce((a, t) => a + inj.out[t].length, 0);
+      const qbs = D.props.filter(p => p.kind === 'pass' && p.role && p.role.replacing);
+      if (!n) { el.hidden = true; return; }
+      el.hidden = false;
+      el.innerHTML = `<h3>Injuries this week</h3><div>${n} regular${n === 1 ? '' : 's'} ruled out across ${teams.length} team${teams.length === 1 ? '' : 's'}${qbs.length ? `, including ${qbs.map(p => `${esc(p.role.replacing)} (${p.team}, ${esc(p.name)} starts)`).join(' and ')}` : ''}. Pick a game to see who is filling in. Projections already account for these.</div>`;
+      return;
+    }
+    const block = team => {
+      const out = inj.out[team] || [], q = inj.questionable[team] || [];
+      const fills = D.props.filter(p => p.team === team && p.role && ((p.role.from && p.role.from.length) || p.role.replacing));
+      const seen = new Set();
+      const fillTxt = fills.filter(p => !seen.has(p.pid + p.role.kind) && seen.add(p.pid + p.role.kind)).map(p => p.role.replacing
+        ? `<b>${esc(p.name)}</b> starts at quarterback`
+        : `<b>${esc(p.name)}</b> ${p.role.kind === 'carries' ? 'share of runs' : 'share of passes'} <span class="up">${pct(p.role.base)} → ${pct(p.role.now)}</span>`);
+      return `<div class="inj-team"><span class="tm">${team}</span>
+        <div class="ln"><span class="lbl">Out:</span> ${out.length ? out.map(x => `${esc(x.name)} (${x.pos}${x.status !== 'Out' ? ', ' + esc(x.status) : ''})`).join(', ') : 'nobody of note'}</div>
+        <div class="ln"><span class="lbl">Questionable:</span> ${q.length ? q.map(x => `${esc(x.name)} (${x.pos})`).join(', ') : 'none'}</div>
+        <div class="ln"><span class="lbl">Filling in:</span> ${fillTxt.length ? fillTxt.join(' · ') : 'no change'}</div></div>`;
+    };
+    el.hidden = false;
+    el.innerHTML = `<h3>Injuries</h3>${block(g.away)}${block(g.home)}`;
+  }
+
   function renderRows() {
+    renderInj();
     const { list, ev } = filtered();
     const el = document.getElementById('rows');
     document.getElementById('count').textContent = `${list.length} props`;
@@ -767,30 +849,23 @@ async function peLatest(timeoutMs) {
     store.set('slip', S.slip); refreshRow(id); renderSlip();
   }
 
-  // Correlation between two legs, written for over/over and flipped when sides differ
+  // How two same-game legs move together, measured on 2024-25 games (written for over/over, flipped when sides differ).
+  // Pairs that measured near zero (opposing receivers, a back and his own receivers, two backs) are treated as independent.
   function corr(a, b) {
     const pa = props[a.id], pb = props[b.id];
     if (pa.game !== pb.game) return null;
     let rho = 0, why = '';
-    const qbPass = p => p.kind === 'pass';
     const same = pa.pid === pb.pid, team = pa.team === pb.team;
     const pair = (k1, k2) => (pa.kind === k1 && pb.kind === k2) || (pa.kind === k2 && pb.kind === k1);
     const recOf = () => (pa.kind === 'rec' ? pa : pb);
+    const last = p => p.name.split(' ').slice(-1)[0];
     if (same) {
-      if (pair('pass', 'rush')) { rho = -0.05; why = 'Same QB: scrambles come from dropbacks that are not completions'; }
-      else if (pair('rush', 'rec')) { rho = 0.10; why = 'Same back: more snaps lift both'; }
+      if (pair('rush', 'rec')) { rho = 0.10; why = 'Same player: more time on the field helps both'; }
     } else if (team) {
-      if (pair('pass', 'rec')) { const r = recOf(); rho = r.pos === 'RB' ? 0.18 : 0.38; why = `${r.name.split(' ').slice(-1)[0]}'s catches are his QB's yards`; }
-      else if (pair('rec', 'rec')) { rho = 0.05; why = 'Same passing game: more volume helps both, but they share targets'; }
-      else if (pair('pass', 'rush')) { rho = -0.15; why = 'Same team: when the run game is working, the QB throws less'; }
-      else if (pair('rush', 'rec')) { rho = -0.08; why = 'Same team: run-heavy scripts cut into receiving volume'; }
-      else if (pair('rush', 'rush')) { rho = -0.15; why = 'Same backfield: they split the carries'; }
+      if (pair('pass', 'rec')) { const r = recOf(); rho = r.pos === 'RB' ? 0.23 : 0.30; why = `${last(r)}'s receiving yards count toward his quarterback's passing yards`; }
+      else if (pair('pass', 'rush')) { rho = -0.12; why = 'Same team: when the running game is working, the quarterback throws less'; }
     } else {
-      if (pair('pass', 'pass')) { rho = 0.22; why = 'Both QBs: a shootout lifts both'; }
-      else if (pair('pass', 'rec')) { rho = 0.15; why = 'Opposing sides: if one offense scores, the other has to throw'; }
-      else if (pair('rec', 'rec')) { rho = 0.10; why = 'Opposing receivers: high-scoring game helps both'; }
-      else if (pair('rush', 'pass') || pair('rush', 'rec')) { rho = 0.08; why = 'A back running with a lead forces the other side to pass'; }
-      else if (pair('rush', 'rush')) { rho = -0.05; why = 'Opposing backs: usually only one team gets to lean on the run'; }
+      if (pair('pass', 'pass')) { rho = 0.15; why = 'Both quarterbacks: a high-scoring game tends to lift both'; }
     }
     if (!rho) return null;
     if (a.side !== b.side) { rho = -rho; why += ', and you have them on opposite sides'; }
@@ -812,7 +887,7 @@ async function peLatest(timeoutMs) {
     legsEl.innerHTML = legs.map((l, i) => `<div class="leg">
       <div class="lt">${esc(l.p.name)} ${l.side === 'over' ? 'Over' : 'Under'} ${l.line}</div>
       <div class="lr"><input id="lo-${i}" data-leg="${i}" type="number" step="5" value="${l.odds}" aria-label="Odds"><button class="rm" data-rm="${i}" type="button" aria-label="Remove leg">×</button></div>
-      <div class="ls">${KIND[l.p.kind]} · ${l.p.team} ${l.p.home ? 'vs' : '@'} ${l.p.opp} · model ${pct(l.prob)}</div><div></div>
+      <div class="ls">${KIND[l.p.kind]} · ${l.p.team} ${l.p.home ? 'vs' : '@'} ${l.p.opp} · chance ${pct(l.prob)}</div><div></div>
     </div>`).join('');
 
     // correlation
@@ -883,7 +958,7 @@ async function peLatest(timeoutMs) {
     applyAI();
   }
   function applyAI() {
-    document.getElementById('build').hidden = !aiOn();
+    document.getElementById('build').hidden = false;
     document.getElementById('keybox').hidden = !(AI.mode === 'needkey' || AI.mode === 'key');
     document.getElementById('keyMsg').textContent = AI.mode === 'key' ? 'Key saved. Umbra Read is on.' : AI.mode === 'needkey' ? 'Add a key to turn on Umbra Read.' : '';
     if (S.open) refreshRow(S.open);
@@ -955,58 +1030,97 @@ async function peLatest(timeoutMs) {
     return { data: extractJSON(text), text };
   }
 
-  const VOICE = 'Write like a sharp bettor texting a friend: direct, specific, built on the numbers given. No hype, no emojis, no em dashes, no hedging boilerplate, no disclaimers, and never mention being an AI or a model. Use only the data provided; do not invent injuries, news or stats.';
+  const VOICE = `Write for someone who is smart but does not follow football closely.
+Rules:
+- Plain everyday English. No sports-betting slang or jargon. Never use words like: target share, game script, volume, implied total, WR1, RB1, bell cow, workhorse, smash, fade, chalk, lock, hammer, juice, vig, cover, sharp, square, EV, CLV, regression, usage, snap count, red zone, slot.
+- If you need one of those ideas, say it plainly: "how often passes are thrown to him", "how many times he is expected to run the ball", "points the team is expected to score".
+- Every sentence must carry a fact from the data. No hype, no filler, no warm-up phrases, no disclaimers, no emojis, no em dashes.
+- Use only the data provided. Do not invent injuries, news, stats or history.
+- Do not mention AI, models or language models. Refer to "the projection" instead.`;
+
+  function verdictFor(p, e) {
+    if (e.why === 'Needs a line') return { tag: 'none', label: 'No pick yet', say: 'No pick yet: there is no sportsbook line loaded, so only the projection can be discussed.' };
+    if (e.why) return { tag: 'pass', label: 'No bet', say: `No bet. Reason: ${({ 'No games yet': 'he has not played this season, so there is too little to go on', 'One game so far': 'he has only one game this season, too little to go on', 'Small role': 'his role is too small for a reliable projection', 'Check news': 'the projection and the sportsbook disagree by a lot, which usually means news the projection has not seen' })[e.why]}.` };
+    if (e.grade === 'pass') return { tag: 'pass', label: 'No bet', say: 'No bet: the projection and the sportsbook line are too close to call.' };
+    const side = e.side === 'over' ? 'Over' : 'Under';
+    return e.grade === 'play'
+      ? { tag: e.side, label: side, say: `${side}: a clear edge.` }
+      : { tag: e.side, label: `Lean ${side.toLowerCase()}`, say: `Lean ${side.toLowerCase()}: a small edge.` };
+  }
+
+  function injuryLines(p) {
+    const inj = D.injuries || { out: {}, questionable: {} };
+    const lines = [];
+    const outT = (inj.out[p.team] || []).filter(x => x.name !== p.name);
+    const qT = (inj.questionable[p.team] || []).filter(x => x.name !== p.name);
+    const outO = inj.out[p.opp] || [];
+    lines.push(`${p.team} players out: ${outT.length ? outT.map(x => `${x.name} (${x.pos}, ${x.status})`).join(', ') : 'none of note'}.`);
+    lines.push(`${p.team} players listed questionable (may not play): ${qT.length ? qT.map(x => `${x.name} (${x.pos})`).join(', ') : 'none'}.`);
+    lines.push(`${p.opp} offensive players out: ${outO.length ? outO.map(x => `${x.name} (${x.pos})`).join(', ') : 'none of note'}.`);
+    const r = p.role;
+    if (r && r.replacing) lines.push(`${p.name} is starting at quarterback in place of ${r.replacing}.${r.firstStart ? ' He has not played this season, so the projection leans on last season or a backup baseline.' : ''}`);
+    else if (r && r.firstStart) lines.push(`${p.name} has not played yet this season, so the projection leans on last season.`);
+    if (r && r.from && r.from.length) {
+      const what = r.kind === 'carries' ? 'share of the team\'s runs' : 'share of the team\'s passes thrown to him';
+      lines.push(`Because ${r.from.map(x => x.name).join(' and ')} ${r.from.length > 1 ? 'are' : 'is'} out, his expected ${what} goes from ${pct(r.base)} to ${pct(r.now)}. In past seasons, players filling in like this gained a smaller boost in yards than in opportunities, because the offense as a whole tends to get worse without a starter.`);
+    }
+    lines.push(`${p.name}'s own status: ${p.status && p.status !== 'Active' ? p.status + (p.note ? '. ' + p.note : '') : 'no injury listed'}.`);
+    return lines.join('\n');
+  }
 
   function propBrief(p, e) {
     const g = games[p.game], d = p.drivers, L = D.league;
     const lines = [];
-    lines.push(`Player: ${p.name}, ${p.pos}, ${p.team} ${p.home ? 'vs' : 'at'} ${p.opp}, kickoff ${fmtKick(g.kickoff)}`);
-    lines.push(`Market: ${KIND[p.kind]} ${e.line} (${isEst(p) ? 'ESTIMATED line, not from a sportsbook' : S.src[p.id] ? 'live line from ' + S.src[p.id] : 'line entered by the user from their sportsbook'}). Odds over ${fmtOdds(e.od.o)}, under ${fmtOdds(e.od.u)}. Break-even over ${pct(breakeven(e.od.o))}, under ${pct(breakeven(e.od.u))}.`);
-    lines.push(`Model: projected average ${p.mu.toFixed(1)}, median ${p.median.toFixed(1)}. Chance over ${pct(e.po)}, under ${pct(e.pu)}. Best side ${e.side} with edge ${(e.edge * 100).toFixed(1)} points. Play score ${e.score}/100.`);
-    if (p.kind === 'pass') lines.push(`Drivers: ${d.att} projected attempts, ${d.ypa} yards per attempt blended with 2025, opponent pass defense factor ${d.oppF}, script volume factor ${d.scriptPass}, team total efficiency factor ${d.ittF}.`);
-    if (p.kind === 'rush') lines.push(`Drivers: carry share ${pct(d.cshare)}, ${d.teamCar} projected team carries, ${d.car} projected carries, ${d.ypc} yards per carry blended, opponent run defense factor ${d.oppF}, script volume factor ${d.scriptRush}${d.boost > 1.01 ? `, share boosted ${((d.boost - 1) * 100).toFixed(0)}% for vacated carries` : ''}.`);
-    if (p.kind === 'rec') lines.push(`Drivers: target share ${pct(d.tshare)}, ${d.teamAtt} projected team pass attempts, ${d.tgt} projected targets, ${d.ypt} yards per target blended, opponent factor vs ${p.pos}s ${d.oppF}, script volume factor ${d.scriptPass}${d.boost > 1.01 ? `, share boosted ${((d.boost - 1) * 100).toFixed(0)}% for vacated targets` : ''}.`);
-    lines.push(`Game: ${p.team} ${d.spreadFor > 0 ? 'favored by ' + d.spreadFor : d.spreadFor < 0 ? 'underdog by ' + (-d.spreadFor) : 'pick em'}, total ${g.total}, ${p.team} implied team total ${d.itt} (league average ${L.pts}). Weather: ${g.indoor ? 'dome' : (g.temp != null ? g.temp + 'F ' : '') + (g.weather || 'unknown')}.`);
-    lines.push(`Injury status: ${p.status && p.status !== 'Active' ? p.status + (p.note ? '. ' + p.note : '') : 'no designation'}.`);
-    lines.push('Game log 2026: ' + p.logs.map(l => `W${l.wk} vs ${l.opp}: ${l[p.kind]} ${p.kind} yds` + (p.kind === 'pass' ? ` on ${l.att} att` : p.kind === 'rush' ? ` on ${l.car} car` : ` on ${l.tgt} tgt (${pct(l.ts)} share)`)).join('; ') + '.');
+    const fav = d.spreadFor > 0 ? `${p.team} is favored to win by about ${d.spreadFor} points` : d.spreadFor < 0 ? `${p.team} is expected to lose by about ${-d.spreadFor} points` : 'the game is expected to be close';
+    const what = { pass: 'passing yards', rush: 'rushing yards', rec: 'receiving yards' }[p.kind];
+    lines.push(`Player: ${p.name}, ${({ QB: 'quarterback', RB: 'running back', WR: 'wide receiver', TE: 'tight end' })[p.pos]} for ${p.team}, ${p.home ? 'at home against' : 'on the road at'} ${p.opp}, ${fmtKick(g.kickoff)}.`);
+    lines.push(`Bet: ${what}, line ${e.line}${e.est ? ' (no sportsbook line loaded; this is a placeholder at the projection)' : S.src[p.id] ? ` from ${S.src[p.id]}` : ' (typed in by the user)'}. Odds: over ${fmtOdds(e.od.o)}, under ${fmtOdds(e.od.u)}.`);
+    lines.push(`Projection: most likely about ${p.median.toFixed(0)} ${what}. In half of similar games the result lands between ${Math.round(yardsAt(p, 0.25) ?? p.median * 0.6)} and ${Math.round(yardsAt(p, 0.75) ?? p.median * 1.4)}.`);
+    if (!e.est) lines.push(`Chance of going over ${e.line}: projection alone ${pct(e.mo)}, sportsbook ${pct(e.mk)}, combined ${pct(e.po)}. The bet needs ${pct(breakeven(e.side === 'over' ? e.od.o : e.od.u))} to break even on the ${e.side}.`);
+    if (p.kind === 'pass') lines.push(`Why: expected to throw about ${d.att} passes, averaging ${d.ypa} yards per pass. ${p.opp}'s pass defense allows ${Math.abs(Math.round((d.oppF - 1) * 100))}% ${d.oppF >= 1 ? 'more' : 'fewer'} passing yards than average. ${p.team} is expected to score ${d.itt} points (average team: ${L.pts}).`);
+    if (p.kind === 'rush') lines.push(`Why: expected to get about ${d.car} runs (${pct(d.cshare)} of the team's runs), averaging ${d.ypc} yards per run. ${p.opp}'s run defense allows ${Math.abs(Math.round((d.oppF - 1) * 100))}% ${d.oppF >= 1 ? 'more' : 'fewer'} yards per run than average. ${d.spreadFor > 0 ? 'His team is favored, and teams with a lead tend to run more.' : d.spreadFor < 0 ? 'His team is expected to trail, and teams that fall behind tend to run less.' : ''}`);
+    if (p.kind === 'rec') lines.push(`Why: about ${d.tgt} passes are expected to be thrown his way (${pct(d.tshare)} of the team's passes), and he averages ${d.ypt} yards per pass thrown to him. ${p.opp} allows ${Math.abs(Math.round((d.oppF - 1) * 100))}% ${d.oppF >= 1 ? 'more' : 'fewer'} receiving yards to ${({ WR: 'wide receivers', TE: 'tight ends', RB: 'running backs' })[p.pos]} than average.`);
+    lines.push(`Game: ${fav}. Weather: ${g.indoor ? 'indoors' : (g.temp != null ? g.temp + ' degrees, ' : '') + (g.weather || 'unknown')}.`);
+    const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    lines.push('This season, game by game: ' + (p.logs.length ? p.logs.map(l => `week ${l.wk} vs ${l.opp}: ${l[p.kind]} yards` + (p.kind === 'pass' ? ` on ${pl(l.att, 'pass', 'passes')}` : p.kind === 'rush' ? ` on ${pl(l.car, 'run', 'runs')}` : ` on ${pl(l.tgt, 'pass', 'passes')} thrown his way`)).join('; ') : 'no games yet') + '.');
+    lines.push('INJURIES');
+    lines.push(injuryLines(p));
     return lines.join('\n');
   }
 
-  function parseVerdict(text, kinds) {
-    const m = text.match(/^\s*VERDICT:\s*([A-Za-z]+)\s*(?:\|\s*([A-Za-z]+))?\s*\n?/);
-    if (!m) return { v: null, rest: text };
-    const v = m[1].toLowerCase();
-    return { v: kinds.includes(v) ? v : null, conf: m[2] || '', rest: text.slice(m[0].length) };
-  }
-  function readHTML(state, kinds) {
+  function readHTML(state, verdict) {
     if (!state) return { cls: '', html: '' };
     if (state.status === 'wait') return { cls: 'wait', html: 'Reading the numbers...' };
     if (state.status === 'error') return { cls: 'err', html: esc(state.err || '') };
-    const { v, conf, rest } = parseVerdict(state.text || '', kinds);
-    let body = esc(rest.trim());
-    body = body.replace(/^(Watch:|Weakest leg:|Swap idea:)/gm, '<b>$1</b>').replace(/^(<b>Watch:<\/b>.*)$/m, '<span class="watch">$1</span>');
-    const chip = v ? `<span class="vd ${v}">${v}${conf ? ` <span class="cf">· ${esc(conf.toLowerCase())} confidence</span>` : ''}</span>\n` : '';
+    let body = esc((state.text || '').trim());
+    body = body.replace(/^(Bottom line:|Why:|Injuries:|What could go wrong:|Weakest leg:|How the legs fit:)/gm, '<b>$1</b>');
+    const chip = verdict ? `<span class="vd ${verdict.tag}">${esc(verdict.label)}</span>\n` : '';
     return { cls: '', html: chip + body };
   }
   function paintRead(id) {
     const out = document.getElementById('readout-' + id);
     if (!out) return;
-    const r = readHTML(S.reads[id], ['over', 'under', 'pass']);
+    const st = S.reads[id];
+    const r = readHTML(st, st && st.verdict);
     out.className = 'read-out' + (r.cls ? ' ' + r.cls : '');
     out.innerHTML = r.html;
   }
 
   async function runPropRead(id) {
     const p = props[id], e = evaluate(p);
-    const st = S.reads[id] = { status: 'wait', text: '', line: e.line };
+    const verdict = verdictFor(p, e);
+    const st = S.reads[id] = { status: 'wait', text: '', line: e.line, verdict };
     refreshRow(id);
-    const prompt = `You are the analyst voice of NFL PropEdge, a player prop research tool. Give a short read on one player prop. ${VOICE}
-If the line is estimated, end the Watch line by telling the reader to check their book's number.
+    const prompt = `You explain player prop bets for NFL PropEdge. The decision below is already made by the numbers. Your job is to explain it so a newcomer understands it.
+${VOICE}
 
-Reply in exactly this format and nothing else:
-VERDICT: <Over or Under or Pass> | <High or Medium or Low>
-<Two or three sentences on why, citing the two or three numbers that matter most.>
-Watch: <one specific risk to this pick>
+DECISION (do not change it): ${verdict.say}
+
+Reply in exactly this format, about 110 words in total, and nothing else:
+Bottom line: <one sentence that states the decision above and the single biggest reason>
+Why: <two sentences using the most important numbers below, explained in plain terms>
+Injuries: <one or two sentences on who is out or questionable for his team and exactly how that changes his chances; if nobody relevant is out, say so in a few words>
+What could go wrong: <one specific, realistic risk for this decision>
 
 DATA
 ${propBrief(p, e)}`;
@@ -1036,49 +1150,58 @@ ${propBrief(p, e)}`;
     btn.textContent = st && st.status === 'done' ? 'Read again' : 'Read this parlay';
     btn.classList.toggle('ghost', !!(st && st.status === 'done'));
     const out = document.getElementById('preadOut');
-    const r = readHTML(st, ['play', 'trim', 'pass']);
+    const r = readHTML(st, st && st.verdict);
     out.className = 'read-out' + (r.cls ? ' ' + r.cls : '');
     out.innerHTML = r.html;
   }
+  // Props good enough for a parlay: a real line, a clear edge, a settled role, no injury question, no big gap with the book
   function candidateList(gameIds, exclude, n) {
     return D.props
-      .filter(p => (!gameIds || gameIds.includes(p.game)) && !exclude.has(p.id))
+      .filter(p => (!gameIds || gameIds.includes(p.game)) && !exclude.has(p.id) && p.status !== 'Questionable')
       .map(p => ({ p, e: evaluate(p) }))
-      .filter(x => x.e.edge > 0.01)
-      // On estimated lines, skip thin samples, small roles and lines far from the projection:
-      // those edges come from the stand-in line, not from anything a book would post
-      .filter(x => !isEst(x.p) || (x.p.n >= 2 && x.p.mu >= (x.p.kind === 'pass' ? 150 : 35) && Math.abs(x.e.line - x.p.median) / x.p.median <= 0.25))
-      .sort((a, b) => b.e.score - a.e.score)
+      .filter(x => x.e.grade === 'play' || x.e.grade === 'lean')
+      .sort((a, b) => b.e.edge - a.e.edge)
       .slice(0, n);
+  }
+  // Parlay decision from the numbers: play if it is worth more than it costs, trim if dropping the weakest leg makes it so
+  function parlayVerdict(c) {
+    if (c.legs.some(l => isEst(l.p))) return { tag: 'none', label: 'Needs lines', say: 'No decision yet: at least one leg has no sportsbook line loaded.', weakest: null };
+    const scored = c.legs.map(l => ({ l, edge: (l.side === 'over' ? evaluate(l.p).po : evaluate(l.p).pu) - breakeven(l.odds) }));
+    const weakest = scored.reduce((a, b) => (b.edge < a.edge ? b : a));
+    if (c.ev > 0) return { tag: 'play', label: 'Worth a look', say: `Worth a look: by the numbers it pays more than its risk (expected return ${c.ev >= 0 ? '+' : ''}$${c.ev.toFixed(2)} per $1).`, weakest };
+    const p2 = c.trueP / Math.max(0.01, weakest.l.prob), pay2 = c.payout / dec(weakest.l.odds);
+    if (c.legs.length > 2 && p2 * pay2 - 1 > 0) return { tag: 'trim', label: 'Drop one leg', say: `Drop ${weakest.l.p.name}: without that leg the parlay is worth more than its risk; with it, it is not.`, weakest };
+    return { tag: 'pass', label: 'Skip', say: `Skip: the chance of every leg hitting is too low for this payout (expected return -$${Math.abs(c.ev).toFixed(2)} per $1).`, weakest };
   }
   async function runParlayRead() {
     const c = S.slipCalc; if (!c || c.legs.length < 2) return;
-    const st = S.pread = { sig: slipSig(), status: 'wait', text: '' };
+    const verdict = parlayVerdict(c);
+    const st = S.pread = { sig: slipSig(), status: 'wait', text: '', verdict };
     renderPread();
+    const what = { pass: 'passing yards', rush: 'rushing yards', rec: 'receiving yards' };
     const legTxt = c.legs.map((l, i) => {
       const e = evaluate(l.p);
-      return `Leg ${i + 1}: ${l.p.name} (${l.p.pos}, ${l.p.team} ${l.p.home ? 'vs' : 'at'} ${l.p.opp}) ${l.side} ${l.line} ${KIND[l.p.kind]} at ${fmtOdds(l.odds)}. Model chance ${pct(l.prob)}, projection median ${l.p.median.toFixed(1)}, ${isEst(l.p) ? 'estimated line' : 'book line'}, play score ${e.score}.`;
+      const inj = l.p.role && l.p.role.from && l.p.role.from.length ? ` Filling in for ${l.p.role.from.map(x => x.name).join(' and ')} (out).` : l.p.role && l.p.role.replacing ? ` Starting in place of ${l.p.role.replacing}.` : '';
+      return `Leg ${i + 1}: ${l.p.name} (${l.p.team} vs ${l.p.opp}) ${l.side} ${l.line} ${what[l.p.kind]} at ${fmtOdds(l.odds)}. Projection: about ${l.p.median.toFixed(0)}. Chance this leg hits: ${pct(l.prob)}; it needs ${pct(breakeven(l.odds))} to be worth it on its own.${inj}${l.p.status === 'Questionable' ? ' Listed questionable.' : ''}`;
     }).join('\n');
-    const corrTxt = c.notes.length ? c.notes.map(n => `${n.a.name} + ${n.b.name}: ${n.c.rho > 0 ? 'helps' : 'hurts'} (${n.c.why})`).join('\n') : 'No same-game links between legs.';
-    const gids = [...new Set(c.legs.map(l => l.p.game))];
-    const cands = candidateList(gids, new Set(c.legs.map(l => l.id)), 10)
-      .map(x => `${x.p.name} ${x.e.side} ${x.e.line} ${KIND[x.p.kind]} (model ${pct(x.e.side === 'over' ? x.e.po : x.e.pu)}, score ${x.e.score})`).join('\n') || 'None';
-    const prompt = `You are the analyst voice of NFL PropEdge, a player prop research tool. Give a short read on the parlay below. ${VOICE}
+    const corrTxt = c.notes.length ? c.notes.map(n => `${n.a.name} and ${n.b.name}: ${n.c.rho > 0 ? 'tend to hit together' : 'tend to work against each other'} (${n.c.why})`).join('\n') : 'The legs do not affect each other.';
+    const prompt = `You explain parlays for NFL PropEdge. The decision below is already made by the numbers. Your job is to explain it so a newcomer understands it.
+${VOICE}
 
-Reply in exactly this format and nothing else:
-VERDICT: <Play or Trim or Pass>
-<Two sentences on the parlay as a whole: is the combined chance worth the payout, and do the legs work together.>
-Weakest leg: <name the leg and say why in one sentence>
-Swap idea: <one specific replacement from the candidates list and why, or "None">
+DECISION (do not change it): ${verdict.say}
+${verdict.weakest ? `Weakest leg by the numbers: ${verdict.weakest.l.p.name}.` : ''}
+
+Reply in exactly this format, about 90 words in total, and nothing else:
+Bottom line: <one sentence that states the decision and why, using the combined chance and the payout>
+How the legs fit: <one sentence on whether the legs help each other, work against each other, or are unrelated>
+Weakest leg: <name it and give the plain reason in one sentence>
+Injuries: <one sentence on any leg affected by an injury, or "None of these legs depend on an injury.">
 
 PARLAY
 ${legTxt}
-Same-game links:
+How the legs relate:
 ${corrTxt}
-Combined chance (correlation adjusted): ${(c.trueP * 100).toFixed(1)}%. If independent: ${(c.indep * 100).toFixed(1)}%. Payout ${c.american} (${c.payout.toFixed(2)}x). Break-even ${(100 / c.payout).toFixed(1)}%. Expected return per $1: ${c.ev.toFixed(2)}.
-
-CANDIDATES FROM THE SAME GAMES
-${cands}`;
+Chance every leg hits: ${(c.trueP * 100).toFixed(1)}%. Payout: ${c.payout.toFixed(2)} times the stake. To be worth it, the chance needs to be at least ${(100 / c.payout).toFixed(1)}%.`;
     try {
       const res = await ask(prompt, { onText: ({ text }) => { if (S.pread !== st) return; st.status = 'stream'; st.text = text; renderPread(); } });
       if (S.pread !== st) return;
@@ -1093,97 +1216,39 @@ ${cands}`;
   document.getElementById('preadBtn').addEventListener('click', runParlayRead);
 
   // Parlay builder
-  async function runBuilder() {
-    const btn = document.getElementById('buildBtn'), out = document.getElementById('buildOut');
+  // Builds by rule from the strongest edges: real lines only, one leg per player, no legs that work against each other,
+  // at most two legs from one game unless they move together. Umbra Read then explains the slip.
+  function runBuilder() {
+    const out = document.getElementById('buildOut');
     const size = +document.getElementById('buildSize').value;
     const gids = S.game === 'all' ? null : [S.game];
-    const cands = candidateList(gids, new Set(), 40);
-    if (cands.length < size) { out.className = 'read-out err'; out.textContent = 'Not enough props with an edge here. Pick another game or a smaller size.'; return; }
-    btn.disabled = true; btn.textContent = 'Building...';
-    out.className = 'read-out wait'; out.textContent = 'Reading the board...';
-    // Short tags (P1, P2...) are far easier to copy back exactly than the long internal ids
-    const tag = i => 'P' + (i + 1);
-    const list = cands.map((x, i) => {
-      const g = games[x.p.game];
-      return `${tag(i)} | ${x.p.name} ${x.p.pos} ${x.p.team} | game ${g.away}@${g.home} | ${KIND[x.p.kind]} ${x.e.side} ${x.e.line} | model ${pct(x.e.side === 'over' ? x.e.po : x.e.pu)} | odds ${fmtOdds(x.e.side === 'over' ? x.e.od.o : x.e.od.u)} | score ${x.e.score} | ${isEst(x.p) ? 'est line' : 'book line'}${x.p.status === 'Questionable' ? ' | questionable' : ''}`;
-    }).join('\n');
-    const prompt = `You are the analyst voice of NFL PropEdge. Build one ${size}-leg player prop parlay from the candidates below. ${VOICE}
-Rules: exactly ${size} legs, each a different player, using the side shown for each candidate. Favor high model chance and play score. Same-game legs are fine when they help each other (a QB's passing over with his own receiver's over; both QBs' passing overs in a high total). Never pair legs that work against each other (a QB's passing over with his own running back's rushing over; two backs from the same team). Prefer book lines over estimated ones when they are close. Avoid questionable players unless clearly the best option.
-
-Reply with one JSON object and nothing else, no code fence, in exactly this shape:
-{"legs":["P3","P8","P12"],"why":"Two plain sentences on how the legs fit together."}
-"legs" holds exactly ${size} tags copied from the first column below.
-
-CANDIDATES (tag | player | game | market and side | model chance | odds | score | line source)
-${list}`;
-
-    // Turn whatever came back into legs: JSON tags first, then any P-tags mentioned in the text
-    function pickLegs(data, text) {
-      const byTag = Object.fromEntries(cands.map((x, i) => [tag(i), x]));
-      const byName = Object.fromEntries(cands.map(x => [normName(x.p.name), x]));
-      let raw = data && Array.isArray(data.legs) ? data.legs : [];
-      if (!raw.length) raw = (String(text || '').match(/\bP\d{1,2}\b/g) || []);
-      const seen = new Set(), legs = [];
-      for (const l of raw) {
-        const v = typeof l === 'string' ? l : (l && (l.tag || l.id || l.player || l.name)) || '';
-        const x = byTag[String(v).trim().toUpperCase()] || byName[normName(v)];
-        if (!x || seen.has(x.p.pid)) continue;
-        seen.add(x.p.pid); legs.push({ id: x.p.id, side: x.e.side });
-        if (legs.length === size) break;
-      }
-      return legs;
+    const cands = candidateList(gids, new Set(), 60);
+    const legs = [];
+    for (const x of cands) {
+      if (legs.length === size) break;
+      if (legs.some(l => props[l.id].pid === x.p.pid)) continue;
+      const leg = { id: x.p.id, side: x.e.side };
+      const links = legs.map(l => corr(l, leg)).filter(Boolean);
+      if (links.some(c => c.rho < 0)) continue;
+      const sameGame = legs.filter(l => props[l.id].game === x.p.game).length;
+      if (sameGame >= 2 && !links.some(c => c.rho > 0)) continue;
+      legs.push(leg);
     }
-    // Backup when the answer is unusable: top play scores, skipping repeats and legs that work against each other
-    function fallbackLegs() {
-      const legs = [];
-      for (const x of cands) {
-        if (legs.some(l => props[l.id].pid === x.p.pid)) continue;
-        const leg = { id: x.p.id, side: x.e.side };
-        if (legs.some(l => { const c = corr(l, leg); return c && c.rho <= -0.1; })) continue;
-        legs.push(leg);
-        if (legs.length === size) break;
-      }
-      return legs;
-    }
-
-    let legs = [], why = '', note = '';
-    try {
-      const { data, text } = await askJSON(prompt);
-      legs = pickLegs(data, text);
-      why = data && typeof data.why === 'string' ? data.why.trim() : '';
-      if (legs.length >= 2 && legs.length < size) {
-        const short = size - legs.length;
-        for (const l of fallbackLegs()) {
-          if (legs.length === size) break;
-          if (legs.some(x => props[x.id].pid === props[l.id].pid)) continue;
-          if (legs.some(x => { const c = corr(x, l); return c && c.rho <= -0.1; })) continue;
-          legs.push(l);
-        }
-        note = (why ? why + ' ' : '') + `The last ${short === 1 ? 'leg was' : short + ' legs were'} filled from the top play scores.`;
-        why = '';
-      } else if (legs.length < size) {
-        console.warn('Umbra Read builder: unusable reply', text);
-        legs = fallbackLegs(); why = '';
-        note = `Umbra Read didn't return a usable slip this time, so these are the top ${legs.length} play scores that don't work against each other.`;
-      }
-    } catch (err) {
-      const msg = aiError(err);
-      if (!msg) { btn.disabled = false; btn.textContent = 'Build a parlay'; out.className = 'read-out'; out.textContent = ''; return; }
-      if (err && ['rate_limited', 'bad_key', 'session_expired', 'refused', 'upstream_error', 'empty_completion'].includes(err.code || 'upstream_error')) {
-        legs = fallbackLegs();
-        note = `${msg} In the meantime, these are the top ${legs.length} play scores that don't work against each other.`;
-      } else {
-        out.className = 'read-out err'; out.textContent = msg;
-        btn.disabled = false; btn.textContent = 'Build a parlay'; return;
-      }
+    if (legs.length < size) {
+      const real = D.props.filter(p => !isEst(p)).length;
+      out.className = 'read-out err';
+      out.textContent = !real
+        ? 'Picks need real sportsbook lines. Load lines at the top of the page (or type your book\'s lines in), then build again.'
+        : `Only ${legs.length} prop${legs.length === 1 ? ' has' : 's have'} a clear edge here right now. Try a smaller parlay${gids ? ' or All games' : ''}, or load lines for more games.`;
+      return;
     }
     const old = S.slip.map(l => l.id);
     S.slip = legs; store.set('slip', S.slip);
     old.concat(legs.map(l => l.id)).forEach(refreshRow);
     renderSlip();
-    out.className = 'read-out' + (note ? ' wait' : '');
-    out.textContent = note || why;
-    btn.disabled = false; btn.textContent = 'Build a parlay';
+    out.className = 'read-out';
+    out.textContent = `These are the ${size} strongest edges on real lines that don't work against each other.`;
+    if (aiOn()) runParlayRead();
   }
   document.getElementById('buildBtn').addEventListener('click', runBuilder);
 
@@ -1227,9 +1292,9 @@ ${list}`;
     const n = Object.keys(S.src).length;
     const el = document.getElementById('linesStatus');
     if (n && info) {
-      el.innerHTML = `<b>${n} props on live lines</b> from ${esc(info.book)}, loaded ${esc(info.at)}. Props the book doesn't offer stay on estimates (dashed). Typing a line into a row overrides it.`;
+      el.innerHTML = `<b>${n} props on live lines</b> from ${esc(info.book)}, loaded ${esc(info.at)}. Props the book doesn't offer stay dashed with no pick. Typing a line into a row overrides it.`;
     } else {
-      el.innerHTML = '<b>Dashed lines are estimates</b>, set halfway between the player\'s recent average and the projection. Load live lines with an Odds API key, or type your book\'s line into any row.';
+      el.innerHTML = '<b>Picks need real sportsbook lines.</b> Until a line is loaded, dashed boxes sit at the projection and no pick is shown. Load live lines with an Odds API key, or type your book\'s line into any row.';
     }
   }
   function creditsNote(r) {

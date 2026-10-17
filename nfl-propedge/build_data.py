@@ -9,7 +9,7 @@ Run:  python build_data.py            (current week, detected from ESPN)
       python build_data.py --week 5   (a specific week)
 Needs: pandas, scipy, requests
 """
-import argparse, json, math, re, sys, io
+import argparse, json, math, os, re, sys, io
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -20,6 +20,8 @@ NFLVERSE_STATS = "https://github.com/nflverse/nflverse-data/releases/download/st
 ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week={week}"
 ESPN_SCOREBOARD_NOW = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard"
 ESPN_INJURIES = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/injuries"
+ESPN_TEAMS = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams"
+ESPN_DEPTH = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/{id}/depthcharts"
 
 ESPN_TO_NFLVERSE = {"WSH": "WAS", "LAR": "LA"}
 NOTHING_TO_BUILD = 3  # exit code: no open games to build, keep the current page
@@ -29,6 +31,36 @@ OUT_STATUSES = {"Out", "Injured Reserve", "Doubtful", "Suspension", "Physically 
 POS_TGT_SHARE = {"WR": 0.12, "TE": 0.10, "RB": 0.08}
 POS_YPT = {"WR": 8.3, "TE": 7.3, "RB": 5.9}
 LEAGUE_YPC = 4.3
+
+# How an injured regular's work is passed on (fit on 2024-25 games where a regular sat out; see research/vacated.py).
+# Teammates' shares grow by more than this, but the offense as a whole produces less without him, so the
+# yardage bump is smaller. These values are fit on yards, and they leave fill-in projections unbiased.
+VAC_TGT_FILL = 0.15  # receiving: how much of his target share shows up as extra yards for teammates
+VAC_TGT_SAME = 0.9   # of that, the part that goes to his own position group
+VAC_CAR_FILL = 0.35  # rushing: how much of a missing back's carries show up for the other backs
+VAC_POW = 0.5        # flatter than current roles: smaller roles grow more than their size suggests
+VAC_TGT_MIN = 0.12   # a regular in the passing game
+VAC_CAR_MIN = 0.25   # a regular in the running game
+
+# Outcome ranges measured from two seasons of results (written by research/fit_calibration.py)
+CALIB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calibration.json")
+CALIB = json.load(open(CALIB_PATH)) if os.path.exists(CALIB_PATH) else None
+
+
+def calib_tier(kind, mu):
+    if not CALIB:
+        return 0
+    return int(sum(mu > c for c in CALIB[kind]["cuts"]))
+
+
+def calib_median(kind, mu):
+    """Tier and median outcome for a projected average, from the measured outcome ranges."""
+    if not CALIB:
+        return 0, None
+    t = calib_tier(kind, mu)
+    q = CALIB[kind]["q"][t]  # ratio quantiles at 0, 1/100, ... 1
+    return t, mu * q[50]
+
 
 # Spread of outcomes as a share of the projection, plus a floor (yards)
 SD_MODEL = {"pass": (0.24, 16.0), "rush": (0.47, 9.0), "rec": (0.56, 9.0)}
@@ -81,13 +113,14 @@ def half_line(x):
     return math.floor(x) + 0.5
 
 
-def project(cur, prev, games, cur_week, status_of=lambda t, n: "", note_of=lambda t, n: "", active=None):
+def project(cur, prev, games, cur_week, status_of=lambda t, n: "", note_of=lambda t, n: "", active=None, depth=None):
     """Projections for every skill player on the slate.
 
     cur/prev: nflverse weekly stats (REG, skill positions) for this season before cur_week, and last season.
     games: slate dicts with home/away/total/homeSpread/homeITT/awayITT/wet/id.
     active: optional set of player_ids known to be playing (used by the backtest in place of the injury report).
-    Returns (props, league, defense).
+    depth: optional {team: {"QB": [names in depth-chart order], ...}} used to pick the starting QB.
+    Returns (props, league, defense, injuries).
     """
     # ---------- league baselines ----------
     tg = cur.groupby(["game_id", "team"]).agg(
@@ -147,7 +180,8 @@ def project(cur, prev, games, cur_week, status_of=lambda t, n: "", note_of=lambd
         slate_teams[gm["home"]] = (gm, gm["away"], True)
         slate_teams[gm["away"]] = (gm, gm["home"], False)
 
-    players = []
+    # ---------- this week's roster: recent regulars, split into available and out ----------
+    pool = []
     for pid, g in cur.groupby("player_id"):
         g = g.sort_values("week")
         team = g.team.iloc[-1]
@@ -163,14 +197,11 @@ def project(cur, prev, games, cur_week, status_of=lambda t, n: "", note_of=lambd
         name = g.player_display_name.iloc[-1]
         pos = g.position.iloc[-1]
         st = status_of(team, name)
-        if st in OUT_STATUSES:
-            continue
-        if active is not None and pid not in active:
-            continue
+        out = st in OUT_STATUSES or (active is not None and pid not in active)
         w = [week_weight(wk, cur_week) for wk in g.week]
         car_share = [r.carries / max(1, team_car_by_game.get((r.game_id, team), lg_car)) for r in g.itertuples()]
-        players.append({
-            "pid": pid, "name": name, "pos": pos, "team": team, "status": st,
+        pool.append({
+            "pid": pid, "name": name, "pos": pos, "team": team, "status": st, "out": out,
             "note": note_of(team, name) if st else "",
             "n": len(g), "w": w,
             "att": wavg(g.attempts, w), "att_tot": g.attempts.sum(), "pyd_tot": g.passing_yards.sum(),
@@ -179,23 +210,15 @@ def project(cur, prev, games, cur_week, status_of=lambda t, n: "", note_of=lambd
             "logs": [{"wk": int(r.week), "opp": r.opponent_team, "pass": int(r.passing_yards), "att": int(r.attempts),
                       "rush": int(r.rushing_yards), "car": int(r.carries), "rec": int(r.receiving_yards),
                       "tgt": int(r.targets), "ts": round(float(r.target_share or 0), 3)} for r in g.itertuples()],
-            "headshot": g.headshot_url.iloc[-1] if isinstance(g.headshot_url.iloc[-1], str) else "",
+            "last_att": int(g[g.week == tv["last_week"]].attempts.sum()),
         })
 
-    # Starting QB per team: most attempts in the team's latest game among available QBs
-    starters = {}
-    for team in slate_teams:
-        qbs = [p for p in players if p["team"] == team and p["pos"] == "QB" and p["att_tot"] > 0]
-        if not qbs:
-            continue
-        latest = tv_last = team_vol[team]["last_week"]
-        def latest_att(p):
-            return next((l["att"] for l in p["logs"] if l["wk"] == latest), 0)
-        qbs.sort(key=lambda p: (latest_att(p), p["att_tot"]), reverse=True)
-        starters[team] = qbs[0]["pid"]
+    prev_by_name = {}
+    for pid, g in prev.groupby("player_id"):
+        prev_by_name[norm_name(g.player_display_name.iloc[-1])] = pid
 
-    # Shares, shrunk to priors, then scaled when the active group falls short (vacated usage)
-    for p in players:
+    def rates(p):
+        """Usage and efficiency, each blended with last season (or a position baseline) until this season's sample is big enough."""
         pr = prev_agg.get(p["pid"])
         pos = p["pos"]
         prior_ts = pr["tshare"] if pr and pr["g"] >= 6 and not math.isnan(pr["tshare"]) else POS_TGT_SHARE.get(pos, 0.03)
@@ -208,25 +231,95 @@ def project(cur, prev, games, cur_week, status_of=lambda t, n: "", note_of=lambd
         p["ypt"] = shrink(p["recyd_tot"] / p["tgt_tot"], p["tgt_tot"], prior_ypt, 25) if p["tgt_tot"] else prior_ypt
         prior_ypc = (pr["ryd"] / pr["car"]) if pr and pr["car"] >= 40 else (LEAGUE_YPC if pos != "QB" else 5.0)
         p["ypc"] = shrink(p["ryd_tot"] / p["car_tot"], p["car_tot"], prior_ypc, 60) if p["car_tot"] else prior_ypc
-        prior_ypa = (pr["pyd"] / pr["att"]) if pr and pr["att"] >= 120 else lg_ypa - 0.4
+        # Backups who haven't thrown much get a lower baseline than an average starter
+        prior_ypa = (pr["pyd"] / pr["att"]) if pr and pr["att"] >= 120 else lg_ypa - (0.6 if p["n"] == 0 else 0.4)
         p["ypa"] = shrink(p["pyd_tot"] / p["att_tot"], p["att_tot"], prior_ypa, 100) if p["att_tot"] else prior_ypa
-        p["boost_t"] = 1.0
-        p["boost_c"] = 1.0
+        p["ts_base"], p["cs_base"] = p["ts_adj"], p["cs_adj"]
+        p["gain_t"], p["gain_c"] = {}, {}
 
+    for p in pool:
+        rates(p)
+
+    # ---------- starting QB: depth chart first, then whoever threw the most last game ----------
+    starters, qb_note = {}, {}
     for team in slate_teams:
-        grp = [p for p in players if p["team"] == team and p["pos"] != "QB"]
-        st = sum(p["ts_adj"] for p in grp)
-        if st > 0 and st < 0.90:
-            f = min(0.90 / st, 1.25)
-            for p in grp:
-                p["boost_t"] = f
-        grp_c = [p for p in players if p["team"] == team and (p["pos"] != "QB" or p["pid"] == starters.get(team))]
-        sc = sum(p["cs_adj"] for p in grp_c)
-        if sc > 0 and sc < 0.92:
-            f = min(0.92 / sc, 1.25)
-            for p in grp_c:
-                if p["pos"] == "RB":
-                    p["boost_c"] = f
+        qbs = [p for p in pool if p["team"] == team and p["pos"] == "QB"]
+        avail = [p for p in qbs if not p["out"]]
+        starter = None
+        for nm in (depth or {}).get(team, {}).get("QB", []):
+            if status_of(team, nm) in OUT_STATUSES:
+                continue
+            match = next((p for p in avail if norm_name(p["name"]) == norm_name(nm)), None)
+            if match is None and any(norm_name(p["name"]) == norm_name(nm) for p in qbs):
+                continue  # listed on the depth chart but ruled out
+            if match is None:
+                # A backup with no snaps this season: build him from last season or a backup baseline
+                match = {"pid": prev_by_name.get(norm_name(nm), "dc-" + norm_name(nm)), "name": nm, "pos": "QB", "team": team,
+                         "status": status_of(team, nm), "out": False, "note": "", "n": 0, "w": [], "att": 0, "att_tot": 0,
+                         "pyd_tot": 0, "tshare": 0, "tgt_tot": 0, "recyd_tot": 0, "cshare": 0, "car_tot": 0, "ryd_tot": 0,
+                         "logs": [], "last_att": 0}
+                rates(match)
+                pool.append(match)
+            starter = match
+            break
+        if starter is None:
+            cands = [p for p in avail if p["att_tot"] > 0]
+            if not cands:
+                continue
+            cands.sort(key=lambda p: (p["last_att"], p["att_tot"]), reverse=True)
+            starter = cands[0]
+        starters[team] = starter["pid"]
+        # Who he is replacing, if last game's main passer is out
+        lead = max(qbs, key=lambda p: p["last_att"], default=None)
+        if lead and lead["pid"] != starter["pid"] and lead["out"] and lead["last_att"] >= 10:
+            qb_note[team] = {"replacing": lead["name"], "status": lead["status"] or "Out"}
+
+    # ---------- injured players' work goes to teammates (fit on 2024-25 games with a regular missing) ----------
+    team_out = {}
+    for team in slate_teams:
+        here = [p for p in pool if p["team"] == team and not p["out"] and p["pos"] != "QB"]
+        gone = [p for p in pool if p["team"] == team and p["out"] and p["pos"] != "QB"]
+        listed = []
+        for o in gone:
+            if o["ts_adj"] < 0.05 and o["cs_adj"] < 0.05:
+                continue
+            listed.append({"name": o["name"], "pos": o["pos"], "status": o["status"] or "Out",
+                           "ts": round(o["ts_adj"], 3), "cs": round(o["cs_adj"], 3), "note": o["note"]})
+            # Only a real regular's absence moves work around (the same cutoffs the fit used)
+            # Targets: about half get re-absorbed, mostly by the same position
+            V = o["ts_adj"] * VAC_TGT_FILL if o["ts_adj"] >= VAC_TGT_MIN else 0
+            same = [p for p in here if p["pos"] == o["pos"] and p["ts_base"] > 0]
+            if same:
+                ws = [p["ts_base"] ** VAC_POW for p in same]
+                for p, wt in zip(same, ws):
+                    add = V * VAC_TGT_SAME * wt / sum(ws)
+                    p["ts_adj"] += add; p["gain_t"][o["name"]] = p["gain_t"].get(o["name"], 0) + add
+                rest = V * (1 - VAC_TGT_SAME)
+            else:
+                rest = V
+            tot = sum(p["ts_base"] for p in here)
+            for p in here:
+                if tot > 0 and p["ts_base"] > 0:
+                    add = rest * p["ts_base"] / tot
+                    p["ts_adj"] += add; p["gain_t"][o["name"]] = p["gain_t"].get(o["name"], 0) + add
+            # Carries: a missing back's carries mostly go to the other backs, spread more evenly than their current roles
+            if o["pos"] == "RB" and o["cs_adj"] >= VAC_CAR_MIN:
+                V = o["cs_adj"] * VAC_CAR_FILL
+                backs = [p for p in here if p["pos"] == "RB" and p["cs_base"] > 0]
+                ws = [p["cs_base"] ** VAC_POW for p in backs]
+                for p, wt in zip(backs, ws):
+                    add = V * wt / sum(ws)
+                    p["cs_adj"] += add; p["gain_c"][o["name"]] = p["gain_c"].get(o["name"], 0) + add
+        starter_out = qb_note.get(team)
+        if starter_out:
+            listed.insert(0, {"name": starter_out["replacing"], "pos": "QB", "status": starter_out["status"], "ts": 0, "cs": 0, "note": ""})
+        if listed:
+            team_out[team] = listed
+
+    players = [p for p in pool if not p["out"]]
+
+    def gains(d):
+        return [{"name": k, "share": round(v, 3)} for k, v in sorted(d.items(), key=lambda kv: -kv[1]) if v >= 0.005]
 
     # ---------- projections ----------
     props = []
@@ -238,7 +331,8 @@ def project(cur, prev, games, cur_week, status_of=lambda t, n: "", note_of=lambd
         tv = team_vol[team]
         dfn = defense.get(opp, {"pass": 1, "rush": 1, "WR": 1, "TE": 1, "RB": 1})
 
-        script_pass = max(0.85, min(1.15, 1 - 0.011 * spread_for))
+        # The spread no longer moves passing volume: in the 2024-25 replay it made passing projections slightly worse
+        script_pass = 1.0
         script_rush = max(0.85, min(1.18, 1 + 0.014 * spread_for))
         itt_f = 1 + 0.30 * (itt - lg_pts) / lg_pts
         wet_f = 0.95 if gm["wet"] else 1.0
@@ -251,52 +345,61 @@ def project(cur, prev, games, cur_week, status_of=lambda t, n: "", note_of=lambd
             "scriptPass": round(script_pass, 3), "scriptRush": round(script_rush, 3), "wet": gm["wet"],
         }
 
-        def add(kind, mu, drivers):
+        def add(kind, mu, drivers, role=None):
             if mu <= 0:
                 return
             k, theta, sd = gamma_params(mu, kind)
-            med = gamma.median(k, scale=theta)
-            # Starting line: recency-weighted average of what he's actually done, on a half-yard
-            field = {"pass": "pass", "rush": "rush", "rec": "rec"}[kind]
-            recent = wavg([l[field] for l in p["logs"]], p["w"])
-            # Stand-in for a book line until a real one is entered: halfway between recent form and the projection
-            base = 0.5 * recent + 0.5 * med
+            tier, med = calib_median(kind, mu)
+            if med is None:
+                med = gamma.median(k, scale=theta)
             props.append({
                 "id": f'{p["pid"]}-{kind}', "pid": p["pid"], "name": p["name"], "pos": p["pos"], "team": team,
                 "opp": opp, "home": is_home, "game": gm["id"], "kind": kind,
-                "mu": round(mu, 1), "median": round(med, 1), "k": round(k, 4), "theta": round(theta, 4),
-                "estLine": half_line(base), "status": p["status"], "note": p["note"],
+                "mu": round(mu, 1), "median": round(med, 1), "k": round(k, 4), "theta": round(theta, 4), "tier": tier,
+                "estLine": half_line(med), "status": p["status"], "note": p["note"],
                 "starter": starters.get(team) == p["pid"],
                 "drivers": {**drivers_common, **drivers}, "logs": p["logs"], "n": p["n"],
+                "role": role,
             })
 
         if p["pos"] == "QB" and starters.get(team) == p["pid"]:
             att = proj_att * 0.97
             opp_f = dfn["pass"] ** 0.6
             mu = att * p["ypa"] * opp_f * itt_f * wet_f
-            add("pass", mu, {"att": round(att, 1), "ypa": round(p["ypa"], 2), "oppF": round(opp_f, 3), "ittF": round(itt_f, 3)})
+            qn = qb_note.get(team)
+            add("pass", mu, {"att": round(att, 1), "ypa": round(p["ypa"], 2), "oppF": round(opp_f, 3), "ittF": round(itt_f, 3)},
+                {"replacing": qn["replacing"] if qn else None, "firstStart": p["n"] == 0} if qn or p["n"] == 0 else None)
         if p["pos"] == "QB" and starters.get(team) != p["pid"]:
             continue
 
-        cars = proj_car * p["cs_adj"] * p["boost_c"]
+        cars = proj_car * p["cs_adj"]
         opp_r = dfn["rush"] ** 0.6
         mu_r = cars * p["ypc"] * opp_r * (1 + 0.15 * (itt - lg_pts) / lg_pts)
         if (p["pos"] == "RB" and mu_r >= 28) or (p["pos"] == "QB" and mu_r >= 16):
-            add("rush", mu_r, {"car": round(cars, 1), "cshare": round(p["cs_adj"] * p["boost_c"], 3),
-                               "ypc": round(p["ypc"], 2), "oppF": round(opp_r, 3), "boost": round(p["boost_c"], 3)})
+            g_c = gains(p["gain_c"])
+            add("rush", mu_r, {"car": round(cars, 1), "cshare": round(p["cs_adj"], 3), "cshareBase": round(p["cs_base"], 3),
+                               "ypc": round(p["ypc"], 2), "oppF": round(opp_r, 3), "boost": round(p["cs_adj"] / p["cs_base"], 3) if p["cs_base"] else 1},
+                {"kind": "carries", "base": round(p["cs_base"], 3), "now": round(p["cs_adj"], 3), "from": g_c} if g_c else None)
 
         if p["pos"] in ("WR", "TE", "RB"):
-            tgts = proj_att * p["ts_adj"] * p["boost_t"]
+            tgts = proj_att * p["ts_adj"]
             opp_p = dfn.get(p["pos"], 1.0) ** 0.6
             mu_c = tgts * p["ypt"] * opp_p * itt_f * wet_f
             if mu_c >= 24:
-                add("rec", mu_c, {"tgt": round(tgts, 1), "tshare": round(p["ts_adj"] * p["boost_t"], 3),
+                g_t = gains(p["gain_t"])
+                add("rec", mu_c, {"tgt": round(tgts, 1), "tshare": round(p["ts_adj"], 3), "tshareBase": round(p["ts_base"], 3),
                                   "ypt": round(p["ypt"], 2), "oppF": round(opp_p, 3), "ittF": round(itt_f, 3),
-                                  "boost": round(p["boost_t"], 3)})
+                                  "boost": round(p["ts_adj"] / p["ts_base"], 3) if p["ts_base"] else 1},
+                    {"kind": "targets", "base": round(p["ts_base"], 3), "now": round(p["ts_adj"], 3), "from": g_t} if g_t else None)
 
+    # Questionable players who are projected (may not play)
+    questionable = {}
+    for p in players:
+        if p["status"] == "Questionable" and (p["ts_adj"] >= 0.08 or p["cs_adj"] >= 0.15 or starters.get(p["team"]) == p["pid"]):
+            questionable.setdefault(p["team"], []).append({"name": p["name"], "pos": p["pos"], "note": p["note"]})
 
     league = {"att": round(lg_att, 1), "car": round(lg_car, 1), "ypa": round(lg_ypa, 2), "pts": round(lg_pts, 1)}
-    return props, league, defense
+    return props, league, defense, {"out": team_out, "questionable": questionable}
 
 
 def parse_slate(sb):
@@ -390,7 +493,31 @@ def main():
     def note_of(team, name):
         return note_by.get((team, norm_name(name)), "")
 
-    props, league, defense = project(cur, prev, games, cur_week, status_of, note_of)
+    # ---------- depth charts: who is next up at each spot ----------
+    depth = {}
+    try:
+        teams = get_json(ESPN_TEAMS)["sports"][0]["leagues"][0]["teams"]
+        ids = {ESPN_TO_NFLVERSE.get(t["team"]["abbreviation"], t["team"]["abbreviation"]): t["team"]["id"] for t in teams}
+        on_slate = {g["home"] for g in games} | {g["away"] for g in games}
+        for team in sorted(on_slate):
+            if team not in ids:
+                continue
+            try:
+                dc = get_json(ESPN_DEPTH.format(id=ids[team])).get("depthchart", [])
+            except Exception:
+                continue
+            spots = {}
+            for chart in dc:
+                for key, slot in chart.get("positions", {}).items():
+                    if key in ("qb", "rb", "wr1", "wr2", "wr3", "te"):
+                        spots.setdefault(key.upper(), [a.get("displayName", "") for a in slot.get("athletes", [])])
+            if spots:
+                depth[team] = spots
+        print(f"Depth charts for {len(depth)} teams")
+    except Exception as e:
+        print(f"Depth charts unavailable ({e}); using last game's passer as the starter")
+
+    props, league, defense, injuries = project(cur, prev, games, cur_week, status_of, note_of, depth=depth)
 
 
     out = {
@@ -398,7 +525,8 @@ def main():
         "built": datetime.now(timezone.utc).isoformat(timespec="minutes"),
         "statsThrough": int(cur.week.max()),
         "league": league,
-        "games": games, "props": props,
+        "games": games, "props": props, "injuries": injuries, "depth": depth,
+        "calib": CALIB,
         "defense": {k: {kk: round(vv, 3) for kk, vv in v.items()} for k, v in defense.items()},
     }
     with open(args.out, "w") as f:
