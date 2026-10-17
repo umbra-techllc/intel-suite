@@ -10,7 +10,7 @@ Live site: https://umbra-techllc.github.io/intel-suite/
 |---|---|---|
 | Crypto Intel | `crypto_intel_tracker.html` | Watchlist screener. Scores each coin 0 to 100 from momentum, trend, strength vs BTC, liquidity, ATH distance, and hourly RSI, then gives a Buy, Hold, or Sell signal with the breakdown shown. Market tape, price alerts, auto refresh, coin search, headlines, and an optional Umbra Read. |
 | Defense Intel | `defense_stock_tracker.html` | Small and mid-cap defense stock tracker with 52-week range, volume signals, multi-day returns, news, verdicts, and an ITA ETF holdings explorer. |
-| NFL PropEdge | `nfl_propedge.html` | Projects passing, rushing, and receiving yards for the week's slate from how often each player gets the ball, the opponent, expected scoring, and confirmed injuries (with backups' bigger roles). Over/under chances are measured on the 2024 and 2025 seasons and blended with the sportsbook line; picks only appear on real lines. Parlay builder with measured same-game correlations, live lines via The Odds API, and a plain-English Umbra Read. The slate is rebuilt automatically (see below). |
+| NFL PropEdge | `nfl_propedge.html` | Projects passing, rushing, and receiving yards for the week's slate with gradient-boosted models trained on every player-game since 2019 (about 45 pre-game inputs, including confirmed injuries and backups' bigger roles), with a per-player outcome range and a factor breakdown in yards. Over/under chances are measured on the 2024 and 2025 seasons and blended with the sportsbook line; picks only appear on real lines. Parlay builder with measured same-game correlations, live lines via The Odds API, and a plain-English Umbra Read. The slate is rebuilt automatically (see below). |
 | NBA Parlay Finder | `nba_parlay_finder.html` | Compares last-five averages against prop lines across points, rebounds, assists, threes, and PRA. Value scoring, ESPN box scores, parlay builder. |
 | WNBA Parlay Finder | `wnba_parlay_finder.html` | Same approach for the WNBA with a recency-weighted stats engine and a composite Play Score per prop. |
 
@@ -29,7 +29,7 @@ python build_data.py            # current week, detected from ESPN
 python make_page.py data.json --site ../nfl_propedge.html
 ```
 
-To re-measure the outcome ranges and injury rules on past seasons: `python backtest.py 2024`, `python backtest.py 2025`, then `python research/fit_calibration.py` (writes `calibration.json`).
+The models in `nfl-propedge/model/` are retrained every Tuesday by the `NFL PropEdge retrain` workflow (`research/make_dataset.py`, then `research/fit_models.py`). `research/train.py`, `research/score_probs.py` and `research/check2024.py` reproduce the held-out comparisons against the earlier engine. To re-measure the older outcome ranges and injury rules: `python backtest.py 2024`, `python backtest.py 2025`, then `python research/fit_calibration.py` (writes `calibration.json`).
 
 ## Running locally
 
