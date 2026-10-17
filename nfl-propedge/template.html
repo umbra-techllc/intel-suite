@@ -62,6 +62,25 @@ button { cursor: pointer; }
 .chip.role { background: var(--accent-soft); border-color: #BCCDE6; color: var(--accent); }
 .vd.none { background: var(--surface-2); color: var(--muted); }
 .muted { color: var(--muted); }
+.modes { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+.modes button { border: 0; background: var(--surface); padding: 5px 12px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.modes button + button { border-left: 1px solid var(--line-strong); }
+.modes button[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
+.mode-note { padding: 8px 14px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.mode-note b { color: var(--ink); font-weight: 600; }
+button.pick { border: 1px solid transparent; cursor: pointer; font-family: inherit; }
+button.pick:hover { border-color: currentColor; }
+button.pick.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+.pick.likely.lean { background: var(--surface-2); color: var(--ink); border-color: var(--line); }
+.fl { font-size: 11.5px; color: var(--muted); }
+.pctc .sm { font-size: 11px; color: var(--muted); display: block; font-family: var(--f-body); }
+.pctc .sm.good { color: var(--good); }
+.ladder td.pr { font-family: var(--f-data); text-align: right; width: 54px; color: var(--muted); }
+.ladder td:nth-child(2) { width: auto; min-width: 70px; padding-right: 10px; }
+.ladder td:nth-child(3) { font-family: var(--f-data); width: 46px; }
+.ladder thead td { font-size: 12px; }
+.ladder td.pr.bk { color: var(--ink); }
+.lb-controls input[type="checkbox"] { width: auto; margin: 0; accent-color: var(--accent); }
 .slate-check { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .top-in .slate-check { width: 100%; justify-content: flex-end; }
 .stale { margin-top: 14px; padding: 10px 14px; border: 1px solid #E6CF9C; background: var(--warn-soft); color: var(--warn); border-radius: var(--r); font-size: 13.5px; }
@@ -267,6 +286,8 @@ button { cursor: pointer; }
   .row-main > .adds { grid-area: adds; }
   .projc::before { content: "Proj "; font-family: var(--f-body); font-size: 12px; color: var(--muted); font-weight: 400; }
   .pctc::before { content: "Hit "; font-family: var(--f-body); font-size: 12px; color: var(--muted); }
+  .mode-likely .projc::before { content: "Most likely "; }
+  .mode-likely .pctc::before { content: "Chance "; }
 }
 @container (max-width: 900px) {
   .detail { grid-template-columns: 1fr 1fr; }
@@ -329,6 +350,7 @@ button { cursor: pointer; }
           <option value="betrivers">BetRivers</option>
         </select>
       </label>
+      <label class="field" for="altLines" title="Alternate lines let the Most likely view find safer bets. They use about twice the credits."><input type="checkbox" id="altLines"> Alternate lines</label>
       <button class="read-btn" id="loadLines" type="button">Load lines</button>
       <button class="read-btn ghost" id="resetLines" type="button">Back to estimates</button>
     </div>
@@ -342,7 +364,12 @@ button { cursor: pointer; }
     </aside>
 
     <section class="panel props-panel" aria-label="Player props">
-      <div class="panel-h"><h2 id="propsTitle">All games</h2><span class="sub">Tap a row for the breakdown</span></div>
+      <div class="panel-h"><h2 id="propsTitle">All games</h2>
+        <div class="modes" role="tablist" aria-label="View">
+          <button role="tab" id="modeLikely" data-mode="likely" type="button">Most likely</button>
+          <button role="tab" id="modeValue" data-mode="value" type="button">Best value</button>
+        </div></div>
+      <div class="mode-note" id="modeNote"></div>
       <div class="controls">
         <div class="tabs" role="tablist" id="tabs">
           <button role="tab" data-k="all" aria-selected="true">All</button>
@@ -352,12 +379,7 @@ button { cursor: pointer; }
         </div>
         <label class="field" for="q">Find <input type="search" id="q" placeholder="Player or team"></label>
         <label class="field" for="sort">Sort
-          <select id="sort">
-            <option value="score">Play score</option>
-            <option value="proj">Projection</option>
-            <option value="edge">Edge vs line</option>
-            <option value="kick">Kickoff</option>
-          </select>
+          <select id="sort"></select>
         </label>
         <span class="count" id="count"></span>
       </div>
@@ -382,7 +404,7 @@ button { cursor: pointer; }
           </label>
           <button class="read-btn" id="buildBtn" type="button">Build a parlay</button>
         </div>
-        <div class="fine">Picks the strongest edges on real lines in <b id="buildScope">all games</b> and replaces what's on the slip.</div>
+        <div class="fine">Builds from <b id="buildScope">all games</b> and replaces what's on the slip. Most likely mode picks the bets most likely to hit; Best value mode picks the strongest edges.</div>
         <div class="read-out" id="buildOut"></div>
       </div>
       <div class="slip-legs" id="legs"></div>
@@ -406,6 +428,8 @@ button { cursor: pointer; }
       <p><b>Injuries and backups.</b> Players ruled out, doubtful or on injured reserve are removed. Their share of the work moves to teammates by rules measured on every 2024-25 game where a regular sat out: running backs pick up a real share of a missing back's runs, while receivers gain less than you'd expect because the offense as a whole tends to get worse. Starting quarterbacks come from the team's depth chart, so a backup who hasn't played yet still gets a projection.</p>
       <p><b>Chances are measured, not assumed.</b> Outcome ranges are fit on predictions made for seasons the models were not trained on, so the chances reflect real errors. On 2024 and 2025, the over/under calls scored better than the previous version in every market.</p>
       <p><b>The sportsbook gets half the say.</b> Sportsbook lines are sharp, so the chance shown is half the projection's view and half the book's (with the book's cut removed). A pick needs at least a 2-point edge over break-even (Lean) or 4 points (Play). If the two disagree by more than 25 points, the prop is marked "Check news" instead, since that usually means something the projection hasn't seen.</p>
+      <p><b>Most likely mode.</b> Shows what each player will most likely do and the bet most likely to hit. The player's own range is shifted so that its chance at the sportsbook's main line matches the blended chance there, and every other line is read off that same range, so alternate lines get the book's view too. The likely bet is the best-paying line with at least a 75% chance (skipping anything priced shorter than −600, which pays too little to matter). "Fair price" is the price that would exactly match the chance; "good price" means the book pays at least that.</p>
+      <p><b>Parlay chances.</b> The chance that every leg hits is simulated 60,000 times with all the legs' measured links at once (a Gaussian copula), so it stays accurate for any number of legs. The most likely parlay picks the legs with the highest chances that don't work against each other, with at most two per game unless they help each other.</p>
       <p><b>When there's no pick.</b> No sportsbook line, fewer than two games this season, or a small role.</p>
       <p><b>Parlays.</b> Legs from the same game are adjusted by how they actually moved together in 2024-25: a quarterback and his own receivers tend to hit together, two opposing quarterbacks a little, and most other pairs barely affect each other. The builder picks by rule from the strongest edges and never pairs legs that work against each other.</p>
       <p><b>Umbra Read.</b> A plain-English explanation of the pick the numbers already made, including who is out and how that changes things. It only uses the data on this page and the injury report, so it explains the projection rather than adding news.</p>
@@ -465,7 +489,9 @@ async function peLatest(timeoutMs) {
     lines: store.get('lines', {}),   // id -> number
     src: store.get('src', {}),       // id -> book title for lines loaded from the Odds API
     odds: store.get('odds', {}),     // id -> {o, u}
-    slip: store.get('slip', []),     // [{id, side}]
+    slip: store.get('slip', []),     // [{id, side, line?, price?}] line/price set for alternate-line legs
+    alts: store.get('alts', {}),     // id -> [{point, o, u, src}] alternate lines from the sportsbook
+    mode: (() => { try { return localStorage.getItem('pe-nfl-mode') || 'likely'; } catch (e) { return 'likely'; } })(),
     reads: {},                       // id -> {status, text, err, line}
     pread: null                      // {sig, status, text, err}
   };
@@ -561,6 +587,83 @@ async function peLatest(timeoutMs) {
     const hits = p.logs.map(l => (l[p.kind] > line ? 'o' : 'u'));
     return { line, po, pu, mo, mk, side, edge, gap, why, grade, score, hits, od, est };
   }
+  // ---------- most likely: market-anchored ranges, fair prices, likely bets ----------
+  const LIKELY = 0.75, SHORTEST = -600;
+  // Shift the player's own range so its chance at the book's main line equals the blended chance there.
+  // Every other line (alternates, the ladder) is then read off the same shifted range.
+  function shiftOf(p, e) {
+    if (e.est) return 0;
+    const x = yardsAt(p, Math.min(0.995, Math.max(0.005, 1 - e.po)));
+    return x == null ? 0 : e.line - x;
+  }
+  function chanceOver(p, line, e) { e = e || evaluate(p); return pOver(p, line - shiftOf(p, e)); }
+  const fairAmerican = q => (q >= 0.5 ? -Math.round(100 * q / (1 - q)) : Math.round(100 * (1 - q) / q));
+  const fmtA = a => (a > 0 ? '+' + a : '−' + Math.abs(a));
+  // Every bet the book offers on this prop, with our chance, its price and its edge
+  function betsFor(p) {
+    const e = evaluate(p), s = shiftOf(p, e), out = [];
+    if (!e.est) {
+      out.push({ side: 'over', line: e.line, price: e.od.o, p: e.po, main: true });
+      out.push({ side: 'under', line: e.line, price: e.od.u, p: e.pu, main: true });
+    }
+    for (const a of S.alts[p.id] || []) {
+      if (!e.est && a.point === e.line) continue;
+      const po = pOver(p, a.point - s);
+      if (a.o != null) out.push({ side: 'over', line: a.point, price: a.o, p: po, src: a.src });
+      if (a.u != null) out.push({ side: 'under', line: a.point, price: a.u, p: 1 - po, src: a.src });
+    }
+    out.forEach(b => { b.edge = b.p - breakeven(b.price); b.fair = fairAmerican(Math.min(0.995, Math.max(0.005, b.p))); });
+    return { e, bets: out };
+  }
+  // The likely bet: the best-paying line that still has at least a 75% chance (and isn't priced shorter than -600).
+  // Without one, the more likely side of the main line.
+  function likelyBet(p) {
+    const { e, bets } = betsFor(p);
+    const strong = bets.filter(b => b.p >= LIKELY && b.price >= SHORTEST);
+    if (strong.length) return { e, bet: strong.sort((a, b) => dec(b.price) - dec(a.price) || b.edge - a.edge)[0], strong: true };
+    const main = bets.filter(b => b.main).sort((a, b) => b.p - a.p)[0];
+    return { e, bet: main || null, strong: false };
+  }
+  // Yards at a point of the range, after anchoring to the book (0.2 = 8 in 10 games come in higher)
+  const anchoredAt = (p, f, e) => yardsAt(p, f) + shiftOf(p, e || evaluate(p));
+  const floor80 = p => anchoredAt(p, 0.2);
+
+  // Joint chance that every leg hits, for any number of legs: a Gaussian copula with the measured correlations,
+  // simulated with a fixed seed so the number doesn't jump around.
+  function normInv(q) { // Acklam's approximation
+    const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239],
+      b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572],
+      c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783],
+      d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+    q = Math.min(1 - 1e-9, Math.max(1e-9, q));
+    if (q < 0.02425) { const r = Math.sqrt(-2 * Math.log(q)); return (((((c[0] * r + c[1]) * r + c[2]) * r + c[3]) * r + c[4]) * r + c[5]) / ((((d[0] * r + d[1]) * r + d[2]) * r + d[3]) * r + 1); }
+    if (q > 1 - 0.02425) { const r = Math.sqrt(-2 * Math.log(1 - q)); return -(((((c[0] * r + c[1]) * r + c[2]) * r + c[3]) * r + c[4]) * r + c[5]) / ((((d[0] * r + d[1]) * r + d[2]) * r + d[3]) * r + 1); }
+    const r = q - 0.5, s = r * r;
+    return (((((a[0] * s + a[1]) * s + a[2]) * s + a[3]) * s + a[4]) * s + a[5]) * r / (((((b[0] * s + b[1]) * s + b[2]) * s + b[3]) * s + b[4]) * s + 1);
+  }
+  function jointChance(probs, R) {
+    const n = probs.length;
+    if (n === 1) return probs[0];
+    const L = Array.from({ length: n }, () => new Array(n).fill(0)); // Cholesky
+    for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) {
+      let s = R[i][j];
+      for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k];
+      if (i === j) { if (s <= 1e-9) return null; L[i][i] = Math.sqrt(s); } else L[i][j] = s / L[j][j];
+    }
+    const t = probs.map(normInv);
+    let seed = 20261017, hits = 0, spare = null;
+    const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let x = Math.imul(seed ^ seed >>> 15, 1 | seed); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; };
+    const gauss = () => { if (spare != null) { const v = spare; spare = null; return v; } let u = 0; while (u === 0) u = rnd(); const v = rnd(), m = Math.sqrt(-2 * Math.log(u)); spare = m * Math.sin(2 * Math.PI * v); return m * Math.cos(2 * Math.PI * v); };
+    const N = 60000, z = new Array(n), x = new Array(n);
+    for (let s = 0; s < N; s++) {
+      for (let i = 0; i < n; i++) z[i] = gauss();
+      let ok = true;
+      for (let i = 0; i < n && ok; i++) { let v = 0; for (let k = 0; k <= i; k++) v += L[i][k] * z[k]; x[i] = v; if (v >= t[i]) ok = false; }
+      if (ok) hits++;
+    }
+    return hits / N;
+  }
+
   function roleChip(p) {
     const r = p.role;
     if (!r) return '';
@@ -638,7 +741,9 @@ async function peLatest(timeoutMs) {
       (S.kind === 'all' || p.kind === S.kind) &&
       (!q || p.name.toLowerCase().includes(q) || p.team.toLowerCase() === q || p.opp.toLowerCase() === q));
     const ev = Object.fromEntries(list.map(p => [p.id, evaluate(p)]));
+    const lk = S.mode === 'likely' ? Object.fromEntries(list.map(p => { const x = likelyBet(p); return [p.id, ev[p.id].why && ev[p.id].why !== 'Needs a line' ? -1 : x.bet ? x.bet.p : 0]; })) : {};
     const by = {
+      chance: (a, b) => lk[b.id] - lk[a.id] || b.median - a.median,
       score: (a, b) => ev[b.id].score - ev[a.id].score || (ev[a.id].est - ev[b.id].est) || b.mu - a.mu,
       proj: (a, b) => b.mu - a.mu,
       edge: (a, b) => (ev[a.id].est - ev[b.id].est) || ev[b.id].edge - ev[a.id].edge,
@@ -648,7 +753,35 @@ async function peLatest(timeoutMs) {
     return { list, ev };
   }
 
+  const WHY_TIP = { 'Needs a line': 'Load sportsbook lines or type in your book\'s line to get a pick.', 'No games yet': 'No games played this season, so there is too little to go on.', 'One game so far': 'Only one game this season, too little to go on.', 'Small role': 'Too small a role for a reliable projection.', 'Check news': 'The projection and the sportsbook disagree by a lot. That usually means news the projection has not seen.' };
+  function rowLikely(p, e) {
+    const { bet: b, strong } = likelyBet(p);
+    const fl = floor80(p);
+    const status = (p.status === 'Questionable' ? '<span class="chip q" title="Listed as questionable: may not play">Q</span>' : '') + roleChip(p);
+    const ha = p.home ? 'vs' : '@';
+    const inSlip = b && S.slip.some(l => l.id === p.id && l.side === b.side && (b.main ? l.line == null : l.line === b.line));
+    const blocked = e.why && e.why !== 'Needs a line';
+    let pick;
+    if (blocked) pick = `<span class="pick none" title="${WHY_TIP[e.why] || ''}">${e.why}</span>`;
+    else if (!b) pick = `<span class="pick none" title="Load sportsbook lines to see a bet">At least ${Math.round(fl)} · 80%</span>`;
+    else pick = `<button class="pick ${b.side} likely${strong ? '' : ' lean'}${inSlip ? ' on' : ''}" type="button" data-bet="${p.id}" data-side="${b.side}" data-line="${b.line}" data-price="${b.price}" data-main="${b.main ? 1 : 0}" title="${b.main ? 'Main line' : 'Alternate line'} at ${fmtOdds(b.price)}. Fair price for this chance: ${fmtA(b.fair)}. Click to add to the slip.">${b.side === 'over' ? 'OVER' : 'UNDER'} ${b.line} <span class="num">${fmtOdds(b.price)}</span></button>`;
+    const chance = b && !blocked ? `${pct(b.p)}<span class="sm${b.edge >= 0 ? ' good' : ''}">${b.edge >= 0 ? 'good price' : 'pricey'}</span>` : '<span class="muted">–</span>';
+    const w = b && !blocked ? Math.round(b.p * 100) : 0;
+    return `<div class="row-main" data-id="${p.id}">
+      <div class="who"><span class="tm">${p.team}</span><div class="who-t"><div class="nm">${esc(p.name)}</div>
+        <div class="ctx"><span>${p.pos} ${ha} ${p.opp}</span>${status}<span class="mkt-m">${KIND[p.kind]}</span></div>
+        <div class="fl">80% chance of at least ${Math.round(fl)}</div></div></div>
+      <span class="proj projc">${Math.round(anchoredAt(p, 0.5, e))}</span>
+      <span class="linec"><input class="line-in${isEst(p) ? ' est' : ''}" id="line-${p.id}" data-id="${p.id}" type="number" inputmode="decimal" step="0.5" value="${e.line}" aria-label="Line for ${esc(p.name)} ${KIND[p.kind]}"></span>
+      <span class="pct pctc">${chance}</span>
+      <span class="pickc">${pick}</span>
+      <span class="score scorec"><span class="val">${w ? w + '%' : '–'}</span><span class="yard"><i class="${w >= 75 ? '' : 'mid'}" style="width:${w}%"></i></span></span>
+      <span class="adds"><button class="add${S.slip.some(l => l.id === p.id && l.side === 'over' && l.line == null) ? ' on' : ''}" data-add="over" data-id="${p.id}" type="button" aria-label="Add main-line over to slip">O</button><button class="add${S.slip.some(l => l.id === p.id && l.side === 'under' && l.line == null) ? ' on' : ''}" data-add="under" data-id="${p.id}" type="button" aria-label="Add main-line under to slip">U</button></span>
+    </div>`;
+  }
+
   function rowMain(p, e) {
+    if (S.mode === 'likely') return rowLikely(p, e);
     const inSlip = side => S.slip.some(l => l.id === p.id && l.side === side);
     const tier = e.grade === 'play' ? '' : 'mid';
     const whyTip = { 'Needs a line': 'Load sportsbook lines or type in your book\'s line to get a pick.', 'No games yet': 'No games played this season, so there is too little to go on.', 'One game so far': 'Only one game this season, too little to go on.', 'Small role': 'Too small a role for a reliable projection.', 'Check news': 'The model and the sportsbook disagree by a lot. That usually means news the model has not seen.' };
@@ -700,6 +833,17 @@ async function peLatest(timeoutMs) {
     return out.map(([a, b]) => `<li><span>${a}</span><span>${b}</span></li>`).join('');
   }
 
+  function likelySummary(p) {
+    const what = { pass: 'passing yards', rush: 'rushing yards', rec: 'receiving yards' }[p.kind];
+    const e = evaluate(p), at = f => Math.round(anchoredAt(p, f, e));
+    return `<h3>Most likely</h3><ul class="why factors">
+      <li><span>Most likely result</span><span>about ${at(0.5)} ${what}</span></li>
+      <li><span>Very likely (8 in 10 games like this)</span><span>at least ${at(0.2)}</span></li>
+      <li><span>Almost certain (9 in 10)</span><span>at least ${at(0.1)}</span></li>
+      <li><span>A big game (1 in 5)</span><span>${at(0.8)} or more</span></li></ul>
+      <div class="fine" style="margin:-6px 0 12px">${e.est ? 'From the projection alone. Load a sportsbook line to blend in the book\'s view.' : 'Blends the projection with the sportsbook\'s line.'}</div>`;
+  }
+
   // How the learned model got from a typical result to this player's projection, in yards
   function factorBlock(p) {
     const f = p.factors;
@@ -713,22 +857,28 @@ async function peLatest(timeoutMs) {
       <li class="tot"><span>Projection (average outcome)</span><span>${p.mu.toFixed(0)} yds</span></li></ul>`;
   }
 
+  // Chance of going over each line, read off the market-anchored range; the book's price beside our fair price
   function ladder(p, e) {
-    const step = STEP[p.kind];
-    const center = Math.floor(p.median / 5) * 5 + 0.5;
-    const rows = [];
-    for (let i = -3; i <= 3; i++) {
-      const ln = Math.max(0.5, center + i * step);
-      rows.push(ln);
+    const step = STEP[p.kind], center = Math.floor(p.median / 5) * 5 + 0.5;
+    const book = {};
+    for (const a of S.alts[p.id] || []) if (a.o != null) book[a.point] = a.o;
+    if (!e.est) book[e.line] = e.od.o;
+    let pts = [];
+    for (let i = -3; i <= 3; i++) pts.push(Math.max(0.5, center + i * step));
+    pts = pts.concat(Object.keys(book).map(Number), [e.line]);
+    pts = [...new Set(pts)].sort((a, b) => a - b);
+    if (pts.length > 11) { // keep the lines nearest the middle, always keeping the main line
+      pts = pts.sort((a, b) => Math.abs(a - p.median) - Math.abs(b - p.median)).slice(0, 11);
+      if (!pts.includes(e.line)) pts[pts.length - 1] = e.line;
+      pts.sort((a, b) => a - b);
     }
-    rows.push(e.line);
-    const uniq = [...new Set(rows)].sort((a, b) => a - b);
-    rows.length = 0; rows.push(...uniq);
-    return `<table class="ladder"><tbody>${rows.map(ln => {
-      const po = pOver(p, ln);
-      return `<tr class="${ln === e.line ? 'cur' : ''}"><td>${ln.toFixed(1)}</td><td><div class="lb"><i style="width:${(po * 100).toFixed(1)}%"></i></div></td><td>${pct(po)}</td></tr>`;
+    const s = shiftOf(p, e);
+    return `<table class="ladder"><thead><tr><td class="muted">Line</td><td></td><td class="muted">Chance</td><td class="pr">Book</td><td class="pr">Fair</td></tr></thead><tbody>${pts.map(ln => {
+      const po = pOver(p, ln - s), q = Math.min(0.995, Math.max(0.005, po));
+      return `<tr class="${ln === e.line ? 'cur' : ''}"><td>${ln.toFixed(1)}</td><td><div class="lb"><i style="width:${(po * 100).toFixed(1)}%"></i></div></td><td>${pct(po)}</td><td class="pr bk">${book[ln] != null ? fmtOdds(book[ln]) : ''}</td><td class="pr">${fmtA(fairAmerican(q))}</td></tr>`;
     }).join('')}</tbody></table>`;
   }
+
 
   function logChart(p, e) {
     const logs = p.logs, W = 300, H = 150, padL = 30, padB = 22, padT = 10, padR = 6;
@@ -766,11 +916,11 @@ async function peLatest(timeoutMs) {
       </div>` : '';
     return `<div class="detail">
       ${readBlock}
-      <div class="why-col">${factorBlock(p)}<h3>${p.factors ? 'The numbers behind it' : 'What drives the number'}</h3><ul class="why">${whyList(p)}</ul>
-        <div class="fine" style="margin-top:8px">Most likely: about ${p.median.toFixed(0)} yards. In half of games like this he lands between ${Math.round(yardsAt(p, 0.25) ?? p.median * 0.6)} and ${Math.round(yardsAt(p, 0.75) ?? p.median * 1.4)}.</div>
+      <div class="why-col">${S.mode === 'likely' ? likelySummary(p) : ''}${factorBlock(p)}<h3>${p.factors ? 'The numbers behind it' : 'What drives the number'}</h3><ul class="why">${whyList(p)}</ul>
+        <div class="fine" style="margin-top:8px"${S.mode === 'likely' ? ' hidden' : ''}>Most likely: about ${p.median.toFixed(0)} yards. In half of games like this he lands between ${Math.round(yardsAt(p, 0.25) ?? p.median * 0.6)} and ${Math.round(yardsAt(p, 0.75) ?? p.median * 1.4)}.</div>
         ${e.est ? '' : `<div class="fine">Model alone: ${pct(e.mo)} over. Sportsbook: ${pct(e.mk)} over. Blended: ${pct(e.po)}.</div>`}
         ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}</div>
-      <div><h3>Alt lines · chance of over</h3>${ladder(p, e)}
+      <div><h3>Chance of going over each line</h3>${ladder(p, e)}
         <div class="odds-in">
           <label for="oo-${p.id}">Over odds<input id="oo-${p.id}" data-odds="o" data-id="${p.id}" type="number" step="5" value="${od.o}"></label>
           <label for="uo-${p.id}">Under odds<input id="uo-${p.id}" data-odds="u" data-id="${p.id}" type="number" step="5" value="${od.u}"></label>
@@ -811,6 +961,29 @@ async function peLatest(timeoutMs) {
     el.innerHTML = `<h3>Injuries</h3>${block(g.away)}${block(g.home)}`;
   }
 
+  const SORTS = { likely: [['chance', 'Chance it hits'], ['proj', 'Most likely yards'], ['kick', 'Kickoff']],
+                  value: [['score', 'Play score'], ['proj', 'Projection'], ['edge', 'Edge vs line'], ['kick', 'Kickoff']] };
+  const HEADS = { likely: ['Player', 'Most likely', 'Line', 'Chance', 'Likely bet', 'Chance it hits', 'Add'],
+                  value: ['Player', 'Proj', 'Line', 'Hit %', 'Pick', 'Play score', 'Add'] };
+  function applyMode() {
+    document.body.classList.toggle('mode-likely', S.mode === 'likely');
+    document.getElementById('modeLikely').setAttribute('aria-selected', S.mode === 'likely');
+    document.getElementById('modeValue').setAttribute('aria-selected', S.mode === 'value');
+    const sel = document.getElementById('sort');
+    if (!SORTS[S.mode].some(([v]) => v === S.sort)) S.sort = SORTS[S.mode][0][0];
+    sel.innerHTML = SORTS[S.mode].map(([v, l]) => `<option value="${v}"${v === S.sort ? ' selected' : ''}>${l}</option>`).join('');
+    document.querySelector('.row-head').innerHTML = HEADS[S.mode].map((h, i) => `<span${i === 6 ? ' style="text-align:right"' : ''}>${h}</span>`).join('');
+    document.getElementById('modeNote').innerHTML = S.mode === 'likely'
+      ? '<b>Most likely:</b> what each player will most likely do, and the bet most likely to hit. The likely bet is the best-paying line that still has at least a 75% chance; without one, the more likely side of the main line. Load lines to see bets.'
+      : '<b>Best value:</b> where the projection disagrees with the sportsbook enough to beat its price. Most props show no edge; that is normal.';
+    document.getElementById('buildBtn').textContent = S.mode === 'likely' ? 'Build most likely parlay' : 'Build best value parlay';
+  }
+  document.querySelector('.modes').addEventListener('click', e => {
+    const b = e.target.closest('[data-mode]'); if (!b || b.dataset.mode === S.mode) return;
+    S.mode = b.dataset.mode; try { localStorage.setItem('pe-nfl-mode', S.mode); } catch (err) {}
+    S.open = null; applyMode(); renderRows();
+  });
+
   function renderRows() {
     renderInj();
     const { list, ev } = filtered();
@@ -841,6 +1014,8 @@ async function peLatest(timeoutMs) {
     if (rb) { runPropRead(rb.dataset.read); return; }
     const add = e.target.closest('[data-add]');
     if (add) { toggleLeg(add.dataset.id, add.dataset.add); return; }
+    const bt = e.target.closest('[data-bet]');
+    if (bt) { addBet(bt.dataset.bet, bt.dataset.side, parseFloat(bt.dataset.line), parseInt(bt.dataset.price, 10), bt.dataset.main === '1'); return; }
     if (e.target.closest('input, label, .detail')) return;
     const r = e.target.closest('.row-main'); if (!r) return;
     const prev = S.open; S.open = S.open === r.dataset.id ? null : r.dataset.id;
@@ -871,10 +1046,17 @@ async function peLatest(timeoutMs) {
   document.getElementById('sort').addEventListener('change', e => { S.sort = e.target.value; renderRows(); });
 
   // ---------- parlay ----------
+  function addBet(id, side, line, price, main) {
+    const i = S.slip.findIndex(l => l.id === id);
+    const leg = main ? { id, side } : { id, side, line, price };
+    const same = i >= 0 && S.slip[i].side === side && (S.slip[i].line ?? null) === (main ? null : line);
+    if (same) S.slip.splice(i, 1); else if (i >= 0) S.slip[i] = leg; else S.slip.push(leg);
+    store.set('slip', S.slip); refreshRow(id); renderSlip();
+  }
   function toggleLeg(id, side) {
     const i = S.slip.findIndex(l => l.id === id);
     if (i >= 0 && S.slip[i].side === side) S.slip.splice(i, 1);
-    else if (i >= 0) S.slip[i].side = side;
+    else if (i >= 0) S.slip[i] = { id, side };
     else S.slip.push({ id, side });
     store.set('slip', S.slip); refreshRow(id); renderSlip();
   }
@@ -910,14 +1092,16 @@ async function peLatest(timeoutMs) {
     }
     const legs = S.slip.map(l => {
       const p = props[l.id], e = evaluate(p);
-      const prob = l.side === 'over' ? e.po : e.pu;
-      const odds = l.side === 'over' ? e.od.o : e.od.u;
-      return { ...l, p, prob, odds, line: e.line };
+      if (l.line != null) { // alternate line
+        const po = chanceOver(p, l.line, e);
+        return { ...l, p, prob: l.side === 'over' ? po : 1 - po, odds: l.price, line: l.line, alt: true };
+      }
+      return { ...l, p, prob: l.side === 'over' ? e.po : e.pu, odds: l.side === 'over' ? e.od.o : e.od.u, line: e.line };
     });
     legsEl.innerHTML = legs.map((l, i) => `<div class="leg">
       <div class="lt">${esc(l.p.name)} ${l.side === 'over' ? 'Over' : 'Under'} ${l.line}</div>
       <div class="lr"><input id="lo-${i}" data-leg="${i}" type="number" step="5" value="${l.odds}" aria-label="Odds"><button class="rm" data-rm="${i}" type="button" aria-label="Remove leg">×</button></div>
-      <div class="ls">${KIND[l.p.kind]} · ${l.p.team} ${l.p.home ? 'vs' : '@'} ${l.p.opp} · chance ${pct(l.prob)}</div><div></div>
+      <div class="ls">${KIND[l.p.kind]}${l.alt ? ' · alternate line' : ''} · ${l.p.team} ${l.p.home ? 'vs' : '@'} ${l.p.opp} · chance ${pct(l.prob)}</div><div></div>
     </div>`).join('');
 
     // correlation
@@ -936,7 +1120,10 @@ async function peLatest(timeoutMs) {
 
     const indep = legs.reduce((a, l) => a * l.prob, 1);
     const minP = Math.min(...legs.map(l => l.prob));
-    const trueP = Math.min(minP, indep * factor);
+    // Measured rank correlations converted to the normal scale, then simulated together
+    const R = legs.map((a, i) => legs.map((b, j) => { if (i === j) return 1; const c = corr(a, b); return c ? 2 * Math.sin(Math.PI * c.rho / 6) : 0; }));
+    const sim = jointChance(legs.map(l => Math.min(0.999, Math.max(0.001, l.prob))), R);
+    const trueP = Math.min(minP, sim != null ? sim : indep * factor);
     const payout = legs.reduce((a, l) => a * dec(l.odds), 1);
     const ev = trueP * payout - 1;
     const needEach = Math.pow(1 / payout, 1 / legs.length);
@@ -947,6 +1134,7 @@ async function peLatest(timeoutMs) {
       <div class="tot big"><span>Chance all legs hit</span><span class="num">${(trueP * 100).toFixed(1)}%</span></div>
       ${notes.length ? `<div class="tot"><span>If legs were independent</span><span class="num">${(indep * 100).toFixed(1)}%</span></div>` : ''}
       <div class="tot"><span>Payout at these odds</span><span class="num">${american} (${payout.toFixed(2)}x)</span></div>
+      <div class="tot"><span>Fair payout for this chance</span><span class="num">${trueP > 0.001 ? fmtA(fairAmerican(trueP)) : '–'}</span></div>
       <div class="tot"><span>Break-even chance</span><span class="num">${(100 / payout).toFixed(1)}%</span></div>
       <div class="tot"><span>Expected return per $1</span><span class="num ev ${ev >= 0 ? 'pos' : 'neg'}">${ev >= 0 ? '+' : '−'}$${Math.abs(ev).toFixed(2)}</span></div>
       <div class="fine">To break even, each leg needs about a ${pct(needEach)} chance on average.${sameGame || notes.length ? ' Books price same-game correlation into SGP odds, so the payout offered on a same-game parlay will usually be lower than the straight math above.' : ''}</div>`;
@@ -962,7 +1150,10 @@ async function peLatest(timeoutMs) {
   legsEl.addEventListener('change', e => {
     const t = e.target; if (t.dataset.leg == null) return;
     const v = parseInt(t.value, 10), l = S.slip[+t.dataset.leg];
-    if (!isNaN(v) && Math.abs(v) >= 100) { const k = l.side === 'over' ? 'o' : 'u'; S.odds[l.id] = Object.assign({}, oddsOf(props[l.id]), { [k]: v }); store.set('odds', S.odds); }
+    if (!isNaN(v) && Math.abs(v) >= 100) {
+      if (l.line != null) { l.price = v; store.set('slip', S.slip); }
+      else { const k = l.side === 'over' ? 'o' : 'u'; S.odds[l.id] = Object.assign({}, oddsOf(props[l.id]), { [k]: v }); store.set('odds', S.odds); }
+    }
     refreshRow(l.id); renderSlip();
   });
   document.getElementById('clear').addEventListener('click', () => {
@@ -1078,6 +1269,20 @@ Rules:
       : { tag: e.side, label: `Lean ${side.toLowerCase()}`, say: `Lean ${side.toLowerCase()}: a small edge.` };
   }
 
+  function verdictLikely(p, e) {
+    const what = { pass: 'passing yards', rush: 'rushing yards', rec: 'receiving yards' }[p.kind];
+    const { bet: b } = likelyBet(p);
+    const at = f => Math.round(anchoredAt(p, f, e));
+    const blocked = e.why && e.why !== 'Needs a line';
+    let say = `Most likely result: about ${at(0.5)} ${what}. He gets at least ${at(0.2)} in 8 of 10 similar games, and ${at(0.8)} or more in 1 of 5.`;
+    if (blocked) say += ` No bet: ${({ 'No games yet': 'he has not played this season, so there is too little to go on', 'One game so far': 'he has only one game this season', 'Small role': 'his role is too small for a reliable projection', 'Check news': 'the projection and the sportsbook disagree by a lot, which usually means news the projection has not seen' })[e.why]}.`;
+    else if (b) say += ` Most likely bet: ${b.side} ${b.line} at ${fmtOdds(b.price)}${b.main ? '' : ' (an alternate line)'}, which should hit about ${pct(b.p)} of the time. A fair price for that chance is ${fmtA(b.fair)}, so the offered price is ${b.edge >= 0 ? 'fair or better' : 'a little expensive'}.`;
+    else say += ' No sportsbook line is loaded, so no bet is named.';
+    const tag = blocked || !b ? 'none' : b.side;
+    const label = blocked ? 'No bet' : b ? `${b.side === 'over' ? 'Over' : 'Under'} ${b.line} · ${pct(b.p)}` : `Likely ${at(0.5)} yds`;
+    return { tag, label, say };
+  }
+
   function injuryLines(p) {
     const inj = D.injuries || { out: {}, questionable: {} };
     const lines = [];
@@ -1124,7 +1329,7 @@ Rules:
     if (state.status === 'wait') return { cls: 'wait', html: 'Reading the numbers...' };
     if (state.status === 'error') return { cls: 'err', html: esc(state.err || '') };
     let body = esc((state.text || '').trim());
-    body = body.replace(/^(Bottom line:|Why:|Injuries:|What could go wrong:|Weakest leg:|How the legs fit:)/gm, '<b>$1</b>');
+    body = body.replace(/^(Bottom line:|Most likely:|Why:|Injuries:|The bet:|What could go wrong:|Weakest leg:|How the legs fit:)/gm, '<b>$1</b>');
     const chip = verdict ? `<span class="vd ${verdict.tag}">${esc(verdict.label)}</span>\n` : '';
     return { cls: '', html: chip + body };
   }
@@ -1139,10 +1344,24 @@ Rules:
 
   async function runPropRead(id) {
     const p = props[id], e = evaluate(p);
-    const verdict = verdictFor(p, e);
+    const likely = S.mode === 'likely';
+    const verdict = likely ? verdictLikely(p, e) : verdictFor(p, e);
     const st = S.reads[id] = { status: 'wait', text: '', line: e.line, verdict };
     refreshRow(id);
-    const prompt = `You explain player prop bets for NFL PropEdge. The decision below is already made by the numbers. Your job is to explain it so a newcomer understands it.
+    const prompt = likely ? `You explain player prop bets for NFL PropEdge. The facts below about what is most likely to happen are already worked out. Your job is to explain them so a newcomer understands.
+${VOICE}
+
+WHAT IS MOST LIKELY (state these numbers; do not change them): ${verdict.say}
+
+Reply in exactly this format, about 120 words in total, and nothing else:
+Most likely: <one sentence saying what he will most likely do and the range he very likely lands in>
+Why: <two sentences on the biggest reasons, using the biggest factors and numbers below in plain terms>
+Injuries: <one or two sentences on who is out or questionable for his team and how that changes things; if nobody relevant is out, say so in a few words>
+The bet: <one sentence on the most likely bet named above, how often it should hit, and whether the price is worth it; if no bet is named, say a line is needed>
+What could go wrong: <one specific, realistic risk>
+
+DATA
+${propBrief(p, e)}` : `You explain player prop bets for NFL PropEdge. The decision below is already made by the numbers. Your job is to explain it so a newcomer understands it.
 ${VOICE}
 
 DECISION (do not change it): ${verdict.say}
@@ -1196,8 +1415,17 @@ ${propBrief(p, e)}`;
   }
   // Parlay decision from the numbers: play if it is worth more than it costs, trim if dropping the weakest leg makes it so
   function parlayVerdict(c) {
+    if (S.mode === 'likely') {
+      if (c.legs.some(l => isEst(l.p))) return { tag: 'none', label: 'Needs lines', say: 'No read yet: at least one leg has no sportsbook line loaded.', weakest: null };
+      const weakest = c.legs.reduce((a, b) => (b.prob < a.prob ? b : a));
+      const ch = c.trueP, value = c.ev >= 0 ? 'The payout is fair or better for that chance.' : `The payout is a bit low for that chance (fair would be ${fmtA(fairAmerican(Math.max(0.005, ch)))}).`;
+      const w = { l: weakest };
+      if (ch >= 0.5) return { tag: 'play', label: 'Likely to hit', say: `More likely to hit than not: about ${pct(ch)} chance that every leg hits. ${value}`, weakest: w };
+      if (ch >= 0.3) return { tag: 'trim', label: 'About a coin flip', say: `Roughly a coin flip or a bit worse: about ${pct(ch)} chance that every leg hits. ${value}`, weakest: w };
+      return { tag: 'pass', label: 'Long shot', say: `A long shot: about ${pct(ch)} chance that every leg hits. ${value}`, weakest: w };
+    }
     if (c.legs.some(l => isEst(l.p))) return { tag: 'none', label: 'Needs lines', say: 'No decision yet: at least one leg has no sportsbook line loaded.', weakest: null };
-    const scored = c.legs.map(l => ({ l, edge: (l.side === 'over' ? evaluate(l.p).po : evaluate(l.p).pu) - breakeven(l.odds) }));
+    const scored = c.legs.map(l => ({ l, edge: l.prob - breakeven(l.odds) }));
     const weakest = scored.reduce((a, b) => (b.edge < a.edge ? b : a));
     if (c.ev > 0) return { tag: 'play', label: 'Worth a look', say: `Worth a look: by the numbers it pays more than its risk (expected return ${c.ev >= 0 ? '+' : ''}$${c.ev.toFixed(2)} per $1).`, weakest };
     const p2 = c.trueP / Math.max(0.01, weakest.l.prob), pay2 = c.payout / dec(weakest.l.odds);
@@ -1249,10 +1477,51 @@ Chance every leg hits: ${(c.trueP * 100).toFixed(1)}%. Payout: ${c.payout.toFixe
   // Parlay builder
   // Builds by rule from the strongest edges: real lines only, one leg per player, no legs that work against each other,
   // at most two legs from one game unless they move together. Umbra Read then explains the slip.
+  // Most likely parlay: the legs with the highest chance of hitting, using alternate lines when loaded,
+  // one per player, nothing that works against another leg, at most two per game unless they help each other.
+  function buildLikely(size, gids) {
+    const cands = D.props
+      .filter(p => (!gids || gids.includes(p.game)) && p.status !== 'Questionable')
+      .map(p => ({ p, e: evaluate(p), lb: likelyBet(p) }))
+      .filter(x => !x.e.why && x.lb.bet && x.lb.bet.p >= 0.6)
+      .sort((a, b) => b.lb.bet.p - a.lb.bet.p || dec(b.lb.bet.price) - dec(a.lb.bet.price));
+    const legs = [];
+    for (const x of cands) {
+      if (legs.length === size) break;
+      if (legs.some(l => props[l.id].pid === x.p.pid)) continue;
+      const b = x.lb.bet;
+      const leg = b.main ? { id: x.p.id, side: b.side } : { id: x.p.id, side: b.side, line: b.line, price: b.price };
+      const links = legs.map(l => corr(l, leg)).filter(Boolean);
+      if (links.some(c => c.rho < 0)) continue;
+      if (legs.filter(l => props[l.id].game === x.p.game).length >= 2 && !links.some(c => c.rho > 0)) continue;
+      legs.push(leg);
+    }
+    return legs;
+  }
+
   function runBuilder() {
     const out = document.getElementById('buildOut');
     const size = +document.getElementById('buildSize').value;
     const gids = S.game === 'all' ? null : [S.game];
+    if (S.mode === 'likely') {
+      const legs = buildLikely(size, gids);
+      if (legs.length < size) {
+        const real = D.props.filter(p => !isEst(p)).length;
+        out.className = 'read-out err';
+        out.textContent = !real
+          ? 'The most likely parlay needs sportsbook lines. Load lines at the top of the page (alternate lines help a lot), then build again.'
+          : `Only ${legs.length} bet${legs.length === 1 ? '' : 's'} here ${legs.length === 1 ? 'has' : 'have'} a 60%+ chance with a real price. Try a smaller parlay${gids ? ' or All games' : ''}, or load lines for more games.`;
+        return;
+      }
+      const old = S.slip.map(l => l.id);
+      S.slip = legs; store.set('slip', S.slip);
+      old.concat(legs.map(l => l.id)).forEach(refreshRow);
+      renderSlip();
+      out.className = 'read-out';
+      out.textContent = `These are the ${size} bets most likely to hit that don't work against each other. Chance all ${size} hit: ${(S.slipCalc.trueP * 100).toFixed(0)}%.`;
+      if (aiOn()) runParlayRead();
+      return;
+    }
     const cands = candidateList(gids, new Set(), 60);
     const legs = [];
     for (const x of cands) {
@@ -1299,6 +1568,10 @@ Chance every leg hits: ${(c.trueP * 100).toFixed(1)}%. Payout: ${c.payout.toFixe
   // Runs in the browser on a self-hosted copy. The key is saved only in this browser.
   const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/americanfootball_nfl';
   const MARKETS = { player_pass_yds: 'pass', player_rush_yds: 'rush', player_reception_yds: 'rec' };
+  const ALT_MARKETS = { player_pass_yds_alternate: 'pass', player_rush_yds_alternate: 'rush', player_reception_yds_alternate: 'rec' };
+  const altBox = document.getElementById('altLines');
+  altBox.checked = store.get('altOn', true);
+  altBox.addEventListener('change', () => store.set('altOn', altBox.checked));
   const TEAM_NAMES = {
     ARI: 'Arizona Cardinals', ATL: 'Atlanta Falcons', BAL: 'Baltimore Ravens', BUF: 'Buffalo Bills', CAR: 'Carolina Panthers',
     CHI: 'Chicago Bears', CIN: 'Cincinnati Bengals', CLE: 'Cleveland Browns', DAL: 'Dallas Cowboys', DEN: 'Denver Broncos',
@@ -1383,18 +1656,33 @@ Chance every leg hits: ${(c.trueP * 100).toFixed(1)}%. Payout: ${c.payout.toFixe
       const evFor = g => (events || []).find(ev => ev.home_team === TEAM_NAMES[g.home] && ev.away_team === TEAM_NAMES[g.away]);
       const propIndex = {};
       D.props.forEach(p => { propIndex[`${p.game}|${normName(p.name)}|${p.kind}`] = p; });
-      let matched = 0, gamesDone = 0, lastResp = null, missing = 0;
-      const newSrc = {};
+      let matched = 0, gamesDone = 0, lastResp = null, missing = 0, altCount = 0;
+      const newSrc = {}, newAlts = {};
       for (const g of scope) {
         const ev = evFor(g);
         if (!ev) { missing++; continue; }
         linesMeta.textContent = `Loading ${g.away} @ ${g.home} (${gamesDone + 1} of ${scope.length})...`;
-        const { r, data } = await oddsGet(`/events/${ev.id}/odds`, { regions: 'us', markets: Object.keys(MARKETS).join(','), oddsFormat: 'american' });
+        const mk = Object.keys(MARKETS).concat(altBox.checked ? Object.keys(ALT_MARKETS) : []);
+        const { r, data } = await oddsGet(`/events/${ev.id}/odds`, { regions: 'us', markets: mk.join(','), oddsFormat: 'american' });
         lastResp = r; gamesDone++;
         if (!data) continue;
         const grouped = {}; // "player|kind" -> [{key,title,point,o,u}]
+        const altG = {};    // "player|kind" -> point -> {o, u, src}
+        const better = (cur, price) => cur == null || dec(price) > dec(cur);
         for (const bk of data.bookmakers || []) {
+          if (book !== 'best' && bk.key !== book) continue;
           for (const m of bk.markets || []) {
+            const akind = ALT_MARKETS[m.key];
+            if (akind) {
+              for (const oc of m.outcomes || []) {
+                if (oc.point == null) continue;
+                const k = `${normName(oc.description)}|${akind}`;
+                const slot = ((altG[k] = altG[k] || {})[oc.point] = altG[k][oc.point] || { point: oc.point, o: null, u: null, src: bk.title });
+                if (/^over$/i.test(oc.name) && better(slot.o, oc.price)) { slot.o = oc.price; slot.src = bk.title; }
+                if (/^under$/i.test(oc.name) && better(slot.u, oc.price)) { slot.u = oc.price; }
+              }
+              continue;
+            }
             const kind = MARKETS[m.key]; if (!kind) continue;
             for (const oc of m.outcomes || []) {
               const k = `${normName(oc.description)}|${kind}`;
@@ -1405,6 +1693,12 @@ Chance every leg hits: ${(c.trueP * 100).toFixed(1)}%. Payout: ${c.payout.toFixe
               if (/^under$/i.test(oc.name)) row.u = oc.price;
             }
           }
+        }
+        for (const [k, pts] of Object.entries(altG)) {
+          const [nm, kind] = k.split('|');
+          const p = propIndex[`${g.id}|${nm}|${kind}`]; if (!p) continue;
+          newAlts[p.id] = Object.values(pts).sort((a, b) => a.point - b.point);
+          altCount += newAlts[p.id].length;
         }
         for (const [k, books] of Object.entries(grouped)) {
           const [nm, kind] = k.split('|');
@@ -1419,14 +1713,16 @@ Chance every leg hits: ${(c.trueP * 100).toFixed(1)}%. Payout: ${c.payout.toFixe
         if (scope.some(g => g.id === props[id].game) && !newSrc[id]) { delete S.src[id]; delete S.lines[id]; delete S.odds[id]; }
       }
       Object.assign(S.src, newSrc);
-      store.set('lines', S.lines); store.set('odds', S.odds); store.set('src', S.src);
+      for (const id of Object.keys(S.alts)) if (scope.some(g => g.id === props[id].game)) delete S.alts[id];
+      Object.assign(S.alts, newAlts);
+      store.set('lines', S.lines); store.set('odds', S.odds); store.set('src', S.src); store.set('alts', S.alts);
       const bookLabel = book === 'best' ? 'the best price across books' : bookSel.options[bookSel.selectedIndex].text;
       store.set('linesInfo', { book: bookLabel, at: new Date().toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit' }) });
       if (!gamesDone) {
         linesMeta.textContent = `None of this page's Week ${D.week} games are listed at The Odds API right now. If the page is from an earlier week, it needs to be rebuilt; otherwise the books may not have posted these games yet.`;
       } else {
         const skipped = picked.length - scope.length;
-        linesMeta.textContent = `Matched ${matched} props across ${gamesDone} game${gamesDone === 1 ? '' : 's'}.` + (missing ? ` ${missing} game${missing === 1 ? ' was' : 's were'} not listed yet.` : '') + (skipped ? ` Skipped ${skipped} game${skipped === 1 ? '' : 's'} already under way.` : '') + creditsNote(lastResp);
+        linesMeta.textContent = `Matched ${matched} props across ${gamesDone} game${gamesDone === 1 ? '' : 's'}${altCount ? `, plus ${altCount} alternate lines` : ''}.` + (missing ? ` ${missing} game${missing === 1 ? ' was' : 's were'} not listed yet.` : '') + (skipped ? ` Skipped ${skipped} game${skipped === 1 ? '' : 's'} already under way.` : '') + creditsNote(lastResp);
       }
     } catch (e) {
       linesMeta.textContent = (e && e.msg) || 'Loading lines failed. Try again.';
@@ -1437,7 +1733,7 @@ Chance every leg hits: ${(c.trueP * 100).toFixed(1)}%. Payout: ${c.payout.toFixe
   document.getElementById('loadLines').addEventListener('click', loadLines);
   document.getElementById('resetLines').addEventListener('click', () => {
     for (const id of Object.keys(S.src)) { delete S.lines[id]; delete S.odds[id]; }
-    S.src = {}; store.set('lines', S.lines); store.set('odds', S.odds); store.set('src', S.src); store.set('linesInfo', null);
+    S.src = {}; S.alts = {}; store.set('lines', S.lines); store.set('odds', S.odds); store.set('src', S.src); store.set('alts', S.alts); store.set('linesInfo', null);
     linesMeta.textContent = 'Live lines cleared. Lines you typed in yourself are kept.';
     linesStatusText(); renderRows(); renderSlip();
   });
@@ -1464,7 +1760,7 @@ Chance every leg hits: ${(c.trueP * 100).toFixed(1)}%. Payout: ${c.payout.toFixe
     });
   }
 
-  renderStale(); renderGames(); renderRows(); renderSlip();
+  renderStale(); applyMode(); renderGames(); renderRows(); renderSlip();
   initAI();
 })();
 </script>
