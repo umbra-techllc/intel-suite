@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Intel Suite by Umbra Tech</title>
-<meta name="description" content="Free browser-based screens from Umbra Tech: Crypto Intel, Defense Intel, NFL PropEdge, and NBA and WNBA parlay finders."/>
+<meta name="description" content="Free browser-based screens from Umbra Tech: Crypto Intel, Defense Intel, NFL PropEdge, NFL TD Predictor, and NBA and WNBA parlay finders."/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
@@ -17,6 +17,7 @@
   --amber:#a8690a; --amber-soft:#fdf0d5;
   --violet:#6b4fb3; --violet-soft:#ece6fa;
   --blue:#245bb0; --blue-soft:#e4ecfa;
+  --red:#a3361f; --red-soft:#f6e4de;
   --display:'Bricolage Grotesque',sans-serif; --body:'Manrope',sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -129,6 +130,18 @@ footer a:hover{color:var(--teal);text-decoration:underline;}
           <li>Slate refreshes on its own twice a day</li>
         </ul>
         <div class="foot"><span class="src">nflverse, ESPN, The Odds API</span><span class="open">Open</span></div>
+      </a>
+
+      <a class="tool" href="nfl_td_predictor.html" style="--c:var(--red);--cs:var(--red-soft)">
+        <div class="name">NFL TD Predictor <span class="pill">New</span></div>
+        <div class="what">Shows each player's chance to score a touchdown this week, and how many touchdown passes each starting quarterback is expected to throw.</div>
+        <ul>
+          <li>Built on how often each player gets the ball near the end zone</li>
+          <li>Quarterback touchdown-pass trends feed into his receivers' chances</li>
+          <li>Accounts for injuries and missing teammates</li>
+          <li>Touchdown parlay with the chance every leg hits</li>
+        </ul>
+        <div class="foot"><span class="src">nflverse play-by-play, ESPN, The Odds API</span><span class="open">Open</span></div>
       </a>
 
       <a class="tool" href="nba_parlay_finder.html" style="--c:var(--violet);--cs:var(--violet-soft)">
