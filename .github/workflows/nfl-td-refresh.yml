@@ -1,0 +1,67 @@
+# Rebuilds nfl_td_predictor.html and nfl_td_data.json with the current week's slate, stats, play-by-play,
+# odds, injuries and depth charts. Runs twice a day, plus Sunday late morning after inactives.
+# To run it by hand: Actions tab > NFL TD Predictor refresh > Run workflow.
+name: NFL TD Predictor refresh
+
+on:
+  schedule:
+    - cron: "27 13 * * *"   # about 9:27am ET every day
+    - cron: "27 21 * * *"   # about 5:27pm ET every day
+    - cron: "52 15 * * 0"   # about 11:52am ET Sunday, after inactives
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "Week to build (leave blank for the current week)"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nfl-td
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install packages
+        run: pip install pandas numpy pyarrow lightgbm requests
+      - name: Build the slate
+        id: build
+        working-directory: nfl-td
+        run: |
+          set +e
+          if [ -n "${{ github.event.inputs.week }}" ]; then
+            python build_td.py --week "${{ github.event.inputs.week }}"
+          else
+            python build_td.py
+          fi
+          code=$?
+          set -e
+          if [ "$code" = "3" ]; then
+            echo "Nothing to build right now, keeping the current page."
+            echo "built=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" != "0" ]; then exit "$code"; fi
+          python make_page.py data.json --site ../nfl_td_predictor.html
+          cp data.json ../nfl_td_data.json
+          echo "built=yes" >> "$GITHUB_OUTPUT"
+      - name: Commit the new page
+        if: steps.build.outputs.built == 'yes'
+        run: |
+          git config user.name "umbra-propedge-bot"
+          git config user.email "umbra-propedge-bot@users.noreply.github.com"
+          git add nfl_td_predictor.html nfl_td_data.json
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "NFL TD Predictor: refresh slate"
+            git pull --rebase origin main
+            git push
+          fi

@@ -1,0 +1,877 @@
+<title>NFL TD Predictor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: slate | players | slip, stacking on phones. Same Umbra Tech family as PropEdge, with an end-zone red accent. Light only, by design. */
+:root {
+  color-scheme: light;
+  --bg: #F1EFEC;
+  --surface: #FFFFFF;
+  --surface-2: #F8F6F3;
+  --ink: #26201C;
+  --muted: #645B54;
+  --line: #DED7CF;
+  --line-strong: #C6BCB1;
+  --accent: #A3361F;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #F6E4DE;
+  --field: #2D6A3E;
+  --field-soft: #E3EFE5;
+  --good: #19703D;
+  --good-soft: #DDF0E3;
+  --bad: #A3311E;
+  --bad-soft: #F7E3DE;
+  --warn: #8A5800;
+  --warn-soft: #F6EBD2;
+  --f-display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "Public Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --f-data: "Red Hat Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --r: 8px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45; margin: 0; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.fine { font-size: 12px; color: var(--muted); }
+.wrap { max-width: 1440px; margin: 0 auto; padding-inline: 16px; padding-block: 0 40px; }
+
+.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1440px; margin: 0 auto; padding-inline: 16px; padding-block: 14px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 24px; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.mark { width: 34px; height: 34px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; flex: none; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 28px; letter-spacing: 0.01em; line-height: 1; margin: 0; text-transform: uppercase; }
+.brand .by { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; }
+.meta b { color: var(--ink); font-weight: 600; }
+.slate-check { width: 100%; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 6px; padding: 5px 11px; font-size: 12.5px; font-weight: 600; }
+.btn.ghost { background: var(--surface); color: var(--accent); }
+.btn:disabled { opacity: 0.55; cursor: default; }
+
+.stale { margin-top: 14px; padding: 10px 14px; border: 1px solid #E6CF9C; background: var(--warn-soft); color: var(--warn); border-radius: var(--r); font-size: 13.5px; }
+.stale b { color: var(--ink); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.panel-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+.panel-h h2 { font-family: var(--f-display); font-size: 18px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin: 0; }
+.panel-h .sub { font-size: 12px; color: var(--muted); }
+h3.sec { font-family: var(--f-display); font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 8px 0 8px; }
+
+.lines-bar { margin-block: 14px; padding: 12px 14px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; }
+.lines-bar h2 { font-family: var(--f-display); font-size: 18px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; margin: 0 0 2px; }
+.lines-bar p { margin: 0; max-width: 80ch; font-size: 12.5px; color: var(--muted); }
+.lines-bar p b { color: var(--ink); font-weight: 600; }
+.lb-controls { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; justify-content: flex-end; }
+.field { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.field input, .field select { border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); padding: 6px 9px; font-size: 13px; color: var(--ink); }
+.lb-controls input[type="password"] { width: 170px; font-family: var(--f-data); }
+.lb-meta { grid-column: 1 / -1; font-size: 11.5px; color: var(--muted); }
+.lb-meta:empty { display: none; }
+
+.grid { display: grid; grid-template-columns: 260px minmax(0, 1fr) 330px; gap: 16px; align-items: start; }
+.sticky { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+.games { display: flex; flex-direction: column; padding: 6px; gap: 2px; max-height: calc(100vh - 140px); overflow-y: auto; }
+.game { text-align: left; border: 1px solid transparent; background: none; border-radius: 6px; padding: 9px 10px; display: grid; gap: 3px; }
+.game:hover { background: var(--surface-2); }
+.game[aria-pressed="true"] { background: var(--accent-soft); border-color: #E5BFB3; }
+.game.done { opacity: 0.6; }
+.game .g1 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.game .mu { font-family: var(--f-display); font-weight: 600; font-size: 17px; letter-spacing: 0.03em; }
+.game .ko { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.game .g2 { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--muted); }
+.game .g2 .num { color: var(--ink); }
+.chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.03em; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.chip.q { background: var(--warn-soft); border-color: #E6CF9C; color: var(--warn); }
+.chip.role { background: var(--accent-soft); border-color: #E5BFB3; color: var(--accent); }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.tabs { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+.tabs button { border: 0; background: var(--surface); padding: 6px 12px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.tabs button + button { border-left: 1px solid var(--line-strong); }
+.tabs button[aria-selected="true"] { background: var(--ink); color: #FFFFFF; }
+.field input[type="search"] { width: 170px; }
+.count { margin-left: auto; font-size: 12px; color: var(--muted); }
+.note-bar { padding: 8px 14px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.note-bar b { color: var(--ink); font-weight: 600; }
+
+.inj { padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); display: grid; gap: 8px; font-size: 13px; }
+.inj-team { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 2px 10px; align-items: start; }
+.inj-team .tm { grid-row: span 3; }
+.inj .lbl { color: var(--muted); }
+
+.props-panel { container-type: inline-size; min-width: 0; }
+.row-head, .row-main { display: grid; grid-template-columns: minmax(140px, 1.6fr) 108px 92px 50px 90px 60px 66px; gap: 10px; align-items: center; padding: 9px 14px; }
+.qb .row-head, .qb .row-main { grid-template-columns: minmax(140px, 1.5fr) 62px 44px 44px 44px 92px 104px 72px; }
+.row-head { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--surface-2); }
+.row { border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row-main { cursor: pointer; }
+.row-main:hover, .row.open .row-main { background: var(--surface-2); }
+.who { min-width: 0; display: flex; gap: 10px; align-items: center; }
+.tm { flex: none; width: 38px; height: 26px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--line); display: grid; place-items: center; font-family: var(--f-display); font-weight: 700; font-size: 13px; letter-spacing: 0.04em; }
+.who-t { min-width: 0; }
+.who .nm { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.who .ctx { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.chance { display: grid; gap: 4px; }
+.chance .big { font-family: var(--f-data); font-weight: 600; font-size: 17px; }
+.bar { height: 8px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.how { font-size: 12px; color: var(--muted); }
+.cell { font-family: var(--f-data); font-size: 14px; }
+.cell .sm { display: block; font-family: var(--f-body); font-size: 11px; color: var(--muted); }
+.cell .sm.good { color: var(--good); }
+.adds { display: flex; gap: 4px; justify-content: flex-end; }
+.add { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 5px; padding: 4px 8px; font-size: 12px; font-weight: 700; }
+.add:hover { border-color: var(--accent); color: var(--accent); }
+.add.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.empty { padding: 30px 14px; text-align: center; color: var(--muted); }
+
+.detail { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 18px; padding: 6px 14px 16px; background: var(--surface-2); }
+.detail > .read { grid-column: 1 / -1; margin-top: 10px; }
+.why { margin: 0 0 12px; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; }
+.why li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed var(--line); padding-bottom: 5px; }
+.why li span:last-child { font-family: var(--f-data); white-space: nowrap; }
+.why .up { color: var(--good); }
+.why .dn { color: var(--bad); }
+.why li.tot { border-bottom: 0; font-weight: 600; }
+.note { font-size: 12px; color: var(--warn); margin-top: 8px; }
+.logchart svg { width: 100%; height: auto; display: block; }
+.odds-in { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.odds-in label { font-size: 12px; color: var(--muted); display: grid; gap: 3px; }
+.odds-in input { width: 84px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 6px; font-family: var(--f-data); text-align: right; background: var(--surface); }
+
+.read { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 10px 12px; display: grid; gap: 8px; }
+.read-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.read-h h3 { margin: 0; font-family: var(--f-display); font-size: 14px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
+.read-out { font-size: 13.5px; line-height: 1.5; max-width: 75ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.read-out:empty { display: none; }
+.read-out.wait { color: var(--muted); font-style: italic; }
+.read-out.err { color: var(--bad); }
+.vd { display: inline-flex; font-weight: 700; font-size: 12px; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 5px; text-transform: uppercase; background: var(--accent-soft); color: var(--accent); }
+
+.slip-legs { display: flex; flex-direction: column; }
+.leg { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.leg .lt { font-weight: 600; min-width: 0; }
+.leg .ls { font-size: 12px; color: var(--muted); }
+.leg .lr { display: flex; align-items: center; gap: 6px; }
+.leg input { width: 66px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 3px 5px; font-family: var(--f-data); font-size: 13px; text-align: right; background: var(--surface); }
+.rm { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 4px; }
+.rm:hover { color: var(--bad); }
+.slip-empty { padding: 18px 14px; color: var(--muted); font-size: 13px; }
+.build { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; background: var(--surface-2); }
+.build-r { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.build select { border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); padding: 5px 8px; font-size: 13px; }
+.corr { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 6px; font-size: 12.5px; }
+.corr .tag { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--good-soft); color: var(--good); margin-right: 6px; }
+.corr .tag.neg { background: var(--bad-soft); color: var(--bad); }
+.totals { padding: 12px 14px; display: grid; gap: 8px; }
+.tot { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 13px; }
+.tot .num { font-size: 15px; font-weight: 600; }
+.tot.big .num { font-size: 22px; }
+.slip .read { margin: 0 14px 14px; }
+.clear { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600; }
+
+.method { margin-top: 16px; }
+.method summary { cursor: pointer; padding: 12px 14px; font-family: var(--f-display); font-size: 17px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.method .mb { padding: 0 14px 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px 28px; font-size: 13px; color: var(--muted); }
+.method .mb p { margin: 0; max-width: 62ch; }
+.method .mb b { color: var(--ink); }
+.keybox { margin-top: 14px; padding: 12px 14px; display: grid; gap: 8px; }
+.keybox input { flex: 1; min-width: 200px; border: 1px solid var(--line-strong); border-radius: 6px; padding: 6px 9px; font-family: var(--f-data); font-size: 13px; }
+.foot { margin-top: 14px; font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 18px; }
+
+@media (max-width: 1180px) { .grid { grid-template-columns: 230px minmax(0, 1fr); } .slip { grid-column: 1 / -1; } .sticky.slipbox { position: static; } }
+@container (max-width: 720px) {
+  .row-head { display: none; }
+  .row-main, .qb .row-main { grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; }
+  .row-main > .who { grid-column: 1 / -1; }
+  .row-main > .adds { justify-content: flex-start; }
+  .detail { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .sticky { position: static; }
+  .games { flex-direction: row; overflow-x: auto; max-height: none; padding: 8px; gap: 6px; }
+  .game { flex: none; width: 200px; border-color: var(--line); }
+  .lines-bar { grid-template-columns: 1fr; }
+  .lb-controls { justify-content: flex-start; }
+  .count { margin-left: 0; width: 100%; }
+}
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand">
+      <div class="mark" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 22 22"><g stroke="#FFFFFF" stroke-width="1.6" fill="none" stroke-linecap="round"><path d="M5 19V8M17 19V8M5 8h12M8 8V3M14 8V3"/></g></svg>
+      </div>
+      <div><h1>NFL TD Predictor</h1><div class="by">Umbra Tech</div></div>
+    </div>
+    <div class="meta" id="meta"></div>
+    <div class="slate-check" id="slateCheck" hidden>
+      <button class="btn ghost" id="checkSlate" type="button">Check for new slate</button>
+      <span class="fine" id="slateMsg" role="status"></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="stale" id="stale" role="status" hidden></div>
+
+  <section class="panel lines-bar" aria-label="Sportsbook prices">
+    <div>
+      <h2>Sportsbook prices</h2>
+      <p id="linesStatus"><b>Chances work without prices.</b> Load prices to compare each player's chance with what the book pays. The Odds API key is shared with NFL PropEdge.</p>
+    </div>
+    <div class="lb-controls">
+      <label class="field" for="oddsKey">Odds API key <input type="password" id="oddsKey" placeholder="Paste key" autocomplete="off"></label>
+      <label class="field" for="oddsBook">Book
+        <select id="oddsBook">
+          <option value="best">Best price</option><option value="draftkings">DraftKings</option><option value="fanduel">FanDuel</option>
+          <option value="betmgm">BetMGM</option><option value="williamhill_us">Caesars</option><option value="espnbet">ESPN BET</option><option value="betrivers">BetRivers</option>
+        </select>
+      </label>
+      <button class="btn" id="loadLines" type="button">Load prices</button>
+    </div>
+    <div class="lb-meta" id="linesMeta"></div>
+  </section>
+
+  <div class="grid">
+    <aside class="panel sticky" aria-label="Games">
+      <div class="panel-h"><h2>Slate</h2><span class="sub">Expected touchdowns</span></div>
+      <div class="games" id="games"></div>
+    </aside>
+
+    <section class="panel props-panel" aria-label="Players">
+      <div class="panel-h"><h2 id="title">All games</h2>
+        <div class="tabs" role="tablist" id="views">
+          <button role="tab" data-v="any" aria-selected="true">Anytime touchdown</button>
+          <button role="tab" data-v="qb" aria-selected="false">QB touchdown passes</button>
+        </div>
+      </div>
+      <div class="note-bar" id="viewNote"></div>
+      <div class="controls">
+        <div class="tabs" role="tablist" id="pos">
+          <button role="tab" data-p="all" aria-selected="true">All</button>
+          <button role="tab" data-p="RB" aria-selected="false">RB</button>
+          <button role="tab" data-p="WR" aria-selected="false">WR</button>
+          <button role="tab" data-p="TE" aria-selected="false">TE</button>
+          <button role="tab" data-p="QB" aria-selected="false">QB runs</button>
+        </div>
+        <label class="field" for="q">Find <input type="search" id="q" placeholder="Player or team"></label>
+        <label class="field" for="sort">Sort <select id="sort"></select></label>
+        <span class="count" id="count"></span>
+      </div>
+      <div class="inj" id="inj" hidden></div>
+      <div id="table">
+        <div class="row-head" id="head" aria-hidden="true"></div>
+        <div class="rows" id="rows"></div>
+      </div>
+    </section>
+
+    <aside class="panel sticky slipbox slip" aria-label="Touchdown parlay">
+      <div class="panel-h"><h2>TD parlay</h2><button class="clear" id="clear" type="button">Clear</button></div>
+      <div class="build">
+        <div class="build-r">
+          <label class="field" for="buildSize">Size
+            <select id="buildSize"><option value="2">2 players</option><option value="3" selected>3 players</option><option value="4">4 players</option></select>
+          </label>
+          <button class="btn" id="buildBtn" type="button">Build most likely</button>
+        </div>
+        <div class="fine">Picks the players most likely to score in <b id="buildScope">all games</b>, skipping anyone questionable, and replaces the slip.</div>
+        <div class="read-out" id="buildOut"></div>
+      </div>
+      <div class="slip-legs" id="legs"></div>
+      <div class="corr" id="corr" hidden></div>
+      <div class="totals" id="totals" hidden></div>
+      <div class="read" id="pread" hidden>
+        <div class="read-h"><h3>Umbra Read</h3><button class="btn" id="preadBtn" type="button">Read this parlay</button></div>
+        <div class="read-out" id="preadOut"></div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="panel keybox" id="keybox" hidden>
+    <div class="read-h"><h3>Umbra Read setup</h3></div>
+    <div class="fine">On a self-hosted copy, Umbra Read runs on your own API key. It's saved only in this browser and shared with the other Intel Suite tools.</div>
+    <div class="build-r"><input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off" aria-label="API key"><button class="btn" id="saveKey" type="button">Save key</button><button class="btn ghost" id="clearKey" type="button">Remove</button></div>
+    <div class="fine" id="keyMsg"></div>
+  </div>
+
+  <details class="panel method">
+    <summary>How the predictions work</summary>
+    <div class="mb">
+      <p><b>Trained on eight seasons.</b> Each chance comes from a model trained on every player-game since 2019, using only what was known before kickoff. Tested on the 2024 and 2025 seasons, which it never trained on, it beat a player's own touchdown rate on every measure and ranked scorers noticeably better.</p>
+      <p><b>Getting the ball near the end zone matters most.</b> About 85% of rushing touchdowns and 71% of receiving touchdowns start inside the 20-yard line. The model looks at how often each player gets the ball inside the 20, the 10 and the 5, passes thrown to him in the end zone, and his share of his team's chances there.</p>
+      <p><b>Team and game.</b> How many points the betting market expects his team to score, how often the team has been scoring touchdowns, whether it tends to run or pass near the end zone, and how many touchdowns the opponent has allowed to his position.</p>
+      <p><b>The quarterback.</b> Every receiver's chance includes his starting quarterback's touchdown-pass rate, his rate near the end zone, and his last three games. A backup starting changes those numbers.</p>
+      <p><b>Injuries.</b> Players ruled out are removed, and the model accounts for teammates who are missing and the end-zone chances they leave behind. Starting quarterbacks come from each team's depth chart.</p>
+      <p><b>The chances are honest.</b> Checked against what happened in seasons the model did not train on, players it gave a 25% chance scored about 25% of the time, and the same held at every level.</p>
+      <p><b>QB touchdown passes.</b> A second model predicts each starting quarterback's expected touchdown passes from his own trends, his team's expected scoring and the opponent. The chances of 1+, 2+ and 3+ come from that expectation.</p>
+      <p><b>Parlays.</b> Touchdown scorers barely move together, with one exception: when a quarterback throws two or more touchdowns, his own receivers and tight ends are clearly more likely to score. The parlay chance accounts for that, simulated 60,000 times.</p>
+    </div>
+  </details>
+
+  <div class="foot">
+    <span>Stats and play-by-play: nflverse. Schedule, odds, injuries and depth charts: ESPN. Prices: The Odds API.</span>
+    <span>21+. For research and entertainment. Not betting advice.</span>
+    <span>Umbra Technologies LLC</span>
+  </div>
+</main>
+
+<script id="data" type="application/json">/*DATA*/</script>
+<script>
+const PE_DATA_URL = 'https://umbra-techllc.github.io/intel-suite/nfl_td_data.json';
+const PE_CAN_FETCH = !window.claude;
+async function peLatest(ms) {
+  if (!PE_CAN_FETCH) return null;
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
+  try { const r = await fetch(PE_DATA_URL + '?t=' + Date.now(), { cache: 'no-store', signal: ctl.signal }); if (!r.ok) return null; const j = await r.json(); return j && Array.isArray(j.players) && j.built ? j : null; }
+  catch (e) { return null; } finally { clearTimeout(t); }
+}
+(async function () {
+  let D = JSON.parse(document.getElementById('data').textContent);
+  const fresh = await peLatest(3500);
+  if (fresh && fresh.built > D.built) D = fresh;
+
+  const games = Object.fromEntries(D.games.map(g => [g.id, g]));
+  const players = Object.fromEntries(D.players.map(p => [p.id, p]));
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('td-nfl-' + D.season + '-' + D.week + '-' + k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem('td-nfl-' + D.season + '-' + D.week + '-' + k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const S = { view: 'any', pos: 'all', game: 'all', q: '', sort: 'chance', open: null,
+    prices: store.get('prices', {}),   // id -> {yes, no, src} for anytime; qb id -> {point, o, u, src}
+    slip: store.get('slip', []),       // [{id, kind: 'any'|'qb', side?, point?, price}]
+    reads: {}, pread: null };
+  S.slip = S.slip.filter(l => players[l.id]);
+
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pct = x => (x * 100).toFixed(0) + '%';
+  const dec = o => (o > 0 ? 1 + o / 100 : 1 + 100 / Math.abs(o));
+  const fmtOdds = o => (o > 0 ? '+' + o : '−' + Math.abs(o));
+  const fairAmerican = q => { q = Math.min(0.995, Math.max(0.005, q)); return q >= 0.5 ? -Math.round(100 * q / (1 - q)) : Math.round(100 * (1 - q) / q); };
+  const POS = { QB: 'quarterback', RB: 'running back', WR: 'wide receiver', TE: 'tight end' };
+  const fmtKick = iso => new Date(iso).toLocaleString('en-US', { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' }) + ' ET';
+
+  // Poisson chances for QB touchdown passes
+  const fact = n => (n <= 1 ? 1 : n * fact(n - 1));
+  const pAtLeast = (lam, k) => { let s = 0; for (let i = 0; i < k; i++) s += Math.exp(-lam) * Math.pow(lam, i) / fact(i); return 1 - s; };
+  function qbChance(p, side, point) { const k = Math.floor(point) + 1, over = pAtLeast(p.qb.lam, k); return side === 'over' ? over : 1 - over; }
+
+  // book's chance for an anytime price: with the cut removed when both sides are listed
+  function bookChance(pr) {
+    if (!pr || pr.yes == null) return null;
+    const y = 1 / dec(pr.yes);
+    if (pr.no != null) { const n = 1 / dec(pr.no); return { p: y / (y + n), devig: true }; }
+    return { p: y, devig: false };
+  }
+
+  // ---------- header and freshness ----------
+  const built = new Date(D.built).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'America/New_York' });
+  document.getElementById('meta').innerHTML = `<span><b>${D.season} Week ${D.week}</b></span><span><b id="openCount">${D.games.length}</b> games open</span><span>Stats through Week ${D.statsThrough}</span><span>Updated ${esc(built)} ET</span>`;
+  const GAME_LEN = 4 * 3600 * 1000, startedAt = g => Date.parse(g.kickoff), hasStarted = g => Date.now() >= startedAt(g), isOver = g => Date.now() >= startedAt(g) + GAME_LEN;
+  function renderStale() {
+    const el = document.getElementById('stale');
+    document.getElementById('openCount').textContent = D.games.filter(g => !hasStarted(g)).length;
+    if (D.games.every(isOver)) { el.hidden = false; el.innerHTML = `<b>This page still has the Week ${D.week} slate, and those games are over.</b> ${PE_CAN_FETCH ? 'Click <b>Check for new slate</b> at the top to load the newest build.' : ''} A new build is published automatically every morning and evening.`; }
+    else if (D.games.some(hasStarted)) { const n = D.games.filter(hasStarted).length; el.hidden = false; el.innerHTML = `<b>${n} of ${D.games.length} games have already kicked off.</b> They are dimmed in the slate.`; }
+    else el.hidden = true;
+  }
+
+  // ---------- slate ----------
+  function renderGames() {
+    const el = document.getElementById('games');
+    const sorted = D.games.slice().sort((a, b) => a.kickoff.localeCompare(b.kickoff));
+    let h = `<button class="game" data-g="all" aria-pressed="${S.game === 'all'}"><div class="g1"><span class="mu">All games</span><span class="ko">${D.players.length} players</span></div></button>`;
+    for (const g of sorted) {
+      const fav = g.homeSpread <= 0 ? g.home : g.away, sp = Math.abs(g.homeSpread);
+      h += `<button class="game${isOver(g) ? ' done' : ''}" data-g="${g.id}" aria-pressed="${S.game === g.id}">
+        <div class="g1"><span class="mu">${g.away} @ ${g.home}</span><span class="ko">${isOver(g) ? 'Final' : hasStarted(g) ? 'In progress' : fmtKick(g.kickoff)}</span></div>
+        <div class="g2"><span class="num">${sp ? fav + ' −' + sp : 'Pick'}</span><span>O/U <span class="num">${g.total}</span></span></div>
+        <div class="g2"><span>${g.away} <span class="num">${g.awayXTD}</span> TDs</span><span>${g.home} <span class="num">${g.homeXTD}</span> TDs</span></div></button>`;
+    }
+    el.innerHTML = h;
+  }
+  document.getElementById('games').addEventListener('click', e => { const b = e.target.closest('.game'); if (!b) return; S.game = b.dataset.g; S.open = null; renderGames(); renderRows(); });
+
+  // ---------- views ----------
+  const SORTS = { any: [['chance', 'Chance to score'], ['value', 'Best value vs book'], ['kick', 'Kickoff']], qb: [['xtd', 'Expected TD passes'], ['trend', 'Hottest trend'], ['kick', 'Kickoff']] };
+  const HEADS = { any: ['Player', 'Chance to score', 'How', '2+ TDs', 'Book price', 'Fair', 'Add'], qb: ['Quarterback', 'Expected', '1+', '2+', '3+', 'Last 3 games', 'Book line', 'Add'] };
+  function applyView() {
+    document.querySelectorAll('#views button').forEach(b => b.setAttribute('aria-selected', b.dataset.v === S.view));
+    document.getElementById('pos').hidden = S.view === 'qb';
+    document.getElementById('table').classList.toggle('qb', S.view === 'qb');
+    if (!SORTS[S.view].some(([v]) => v === S.sort)) S.sort = SORTS[S.view][0][0];
+    document.getElementById('sort').innerHTML = SORTS[S.view].map(([v, l]) => `<option value="${v}"${v === S.sort ? ' selected' : ''}>${l}</option>`).join('');
+    document.getElementById('head').innerHTML = HEADS[S.view].map((h, i, a) => `<span${i === a.length - 1 ? ' style="text-align:right"' : ''}>${h}</span>`).join('');
+    document.getElementById('viewNote').innerHTML = S.view === 'any'
+      ? `<b>Anytime touchdown:</b> each player's chance to score a rushing or receiving touchdown. A typical player in our data scores in about ${pct(D.baseRate)} of games. Tap a player for the reasons.`
+      : '<b>QB touchdown passes:</b> how many touchdown passes each starting quarterback is expected to throw, and the chance of 1, 2 or 3 or more. Recent trends are part of it.';
+  }
+  document.getElementById('views').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; S.view = b.dataset.v; S.open = null; applyView(); renderRows(); });
+  document.getElementById('pos').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (!b) return; S.pos = b.dataset.p; document.querySelectorAll('#pos button').forEach(x => x.setAttribute('aria-selected', x === b)); renderRows(); });
+  document.getElementById('q').addEventListener('input', e => { S.q = e.target.value; renderRows(); });
+  document.getElementById('sort').addEventListener('change', e => { S.sort = e.target.value; renderRows(); });
+
+  function chips(p) {
+    let h = '';
+    if (p.status === 'Questionable') h += '<span class="chip q" title="Listed as questionable: may not play">Q</span>';
+    if (p.pos !== 'QB' && ((p.vac.car >= 0.1 && p.runShare >= 0.5) || (p.vac.tgt >= 0.08 && p.runShare < 0.5))) h += '<span class="chip role" title="Teammates who usually get the ball near the end zone are out">More chances</span>';
+    return h;
+  }
+  const howText = p => p.pos === 'QB' ? 'by running' : p.runShare >= 0.7 ? 'mostly running' : p.runShare <= 0.3 ? 'mostly catching' : 'running or catching';
+
+  function filtered() {
+    const q = S.q.trim().toLowerCase();
+    let list = D.players.filter(p => (S.game === 'all' || p.game === S.game) && (!q || p.name.toLowerCase().includes(q) || p.team.toLowerCase() === q || p.opp.toLowerCase() === q));
+    if (S.view === 'qb') list = list.filter(p => p.qb);
+    else list = list.filter(p => S.pos === 'all' ? p.pos !== 'QB' || p.p >= 0.1 : p.pos === S.pos);
+    const kick = (a, b) => games[a.game].kickoff.localeCompare(games[b.game].kickoff);
+    const val = p => { const b = bookChance(S.prices[p.id]); return b ? p.p - b.p : -1; };
+    const by = { chance: (a, b) => b.p - a.p, value: (a, b) => val(b) - val(a) || b.p - a.p, kick: (a, b) => kick(a, b) || b.p - a.p,
+                 xtd: (a, b) => b.qb.lam - a.qb.lam, trend: (a, b) => ((b.qb.last3 ?? 0) - (b.qb.season_pg ?? 0)) - ((a.qb.last3 ?? 0) - (a.qb.season_pg ?? 0)) }[S.sort];
+    return list.sort(by);
+  }
+
+  function rowAny(p) {
+    const pr = S.prices[p.id], bk = bookChance(pr);
+    const on = S.slip.some(l => l.id === p.id && l.kind === 'any');
+    const value = bk ? p.p - bk.p : null;
+    return `<div class="row-main" data-id="${p.id}">
+      <div class="who"><span class="tm">${p.team}</span><div class="who-t"><div class="nm">${esc(p.name)}</div>
+        <div class="ctx"><span>${p.pos} ${p.home ? 'vs' : '@'} ${p.opp}</span>${chips(p)}</div></div></div>
+      <div class="chance"><span class="big">${pct(p.p)}</span><span class="bar"><i style="width:${(p.p * 100).toFixed(1)}%"></i></span></div>
+      <span class="how">${howText(p)}</span>
+      <span class="cell">${pct(p.p2)}</span>
+      <span class="cell">${pr && pr.yes != null ? fmtOdds(pr.yes) + `<span class="sm${value >= 0 ? ' good' : ''}">${value >= 0 ? 'good price' : 'pricey'}</span>` : '<span class="muted">–</span>'}</span>
+      <span class="cell">${fmtOdds(fairAmerican(p.p))}</span>
+      <span class="adds"><button class="add${on ? ' on' : ''}" data-add="${p.id}" type="button" aria-label="Add ${esc(p.name)} to the parlay">+ TD</button></span>
+    </div>`;
+  }
+  function rowQB(p) {
+    const q = p.qb, pr = S.prices[p.id], pt = pr && pr.point != null ? pr.point : 1.5;
+    const on = S.slip.some(l => l.id === p.id && l.kind === 'qb');
+    const trend = q.last3 != null && q.season_pg != null ? q.last3 - q.season_pg : null;
+    const pOver = qbChance(p, 'over', pt);
+    return `<div class="row-main" data-id="${p.id}">
+      <div class="who"><span class="tm">${p.team}</span><div class="who-t"><div class="nm">${esc(p.name)}</div>
+        <div class="ctx"><span>QB ${p.home ? 'vs' : '@'} ${p.opp}</span>${p.status === 'Questionable' ? '<span class="chip q">Q</span>' : ''}${p.n === 0 ? '<span class="chip role">First start this season</span>' : ''}</div></div></div>
+      <span class="cell">${q.lam.toFixed(2)}</span>
+      <span class="cell">${pct(q.p1)}</span><span class="cell">${pct(q.p2)}</span><span class="cell">${pct(q.p3)}</span>
+      <span class="cell">${q.last3 != null ? q.last3.toFixed(1) + ' per game' : '–'}${trend != null ? `<span class="sm${trend > 0 ? ' good' : ''}">${trend > 0.3 ? 'heating up' : trend < -0.3 ? 'cooling off' : 'steady'}</span>` : ''}</span>
+      <span class="cell">${pr && pr.point != null ? `${pr.point} · O ${pr.o != null ? fmtOdds(pr.o) : '–'}` : '<span class="muted">–</span>'}<span class="sm">over ${pt}: ${pct(pOver)}</span></span>
+      <span class="adds"><button class="add${on ? ' on' : ''}" data-addqb="${p.id}" type="button" aria-label="Add ${esc(p.name)} over ${pt} TD passes">+ Over</button></span>
+    </div>`;
+  }
+
+  function effectsList(effects, unit) {
+    return effects.slice(0, 5).map(x => `<li><span>${esc(x.label)}</span><span class="${x.delta > 0 ? 'up' : 'dn'}">${x.delta > 0 ? '+' : '−'}${unit === 'pts' ? Math.abs(x.delta * 100).toFixed(0) + ' pts' : Math.abs(x.delta).toFixed(2) + ' TDs'}</span></li>`).join('');
+  }
+  function tdChart(p, field) {
+    const logs = p.logs; if (!logs.length) return '<div class="fine">No games this season yet.</div>';
+    const W = 300, H = 120, pl = 22, pb = 22, pt = 10, pr = 6, n = logs.length, bw = (W - pl - pr) / n;
+    const top = Math.max(2, ...logs.map(l => l[field])), y = v => pt + (H - pt - pb) * (1 - v / top);
+    let g = '';
+    for (let t = 0; t <= top; t++) g += `<line x1="${pl}" x2="${W - pr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)"/><text x="${pl - 5}" y="${y(t) + 3.5}" text-anchor="end" font-size="10" fill="var(--muted)" font-family="var(--f-data)">${t}</text>`;
+    logs.forEach((l, i) => { const v = l[field], x = pl + i * bw + bw * 0.2, w = bw * 0.6;
+      g += `<rect x="${x}" y="${y(v)}" width="${w}" height="${Math.max(0, y(0) - y(v))}" rx="2" fill="var(--accent)" fill-opacity="0.85"/>`;
+      g += `<text x="${x + w / 2}" y="${H - 7}" text-anchor="middle" font-size="10" fill="var(--muted)">W${l.wk} ${l.opp}</text>`; });
+    return `<div class="logchart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Touchdowns by game">${g}</svg></div>`;
+  }
+
+  function detailAny(p) {
+    const r = p.role, pr = S.prices[p.id] || {}, bk = bookChance(S.prices[p.id]);
+    const rd = S.reads[p.id];
+    const tot = p.logs.reduce((a, l) => a + l.td, 0);
+    return `<div class="detail">
+      ${aiOn() ? `<div class="read"><div class="read-h"><h3>Umbra Read</h3><button class="btn${rd && rd.status === 'done' ? ' ghost' : ''}" data-read="${p.id}" type="button"${rd && (rd.status === 'wait' || rd.status === 'stream') ? ' disabled' : ''}>${rd && rd.status === 'done' ? 'Read again' : 'Get the read'}</button></div><div class="read-out" id="readout-${p.id}"></div></div>` : ''}
+      <div>
+        <h3 class="sec">Biggest factors</h3>
+        <ul class="why"><li><span>Typical player in our data</span><span>${pct(D.baseRate)}</span></li>${effectsList(p.effects, 'pts')}<li class="tot"><span>His chance to score</span><span>${pct(p.p)}</span></li></ul>
+        <h3 class="sec">Near the end zone (recent games, per game)</h3>
+        <ul class="why">
+          <li><span>Runs inside the 20</span><span>${r.rz_car.toFixed(1)}</span></li>
+          <li><span>Passes thrown to him inside the 20</span><span>${r.rz_tgt.toFixed(1)}</span></li>
+          <li><span>Touches or targets inside the 10</span><span>${r.g10.toFixed(1)}</span></li>
+          <li><span>Passes thrown to him in the end zone</span><span>${r.ez.toFixed(1)}</span></li>
+          <li><span>His share of the team's runs inside the 20</span><span>${pct(r.rz_car_sh)}</span></li>
+          <li><span>His share of the team's passes inside the 20</span><span>${pct(r.rz_tgt_sh)}</span></li>
+          <li><span>Touchdowns this season</span><span>${tot}${r.prev_tds_pg != null ? ` (last season ${r.prev_tds_pg.toFixed(2)} a game)` : ''}</span></li>
+        </ul>
+        ${p.vac.car >= 0.1 || p.vac.tgt >= 0.08 ? `<div class="fine">Teammates who are out usually take ${pct(p.vac.car)} of the team's runs and ${pct(p.vac.tgt)} of its passes inside the 20. The model accounts for that.</div>` : ''}
+        ${p.note ? `<div class="note">${esc(p.note)}</div>` : ''}
+      </div>
+      <div>
+        <h3 class="sec">Touchdowns by game</h3>${tdChart(p, 'td')}
+        <h3 class="sec">Price</h3>
+        <ul class="why">
+          <li><span>Chance to score</span><span>${pct(p.p)}</span></li>
+          <li><span>Fair price for that chance</span><span>${fmtOdds(fairAmerican(p.p))}</span></li>
+          <li><span>Book price</span><span>${pr.yes != null ? fmtOdds(pr.yes) + (pr.src ? ' · ' + esc(pr.src) : '') : 'not loaded'}</span></li>
+          ${bk ? `<li><span>Book's chance${bk.devig ? '' : ' (includes its cut)'}</span><span>${pct(bk.p)}</span></li>` : ''}
+          <li><span>Chance of 2 or more</span><span>${pct(p.p2)}</span></li>
+        </ul>
+        <div class="odds-in"><label for="yes-${p.id}">Your book's price<input id="yes-${p.id}" data-yes="${p.id}" type="number" step="5" value="${pr.yes ?? ''}" placeholder="+150"></label></div>
+      </div>
+    </div>`;
+  }
+  function detailQB(p) {
+    const q = p.qb, pr = S.prices[p.id] || {}, rd = S.reads[p.id];
+    const pts = [0.5, 1.5, 2.5, 3.5];
+    return `<div class="detail">
+      ${aiOn() ? `<div class="read"><div class="read-h"><h3>Umbra Read</h3><button class="btn${rd && rd.status === 'done' ? ' ghost' : ''}" data-read="${p.id}" type="button"${rd && (rd.status === 'wait' || rd.status === 'stream') ? ' disabled' : ''}>${rd && rd.status === 'done' ? 'Read again' : 'Get the read'}</button></div><div class="read-out" id="readout-${p.id}"></div></div>` : ''}
+      <div>
+        <h3 class="sec">Biggest factors</h3>
+        <ul class="why">${effectsList(q.effects, 'tds')}<li class="tot"><span>Expected touchdown passes</span><span>${q.lam.toFixed(2)}</span></li></ul>
+        <h3 class="sec">Trends</h3>
+        <ul class="why">
+          <li><span>Touchdown passes per game, last 3 games</span><span>${q.last3 != null ? q.last3.toFixed(2) : '–'}</span></li>
+          <li><span>Per game this season (recent games count more)</span><span>${q.season_pg != null ? q.season_pg.toFixed(2) : '–'}</span></li>
+          <li><span>Per game last season</span><span>${q.prev_pg != null ? q.prev_pg.toFixed(2) : '–'}</span></li>
+          <li><span>Share of his passes inside the 20 that go for touchdowns</span><span>${q.rz_rate != null ? pct(q.rz_rate) : '–'}</span></li>
+          <li><span>How often his team passes inside the 20</span><span>${q.team_rz_pass != null ? pct(q.team_rz_pass) : '–'}</span></li>
+          <li><span>Chance he runs one in himself</span><span>${pct(p.p)}</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="sec">Touchdown passes by game</h3>${tdChart(p, 'ptd')}
+        <h3 class="sec">Chance of going over each line</h3>
+        <ul class="why">${pts.map(pt => { const c = qbChance(p, 'over', pt); return `<li><span>Over ${pt}${pr.point === pt && pr.o != null ? ` · book ${fmtOdds(pr.o)}` : ''}</span><span>${pct(c)} · fair ${fmtOdds(fairAmerican(c))}</span></li>`; }).join('')}</ul>
+      </div>
+    </div>`;
+  }
+
+  function renderInj() {
+    const el = document.getElementById('inj'), g = games[S.game], inj = D.injuries || { out: {}, questionable: {} };
+    if (!g) { el.hidden = true; return; }
+    const block = t => `<div class="inj-team"><span class="tm">${t}</span>
+      <div><span class="lbl">Out:</span> ${(inj.out[t] || []).map(x => `${esc(x.name)} (${x.pos})`).join(', ') || 'nobody of note'}</div>
+      <div><span class="lbl">Questionable:</span> ${(inj.questionable[t] || []).map(x => `${esc(x.name)} (${x.pos})`).join(', ') || 'none'}</div>
+      <div><span class="lbl">Expected touchdowns:</span> <span class="num">${t === g.home ? g.homeXTD : g.awayXTD}</span></div></div>`;
+    el.hidden = false; el.innerHTML = `<h3 class="sec" style="margin:0">Injuries</h3>${block(g.away)}${block(g.home)}`;
+  }
+  function renderRows() {
+    renderInj();
+    const list = filtered(), el = document.getElementById('rows'), g = games[S.game];
+    document.getElementById('title').textContent = g ? `${g.away} @ ${g.home}` : 'All games';
+    document.getElementById('count').textContent = `${list.length} ${S.view === 'qb' ? 'quarterbacks' : 'players'}`;
+    document.getElementById('buildScope').textContent = g ? `${g.away} @ ${g.home}` : 'all games';
+    if (!list.length) { el.innerHTML = '<div class="empty">Nobody matches. Clear the search or pick another game.</div>'; return; }
+    el.innerHTML = list.map(p => `<div class="row${S.open === p.id ? ' open' : ''}" id="r-${p.id}">${S.view === 'qb' ? rowQB(p) : rowAny(p)}${S.open === p.id ? (S.view === 'qb' ? detailQB(p) : detailAny(p)) : ''}</div>`).join('');
+    if (S.open) paintRead(S.open);
+  }
+  function refreshRow(id) {
+    const p = players[id], row = document.getElementById('r-' + id); if (!row || !p) return;
+    row.innerHTML = (S.view === 'qb' ? rowQB(p) : rowAny(p)) + (S.open === id ? (S.view === 'qb' ? detailQB(p) : detailAny(p)) : '');
+    if (S.open === id) paintRead(id);
+  }
+  const rowsEl = document.getElementById('rows');
+  rowsEl.addEventListener('click', e => {
+    const rb = e.target.closest('[data-read]'); if (rb) { runRead(rb.dataset.read); return; }
+    const a = e.target.closest('[data-add]'); if (a) { toggleAny(a.dataset.add); return; }
+    const aq = e.target.closest('[data-addqb]'); if (aq) { toggleQB(aq.dataset.addqb); return; }
+    if (e.target.closest('input, label, .detail')) return;
+    const r = e.target.closest('.row-main'); if (!r) return;
+    const prev = S.open; S.open = S.open === r.dataset.id ? null : r.dataset.id;
+    if (prev) refreshRow(prev); if (S.open) refreshRow(S.open);
+  });
+  rowsEl.addEventListener('change', e => {
+    const t = e.target; if (t.dataset.yes == null) return;
+    const v = parseInt(t.value, 10), id = t.dataset.yes;
+    if (!isNaN(v) && Math.abs(v) >= 100) S.prices[id] = Object.assign({}, S.prices[id], { yes: v, no: null, src: 'entered by you' });
+    else if (t.value === '') delete S.prices[id];
+    store.set('prices', S.prices); refreshRow(id); renderSlip();
+  });
+
+  // ---------- parlay ----------
+  function toggleAny(id) {
+    const i = S.slip.findIndex(l => l.id === id && l.kind === 'any');
+    if (i >= 0) S.slip.splice(i, 1); else S.slip.push({ id, kind: 'any' });
+    store.set('slip', S.slip); refreshRow(id); renderSlip();
+  }
+  function toggleQB(id) {
+    const i = S.slip.findIndex(l => l.id === id && l.kind === 'qb');
+    const pr = S.prices[id] || {};
+    if (i >= 0) S.slip.splice(i, 1); else S.slip.push({ id, kind: 'qb', side: 'over', point: pr.point ?? 1.5 });
+    store.set('slip', S.slip); refreshRow(id); renderSlip();
+  }
+  function legInfo(l) {
+    const p = players[l.id], pr = S.prices[l.id] || {};
+    if (l.kind === 'qb') {
+      const price = l.price ?? (pr.point === l.point ? (l.side === 'over' ? pr.o : pr.u) : null);
+      return { p, prob: qbChance(p, l.side, l.point), price, label: `${p.name} ${l.side === 'over' ? 'Over' : 'Under'} ${l.point} TD passes`, qb: true };
+    }
+    return { p, prob: p.p, price: l.price ?? pr.yes ?? null, label: `${p.name} scores a touchdown`, qb: false };
+  }
+  // measured: when a QB throws 2+ touchdowns, his own receivers and tight ends are more likely to score; everything else is near zero
+  function rho(a, b) {
+    const [q, o] = a.qb ? [a, b] : b.qb ? [b, a] : [null, null];
+    if (!q || o.qb || q.p.team !== o.p.team || !['WR', 'TE'].includes(o.p.pos)) return 0;
+    const r = D.corr['QB 2+ TD passes + own receiver'] || 0.2;
+    return (S.slip.find(l => l.id === q.p.id && l.kind === 'qb') || {}).side === 'under' ? -r : r;
+  }
+  function normInv(q) {
+    const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239],
+      b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572],
+      c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783],
+      d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+    q = Math.min(1 - 1e-9, Math.max(1e-9, q));
+    if (q < 0.02425) { const r = Math.sqrt(-2 * Math.log(q)); return (((((c[0] * r + c[1]) * r + c[2]) * r + c[3]) * r + c[4]) * r + c[5]) / ((((d[0] * r + d[1]) * r + d[2]) * r + d[3]) * r + 1); }
+    if (q > 1 - 0.02425) { const r = Math.sqrt(-2 * Math.log(1 - q)); return -(((((c[0] * r + c[1]) * r + c[2]) * r + c[3]) * r + c[4]) * r + c[5]) / ((((d[0] * r + d[1]) * r + d[2]) * r + d[3]) * r + 1); }
+    const r = q - 0.5, s = r * r;
+    return (((((a[0] * s + a[1]) * s + a[2]) * s + a[3]) * s + a[4]) * s + a[5]) * r / (((((b[0] * s + b[1]) * s + b[2]) * s + b[3]) * s + b[4]) * s + 1);
+  }
+  function jointChance(probs, R) {
+    const n = probs.length; if (n === 1) return probs[0];
+    const L = Array.from({ length: n }, () => new Array(n).fill(0));
+    for (let i = 0; i < n; i++) for (let j = 0; j <= i; j++) { let s = R[i][j]; for (let k = 0; k < j; k++) s -= L[i][k] * L[j][k]; if (i === j) { if (s <= 1e-9) return null; L[i][i] = Math.sqrt(s); } else L[i][j] = s / L[j][j]; }
+    const t = probs.map(normInv);
+    let seed = 20261018, hits = 0, spare = null;
+    const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let x = Math.imul(seed ^ seed >>> 15, 1 | seed); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; };
+    const gauss = () => { if (spare != null) { const v = spare; spare = null; return v; } let u = 0; while (u === 0) u = rnd(); const v = rnd(), m = Math.sqrt(-2 * Math.log(u)); spare = m * Math.sin(2 * Math.PI * v); return m * Math.cos(2 * Math.PI * v); };
+    const N = 60000, z = new Array(n);
+    for (let s = 0; s < N; s++) { for (let i = 0; i < n; i++) z[i] = gauss(); let ok = true; for (let i = 0; i < n && ok; i++) { let v = 0; for (let k = 0; k <= i; k++) v += L[i][k] * z[k]; if (v >= t[i]) ok = false; } if (ok) hits++; }
+    return hits / N;
+  }
+  function renderSlip() {
+    const legsEl = document.getElementById('legs'), corrEl = document.getElementById('corr'), totEl = document.getElementById('totals');
+    if (!S.slip.length) { legsEl.innerHTML = '<div class="slip-empty">Add players with the + TD button, or quarterbacks from the QB tab. The slip shows the chance that every leg hits.</div>'; corrEl.hidden = true; totEl.hidden = true; S.slipCalc = null; renderPread(); return; }
+    const legs = S.slip.map(l => ({ ...l, ...legInfo(l) }));
+    legsEl.innerHTML = legs.map((l, i) => `<div class="leg"><div class="lt">${esc(l.label)}</div>
+      <div class="lr"><input data-leg="${i}" type="number" step="5" value="${l.price ?? ''}" placeholder="price" aria-label="Price"><button class="rm" data-rm="${i}" type="button" aria-label="Remove">×</button></div>
+      <div class="ls">${l.p.team} ${l.p.home ? 'vs' : '@'} ${l.p.opp} · chance ${pct(l.prob)} · fair ${fmtOdds(fairAmerican(l.prob))}</div><div></div></div>`).join('');
+    const R = legs.map((a, i) => legs.map((b, j) => (i === j ? 1 : 2 * Math.sin(Math.PI * rho(a, b) / 6))));
+    const links = []; for (let i = 0; i < legs.length; i++) for (let j = i + 1; j < legs.length; j++) { const r = rho(legs[i], legs[j]); if (r) links.push({ r, a: legs[i].p, b: legs[j].p }); }
+    if (links.length) { corrEl.hidden = false; corrEl.innerHTML = '<h3 class="sec" style="margin:0">Linked legs</h3>' + links.map(x => `<div><span class="tag${x.r < 0 ? ' neg' : ''}">${x.r > 0 ? 'HELPS' : 'HURTS'}</span>${esc(x.a.name)} and ${esc(x.b.name)}: when a quarterback throws more touchdowns, his receivers score more often.</div>`).join(''); }
+    else corrEl.hidden = true;
+    const indep = legs.reduce((a, l) => a * l.prob, 1);
+    const sim = jointChance(legs.map(l => Math.min(0.999, Math.max(0.001, l.prob))), R);
+    const trueP = sim != null ? Math.min(Math.min(...legs.map(l => l.prob)), sim) : indep;
+    const priced = legs.every(l => l.price != null && Math.abs(l.price) >= 100);
+    const payout = priced ? legs.reduce((a, l) => a * dec(l.price), 1) : null;
+    const ev = priced ? trueP * payout - 1 : null;
+    totEl.hidden = false;
+    totEl.innerHTML = `<h3 class="sec" style="margin:0">${legs.length}-leg touchdown parlay</h3>
+      <div class="tot big"><span>Chance every leg hits</span><span class="num">${(trueP * 100).toFixed(1)}%</span></div>
+      ${links.length ? `<div class="tot"><span>If the legs were unrelated</span><span class="num">${(indep * 100).toFixed(1)}%</span></div>` : ''}
+      <div class="tot"><span>Fair payout for this chance</span><span class="num">${fmtOdds(fairAmerican(trueP))}</span></div>
+      ${priced ? `<div class="tot"><span>Payout at these prices</span><span class="num">${payout >= 2 ? '+' + Math.round((payout - 1) * 100) : '−' + Math.round(100 / (payout - 1))} (${payout.toFixed(2)}x)</span></div>
+      <div class="tot"><span>Expected return per $1</span><span class="num" style="color:var(${ev >= 0 ? '--good' : '--bad'})">${ev >= 0 ? '+' : '−'}$${Math.abs(ev).toFixed(2)}</span></div>` : '<div class="fine">Add a price to every leg (or load prices) to see the payout.</div>'}`;
+    S.slipCalc = { legs, trueP, indep, payout, ev, links };
+    renderPread();
+  }
+  const legsEl = document.getElementById('legs');
+  legsEl.addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return; const l = S.slip.splice(+b.dataset.rm, 1)[0]; store.set('slip', S.slip); refreshRow(l.id); renderSlip(); });
+  legsEl.addEventListener('change', e => { const t = e.target; if (t.dataset.leg == null) return; const v = parseInt(t.value, 10), l = S.slip[+t.dataset.leg]; if (!isNaN(v) && Math.abs(v) >= 100) l.price = v; else delete l.price; store.set('slip', S.slip); renderSlip(); });
+  document.getElementById('clear').addEventListener('click', () => { const ids = S.slip.map(l => l.id); S.slip = []; store.set('slip', S.slip); ids.forEach(refreshRow); renderSlip(); });
+  document.getElementById('buildBtn').addEventListener('click', () => {
+    const size = +document.getElementById('buildSize').value, out = document.getElementById('buildOut');
+    const pool = D.players.filter(p => (S.game === 'all' || p.game === S.game) && p.status !== 'Questionable' && p.n >= 2 && !hasStarted(games[p.game])).sort((a, b) => b.p - a.p);
+    const legs = [];
+    for (const p of pool) { if (legs.length === size) break; if (legs.filter(l => players[l.id].team === p.team).length >= 2) continue; legs.push({ id: p.id, kind: 'any' }); }
+    if (legs.length < size) { out.className = 'read-out err'; out.textContent = 'Not enough players here. Try a smaller parlay or All games.'; return; }
+    const old = S.slip.map(l => l.id); S.slip = legs; store.set('slip', S.slip); old.concat(legs.map(l => l.id)).forEach(refreshRow); renderSlip();
+    out.className = 'read-out'; out.textContent = `The ${size} players most likely to score, at most two per team. Chance all ${size} score: ${pct(S.slipCalc.trueP)}.`;
+    if (aiOn()) runParlayRead();
+  });
+
+  // ---------- sportsbook prices (The Odds API) ----------
+  const ODDS_BASE = 'https://api.the-odds-api.com/v4/sports/americanfootball_nfl';
+  const TEAM_NAMES = { ARI: 'Arizona Cardinals', ATL: 'Atlanta Falcons', BAL: 'Baltimore Ravens', BUF: 'Buffalo Bills', CAR: 'Carolina Panthers', CHI: 'Chicago Bears', CIN: 'Cincinnati Bengals', CLE: 'Cleveland Browns', DAL: 'Dallas Cowboys', DEN: 'Denver Broncos', DET: 'Detroit Lions', GB: 'Green Bay Packers', HOU: 'Houston Texans', IND: 'Indianapolis Colts', JAX: 'Jacksonville Jaguars', KC: 'Kansas City Chiefs', LV: 'Las Vegas Raiders', LAC: 'Los Angeles Chargers', LA: 'Los Angeles Rams', MIA: 'Miami Dolphins', MIN: 'Minnesota Vikings', NE: 'New England Patriots', NO: 'New Orleans Saints', NYG: 'New York Giants', NYJ: 'New York Jets', PHI: 'Philadelphia Eagles', PIT: 'Pittsburgh Steelers', SF: 'San Francisco 49ers', SEA: 'Seattle Seahawks', TB: 'Tampa Bay Buccaneers', TEN: 'Tennessee Titans', WAS: 'Washington Commanders' };
+  const oddsKeyGet = () => { try { return localStorage.getItem('umbra-odds-key') || ''; } catch (e) { return ''; } };
+  const oddsKeySet = v => { try { v ? localStorage.setItem('umbra-odds-key', v) : localStorage.removeItem('umbra-odds-key'); } catch (e) {} };
+  const normName = s => String(s).toLowerCase().replace(/[.'’]/g, '').replace(/\b(jr|sr|ii|iii|iv|v)\b/g, '').replace(/\s+/g, ' ').trim();
+  const keyIn = document.getElementById('oddsKey'), bookSel = document.getElementById('oddsBook'), linesMeta = document.getElementById('linesMeta');
+  if (oddsKeyGet()) keyIn.placeholder = 'Key saved';
+  if (!PE_CAN_FETCH) linesMeta.textContent = 'Prices load on your self-hosted copy. This preview cannot reach outside sites.';
+  async function oddsGet(path, params) {
+    const u = new URL(ODDS_BASE + path);
+    Object.entries(Object.assign({ apiKey: oddsKeyGet() }, params || {})).forEach(([k, v]) => u.searchParams.set(k, v));
+    let r; try { r = await fetch(u.toString()); } catch (e) { throw { msg: PE_CAN_FETCH ? 'Could not reach The Odds API. Check your connection.' : 'This preview cannot reach outside sites.' }; }
+    if (r.status === 401) throw { msg: 'The Odds API rejected that key.' };
+    if (r.status === 429) throw { msg: 'Out of credits or rate limited on The Odds API.' };
+    if (r.status === 422) return { r, data: null };
+    if (!r.ok) throw { msg: `The Odds API returned an error (${r.status}).` };
+    return { r, data: await r.json() };
+  }
+  document.getElementById('loadLines').addEventListener('click', async () => {
+    const typed = keyIn.value.trim(); if (typed) { oddsKeySet(typed); keyIn.value = ''; keyIn.placeholder = 'Key saved'; }
+    if (!oddsKeyGet()) { linesMeta.textContent = 'Paste your Odds API key first.'; return; }
+    const book = bookSel.value, scope = (S.game === 'all' ? D.games : [games[S.game]]).filter(g => !hasStarted(g));
+    if (!scope.length) { linesMeta.textContent = 'No upcoming games here.'; return; }
+    const btn = document.getElementById('loadLines'); btn.disabled = true; btn.textContent = 'Loading...';
+    try {
+      const { data: events } = await oddsGet('/events');
+      const idx = {}; D.players.forEach(p => { idx[`${p.game}|${normName(p.name)}`] = p; });
+      let n = 0, left = null, done = 0;
+      for (const g of scope) {
+        const ev = (events || []).find(x => x.home_team === TEAM_NAMES[g.home] && x.away_team === TEAM_NAMES[g.away]); if (!ev) continue;
+        linesMeta.textContent = `Loading ${g.away} @ ${g.home}...`;
+        const { r, data } = await oddsGet(`/events/${ev.id}/odds`, { regions: 'us', markets: 'player_anytime_td,player_pass_tds', oddsFormat: 'american' });
+        left = r.headers.get('x-requests-remaining'); done++;
+        const better = (cur, price) => cur == null || dec(price) > dec(cur);
+        for (const bk of (data && data.bookmakers) || []) {
+          if (book !== 'best' && bk.key !== book) continue;
+          for (const m of bk.markets || []) for (const oc of m.outcomes || []) {
+            const p = idx[`${g.id}|${normName(oc.description || '')}`]; if (!p) continue;
+            const cur = S.prices[p.id] && S.prices[p.id].src !== 'entered by you' && S.prices[p.id]._load === D.built ? S.prices[p.id] : { _load: D.built };
+            if (m.key === 'player_anytime_td') {
+              if (/^(yes|over)$/i.test(oc.name) && better(cur.yes, oc.price)) { cur.yes = oc.price; cur.src = bk.title; }
+              if (/^(no|under)$/i.test(oc.name) && better(cur.no, oc.price)) cur.no = oc.price;
+              S.prices[p.id] = cur; n++;
+            } else if (m.key === 'player_pass_tds' && p.qb && oc.point != null) {
+              if (cur.point == null || Math.abs(oc.point - 1.5) < Math.abs(cur.point - 1.5)) { cur.point = oc.point; cur.o = null; cur.u = null; }
+              if (oc.point === cur.point) { if (/^over$/i.test(oc.name) && better(cur.o, oc.price)) { cur.o = oc.price; cur.src = bk.title; } if (/^under$/i.test(oc.name) && better(cur.u, oc.price)) cur.u = oc.price; }
+              S.prices[p.id] = cur; n++;
+            }
+          }
+        }
+      }
+      store.set('prices', S.prices);
+      linesMeta.textContent = done ? `Loaded prices for ${done} game${done === 1 ? '' : 's'}.` + (left != null ? ` Credits left: ${left}.` : '') : 'None of these games are listed at The Odds API yet.';
+    } catch (e) { linesMeta.textContent = (e && e.msg) || 'Loading prices failed.'; }
+    btn.disabled = false; btn.textContent = 'Load prices';
+    renderRows(); renderSlip();
+  });
+
+  // ---------- Umbra Read ----------
+  const API_MODEL = 'claude-sonnet-5-5';
+  const AI = { mode: 'checking', sample: null };
+  const keyGet = () => { try { return localStorage.getItem('umbra-read-key') || ''; } catch (e) { return ''; } };
+  const keySet = v => { try { v ? localStorage.setItem('umbra-read-key', v) : localStorage.removeItem('umbra-read-key'); } catch (e) {} };
+  const aiOn = () => AI.mode === 'sample' || AI.mode === 'key';
+  async function initAI() {
+    if (window.claude && typeof window.claude.use === 'function') { try { AI.sample = await window.claude.use('sample'); } catch (e) { AI.sample = null; } AI.mode = AI.sample ? 'sample' : (keyGet() ? 'key' : 'off'); }
+    else AI.mode = keyGet() ? 'key' : 'needkey';
+    document.getElementById('keybox').hidden = !(AI.mode === 'needkey' || AI.mode === 'key');
+    document.getElementById('keyMsg').textContent = AI.mode === 'key' ? 'Key saved. Umbra Read is on.' : AI.mode === 'needkey' ? 'Add a key to turn on Umbra Read.' : '';
+    if (S.open) refreshRow(S.open); renderPread();
+  }
+  function aiError(e) {
+    const c = e && e.code;
+    if (['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed'].includes(c)) { if (AI.mode === 'sample') { AI.mode = 'off'; setTimeout(initAI, 0); } return 'Umbra Read is not available in this view.'; }
+    if (c === 'rate_limited') return 'Too many reads in a short time. Try again in a minute.';
+    if (c === 'bad_key') return 'That API key was rejected. Check it in Umbra Read setup below.';
+    if (c === 'cancelled') return '';
+    return 'The read did not finish. Try again.';
+  }
+  async function ask(prompt, onText) {
+    if (AI.mode === 'sample') return AI.sample(prompt, { onText, modelTier: 'default' });
+    if (AI.mode === 'key') {
+      let r; try { r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'content-type': 'application/json', 'x-api-key': keyGet(), 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' }, body: JSON.stringify({ model: API_MODEL, max_tokens: 900, messages: [{ role: 'user', content: prompt }] }) }); }
+      catch (e) { throw { code: 'upstream_error' }; }
+      if (r.status === 401 || r.status === 403) throw { code: 'bad_key' }; if (r.status === 429) throw { code: 'rate_limited' }; if (!r.ok) throw { code: 'upstream_error' };
+      const j = await r.json(), text = (j.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      if (!text) throw { code: 'empty_completion' }; if (onText) onText({ text }); return { text };
+    }
+    throw { code: 'not_granted' };
+  }
+  const VOICE = `Write for someone who is smart but does not follow football closely.
+Rules:
+- Plain everyday English. No sports-betting slang or jargon. Never use words like: red zone, RZ, goal line back, vulture, bell cow, workhorse, target share, usage, volume, game script, implied total, smash, fade, lock, juice, vig, EV, regression.
+- Say ideas plainly instead: "inside the 20-yard line", "close to the end zone", "how often passes are thrown to him", "points his team is expected to score".
+- Every sentence must carry a fact from the data. No hype, no filler, no disclaimers, no emojis, no em dashes.
+- Use only the data provided. Do not invent injuries, news or stats.
+- Do not mention AI or models. Refer to "the prediction".`;
+  function brief(p) {
+    const g = games[p.game], inj = D.injuries || { out: {}, questionable: {} };
+    const L = [];
+    L.push(`Player: ${p.name}, ${POS[p.pos]} for ${p.team}, ${p.home ? 'at home against' : 'on the road at'} ${p.opp}, ${fmtKick(g.kickoff)}. Points ${p.team} is expected to score: ${p.itt}.`);
+    L.push(`Chance he scores a rushing or receiving touchdown: ${pct(p.p)} (a typical player: ${pct(D.baseRate)}). Chance of 2 or more: ${pct(p.p2)}. Most likely way: ${howText(p)}.`);
+    L.push('Biggest factors, in percentage points: ' + p.effects.map(x => `${x.label} ${x.delta > 0 ? '+' : '-'}${Math.abs(x.delta * 100).toFixed(0)}`).join('; ') + '.');
+    L.push(`Near the end zone per game recently: ${p.role.rz_car.toFixed(1)} runs and ${p.role.rz_tgt.toFixed(1)} passes thrown to him inside the 20, ${p.role.g10.toFixed(1)} inside the 10, ${p.role.ez.toFixed(1)} passes thrown to him in the end zone. His share of the team's runs inside the 20: ${pct(p.role.rz_car_sh)}; passes: ${pct(p.role.rz_tgt_sh)}.`);
+    L.push('Touchdowns by game this season: ' + (p.logs.map(l => `week ${l.wk} vs ${l.opp}: ${l.td}`).join('; ') || 'no games yet') + '.');
+    if (p.qb) L.push(`As a passer: expected ${p.qb.lam.toFixed(2)} touchdown passes; chance of 1+ ${pct(p.qb.p1)}, 2+ ${pct(p.qb.p2)}, 3+ ${pct(p.qb.p3)}. Last 3 games: ${p.qb.last3 ?? 'n/a'} per game; season: ${p.qb.season_pg ?? 'n/a'}.`);
+    L.push(`${p.team} players out: ${(inj.out[p.team] || []).map(x => `${x.name} (${x.pos})`).join(', ') || 'none of note'}. Questionable: ${(inj.questionable[p.team] || []).map(x => x.name).join(', ') || 'none'}.`);
+    if (p.vac.car >= 0.1 || p.vac.tgt >= 0.08) L.push(`Teammates who are out usually take ${pct(p.vac.car)} of the team's runs and ${pct(p.vac.tgt)} of its passes inside the 20.`);
+    L.push(`His own status: ${p.status || 'no injury listed'}${p.note ? '. ' + p.note : ''}.`);
+    const pr = S.prices[p.id]; if (pr && pr.yes != null) L.push(`Book price to score: ${fmtOdds(pr.yes)}; fair price for his chance: ${fmtOdds(fairAmerican(p.p))}.`);
+    return L.join('\n');
+  }
+  function paintRead(id) {
+    const out = document.getElementById('readout-' + id); if (!out) return;
+    const st = S.reads[id]; if (!st) { out.innerHTML = ''; return; }
+    if (st.status === 'wait') { out.className = 'read-out wait'; out.textContent = 'Reading the numbers...'; return; }
+    if (st.status === 'error') { out.className = 'read-out err'; out.textContent = st.err; return; }
+    out.className = 'read-out';
+    out.innerHTML = `<span class="vd">${esc(st.label)}</span>\n` + esc(st.text.trim()).replace(/^(Bottom line:|Why:|Injuries:|The quarterback:|What could go wrong:|How the legs fit:|Weakest leg:)/gm, '<b>$1</b>');
+  }
+  async function runRead(id) {
+    const p = players[id], qbView = S.view === 'qb' && p.qb;
+    const label = qbView ? `${p.qb.lam.toFixed(1)} expected TD passes` : `${pct(p.p)} to score`;
+    const st = S.reads[id] = { status: 'wait', text: '', label }; refreshRow(id);
+    const prompt = `You explain touchdown predictions for the NFL TD Predictor. The numbers are already worked out. Explain them so a newcomer understands.
+${VOICE}
+
+${qbView ? `FOCUS: how many touchdown passes ${p.name} will throw (expected ${p.qb.lam.toFixed(2)}).` : `FOCUS: the chance ${p.name} scores a touchdown (${pct(p.p)}).`}
+
+Reply in exactly this format, about 110 words in total, and nothing else:
+Bottom line: <one sentence with the key number and what it means>
+Why: <two sentences on the biggest reasons, using the factors and numbers below in plain terms>
+${qbView ? 'The quarterback: <one sentence on his recent trend compared with his season and last season>' : 'Injuries: <one sentence on who is out or questionable on his team and how that changes his chances; if nobody relevant, say so briefly>'}
+What could go wrong: <one specific, realistic risk>
+
+DATA
+${brief(p)}`;
+    try { const res = await ask(prompt, ({ text }) => { if (S.reads[id] !== st) return; st.status = 'stream'; st.text = text; paintRead(id); }); if (S.reads[id] !== st) return; st.status = 'done'; st.text = res.text; }
+    catch (e) { if (S.reads[id] !== st) return; st.status = 'error'; st.err = aiError(e); }
+    refreshRow(id);
+  }
+  function renderPread() {
+    const box = document.getElementById('pread'), c = S.slipCalc;
+    box.hidden = !(aiOn() && c && c.legs.length >= 2); if (box.hidden) return;
+    const out = document.getElementById('preadOut'), st = S.pread && S.pread.sig === JSON.stringify(S.slip) ? S.pread : null;
+    if (!st) { out.innerHTML = ''; return; }
+    if (st.status === 'wait') { out.className = 'read-out wait'; out.textContent = 'Reading the numbers...'; return; }
+    if (st.status === 'error') { out.className = 'read-out err'; out.textContent = st.err; return; }
+    out.className = 'read-out'; out.innerHTML = `<span class="vd">${esc(st.label)}</span>\n` + esc(st.text.trim()).replace(/^(Bottom line:|How the legs fit:|Weakest leg:|Injuries:)/gm, '<b>$1</b>');
+  }
+  async function runParlayRead() {
+    const c = S.slipCalc; if (!c || c.legs.length < 2) return;
+    const label = c.trueP >= 0.5 ? 'Likely to hit' : c.trueP >= 0.3 ? 'About a coin flip' : c.trueP >= 0.12 ? 'Long shot' : 'Very long shot';
+    const st = S.pread = { sig: JSON.stringify(S.slip), status: 'wait', text: '', label }; renderPread();
+    const weakest = c.legs.reduce((a, b) => (b.prob < a.prob ? b : a));
+    const prompt = `You explain touchdown parlays for the NFL TD Predictor. The numbers are already worked out. Explain them so a newcomer understands.
+${VOICE}
+
+Reply in exactly this format, about 80 words in total, and nothing else:
+Bottom line: <one sentence: the chance every leg hits (${pct(c.trueP)}), what that means in plain terms, and ${c.payout ? 'whether the payout is fair for that chance' : 'that prices are needed to judge the payout'}>
+How the legs fit: <one sentence on whether any legs are linked or they are unrelated>
+Weakest leg: <${weakest.p.name}, and the plain reason in one sentence>
+
+LEGS
+${c.legs.map(l => `${l.label}: chance ${pct(l.prob)}${l.price != null ? `, price ${fmtOdds(l.price)}` : ''}`).join('\n')}
+Linked legs: ${c.links.length ? c.links.map(x => `${x.a.name} and ${x.b.name} (quarterback and his own receiver)`).join('; ') : 'none'}.
+Chance every leg hits: ${pct(c.trueP)}. Fair payout: ${fmtOdds(fairAmerican(c.trueP))}.${c.payout ? ` Offered payout: ${c.payout.toFixed(2)} times the stake; expected return per $1: ${c.ev.toFixed(2)}.` : ''}`;
+    try { const res = await ask(prompt, ({ text }) => { if (S.pread !== st) return; st.status = 'stream'; st.text = text; renderPread(); }); if (S.pread !== st) return; st.status = 'done'; st.text = res.text; }
+    catch (e) { if (S.pread !== st) return; st.status = 'error'; st.err = aiError(e); }
+    renderPread();
+  }
+  document.getElementById('preadBtn').addEventListener('click', runParlayRead);
+  document.getElementById('saveKey').addEventListener('click', () => { const v = document.getElementById('apiKey').value.trim(); if (!v) return; keySet(v); document.getElementById('apiKey').value = ''; if (AI.mode !== 'sample') AI.mode = 'key'; initAI(); });
+  document.getElementById('clearKey').addEventListener('click', () => { keySet(''); if (AI.mode === 'key') AI.mode = window.claude ? 'off' : 'needkey'; initAI(); });
+
+  // ---------- check for a newer published slate ----------
+  if (PE_CAN_FETCH) {
+    const box = document.getElementById('slateCheck'), btn = document.getElementById('checkSlate'), msg = document.getElementById('slateMsg');
+    box.hidden = false;
+    btn.addEventListener('click', async () => {
+      btn.disabled = true; msg.textContent = 'Checking...';
+      const f = await peLatest(8000); btn.disabled = false;
+      if (!f) { msg.textContent = "Couldn't reach the published slate."; return; }
+      if (f.built > D.built) { msg.textContent = `Loading Week ${f.week}...`; location.reload(); return; }
+      msg.textContent = `You have the latest build (Week ${D.week}). New builds publish about 9am and 5pm ET.`;
+    });
+  }
+
+  renderStale(); applyView(); renderGames(); renderRows(); renderSlip(); initAI();
+})();
+</script>
