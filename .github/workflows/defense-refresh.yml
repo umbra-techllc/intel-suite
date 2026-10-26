@@ -1,0 +1,88 @@
+# Rebuilds defense_data.json for Defense Intel: prices, scores, headlines, and the written Umbra Read notes.
+# Prices refresh about every hour while the market is open. The written reads are redone before the open,
+# after the close, and on Saturday morning (that needs an ANTHROPIC_API_KEY repository secret; without it
+# the page keeps showing the last reads it has, with their date).
+# To run it by hand: Actions tab > Defense Intel refresh > Run workflow.
+name: Defense Intel refresh
+
+on:
+  schedule:
+    - cron: "17 11 * * 1-5"     # about 7:17am ET, before the open (prices, news, new reads)
+    - cron: "47 13-19 * * 1-5"  # hourly through the trading day (prices and news)
+    - cron: "47 20 * * 1-5"     # about 4:47pm ET, after the close (prices, news, new reads)
+    - cron: "17 14 * * 6"       # Saturday morning (weekend news and a weekly read)
+  workflow_dispatch:
+    inputs:
+      ai:
+        description: "Rewrite the Umbra Read notes? auto = only if they are a few hours old"
+        required: false
+        default: "force"
+        type: choice
+        options: [force, auto, "off"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: defense-intel
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: pip install requests
+
+      - name: Pick whether to rewrite the reads
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "ai=${{ github.event.inputs.ai }}" >> "$GITHUB_OUTPUT"
+          else
+            case "${{ github.event.schedule }}" in
+              "17 11 * * 1-5"|"47 20 * * 1-5"|"17 14 * * 6") echo "ai=auto" >> "$GITHUB_OUTPUT" ;;
+              *) echo "ai=off" >> "$GITHUB_OUTPUT" ;;
+            esac
+          fi
+
+      - name: Build the data file
+        id: build
+        working-directory: defense
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_MODE: ${{ steps.mode.outputs.ai }}
+          AI_MAX_AGE_HOURS: "3"
+        run: |
+          set +e
+          python build_defense.py --out ../defense_data.json
+          code=$?
+          set -e
+          if [ "$code" = "3" ]; then
+            echo "No price data came back, keeping the current file."
+            echo "built=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" != "0" ]; then exit "$code"; fi
+          echo "built=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Commit the new data
+        if: steps.build.outputs.built == 'yes'
+        run: |
+          git config user.name "umbra-propedge-bot"
+          git config user.email "umbra-propedge-bot@users.noreply.github.com"
+          git add defense_data.json
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Defense Intel: refresh data"
+            git pull --rebase origin main
+            git push
+          fi

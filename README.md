@@ -9,7 +9,7 @@ Live site: https://umbra-techllc.github.io/intel-suite/
 | Tool | File | What it does |
 |---|---|---|
 | Crypto Intel | `crypto_intel_tracker.html` | Watchlist screener. Scores each coin 0 to 100 from momentum, trend, strength vs BTC, liquidity, ATH distance, and hourly RSI, then gives a Buy, Hold, or Sell signal with the breakdown shown. Market tape, price alerts, auto refresh, coin search, headlines, and an optional Umbra Read. |
-| Defense Intel | `defense_stock_tracker.html` | Small and mid-cap defense stock tracker with 52-week range, volume signals, multi-day returns, news, verdicts, and an ITA ETF holdings explorer. |
+| Defense Intel | `defense_stock_tracker.html` | Tracks 61 defense, aerospace and space stocks (every ITA ETF holding plus newer space, drone and government tech names). Each gets a 0 to 100 score from price trend, recent performance, performance against the defense ETF, how stretched the run is, trading activity and analyst ratings, with Buy, Hold or Sell shown from it. Plain-English Umbra Read notes on the whole sector and on every stock, group performance, leaders and laggers, upcoming earnings, price charts with 50 and 200-day averages, a filtered sector news feed, watchlist, notes and price alerts. Data is rebuilt automatically (see below). |
 | NFL PropEdge | `nfl_propedge.html` | Projects passing, rushing, and receiving yards for the week's slate with gradient-boosted models trained on every player-game since 2019 (about 45 pre-game inputs, including confirmed injuries and backups' bigger roles), with a per-player outcome range and a factor breakdown in yards. Two views: Most likely (default) shows each player's most likely result, an 80% floor, and the bet most likely to hit, using alternate lines and a range anchored to the sportsbook's main line; Best value shows where the projection beats the book's price. Parlay chances are simulated with a Gaussian copula using measured correlations. Parlay builder with measured same-game correlations, live lines via The Odds API, and a plain-English Umbra Read. The slate is rebuilt automatically (see below). |
 | NFL TD Predictor | `nfl_td_predictor.html` | Each player's chance to score a touchdown and each starting quarterback's expected touchdown passes (1+, 2+, 3+), from gradient-boosted models trained on every player-game since 2019. Built on red-zone and goal-line usage from play-by-play, team expected scoring, quarterback touchdown-pass trends, opponent and injuries. Touchdown parlay with linked-leg math. Rebuilt automatically (see below). |
 | NBA Parlay Finder | `nba_parlay_finder.html` | Compares last-five averages against prop lines across points, rebounds, assists, threes, and PRA. Value scoring, ESPN box scores, parlay builder. |
@@ -17,7 +17,19 @@ Live site: https://umbra-techllc.github.io/intel-suite/
 
 ## Data sources
 
-CoinGecko, alternative.me (Fear & Greed), Google News via rss2json, ESPN, FanDuel lines, nflverse. Optional keys: a free CoinGecko demo key lifts rate limits; an Anthropic key powers the Umbra Read feature; a key from The Odds API loads live NFL prop lines.
+CoinGecko, alternative.me (Fear & Greed), Yahoo Finance, Google News, ESPN, FanDuel lines, nflverse. Optional keys: a free CoinGecko demo key lifts rate limits; an Anthropic key powers the Umbra Read feature; a key from The Odds API loads live NFL prop lines.
+
+## Defense Intel refresh
+
+`defense_data.json` holds a year of daily prices, quote details, scores, headlines and the written reads for every stock on the page. The `Defense Intel refresh` workflow rebuilds it about every hour during market hours on weekdays, plus once on Saturday. The written reads are redone before the open, after the close, and on Saturday; that step needs an `ANTHROPIC_API_KEY` repository secret (Settings > Secrets and variables > Actions). Without the secret, prices and news still refresh and the page shows the last reads with the time they were written. By hand:
+
+```
+cd defense
+pip install requests
+python build_defense.py                 # prices, news, and new reads if the saved ones are old
+AI_MODE=force python build_defense.py   # rewrite the reads now
+AI_MODE=off python build_defense.py     # prices and news only
+```
 
 ## NFL PropEdge refresh
 
