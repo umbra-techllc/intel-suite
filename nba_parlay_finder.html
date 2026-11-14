@@ -1,1833 +1,491 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>NBA Parlay Finder v2 · Intel Suite</title>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NBA Parlay Finder · Umbra Tech</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap">
 <style>
+/* Layout: parlay slip on the left (sticky), board and player tables on the right. One column on phones. Light theme only. */
 :root {
-  --bg: #0a0c10;
-  --bg1: #0f1218;
-  --bg2: #151a24;
-  --bg3: #1c222e;
-  --border: #252d3d;
-  --border2: #3a4560;
-  --text: #e2e6ef;
-  --text2: #8a96b0;
-  --text3: #4d5a75;
-  --green: #00f593;
-  --green2: #00c77a;
-  --green-bg: rgba(0,245,147,0.08);
-  --red: #ff4d6a;
-  --red-bg: rgba(255,77,106,0.08);
-  --gold: #ffc233;
-  --gold-bg: rgba(255,194,51,0.08);
-  --blue: #3d9eff;
-  --purple: #a87fff;
-  --mono: 'Space Mono', monospace;
-  --sans: 'Outfit', sans-serif;
+  color-scheme: light;
+  --bg: #F1EEE8; --surface: #FFFFFF; --surface-2: #F8F6F1; --ink: #20242B; --muted: #5A6170;
+  --line: #DDD7CC; --line-strong: #C4BCAE;
+  --accent: #A5430F; --accent-ink: #FFFFFF; --accent-soft: #F8E7DB;
+  --navy: #1F3F6E; --navy-soft: #E3EAF4;
+  --good: #17693A; --good-soft: #DDF0E3; --bad: #A3311E; --bad-soft: #F7E3DE; --warn: #7F5200; --warn-soft: #F6EBD2;
+  --f-display: "Saira Condensed", "Arial Narrow", sans-serif;
+  --f-body: "Public Sans", "Segoe UI", Helvetica, Arial, sans-serif;
+  --f-data: "Red Hat Mono", ui-monospace, Menlo, Consolas, monospace;
+  --r: 8px;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { 
-  font-family: var(--sans); 
-  background: var(--bg); 
-  color: var(--text); 
-  min-height: 100vh;
-  line-height: 1.5;
-}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 14px; line-height: 1.45; margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--navy); outline-offset: 2px; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+h2, h3 { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
 
-/* LAYOUT */
-.app { display: grid; grid-template-columns: 340px 1fr; min-height: 100vh; }
-@media (max-width: 900px) { .app { grid-template-columns: 1fr; } }
+.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1400px; margin: 0 auto; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 24px; justify-content: space-between; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.mark { width: 34px; height: 34px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; flex: none; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 28px; line-height: 1; margin: 0; text-transform: uppercase; }
+.brand .by { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--muted); font-size: 13px; }
+.meta b { color: var(--ink); font-weight: 600; }
 
-/* SIDEBAR */
-.sidebar {
-  background: var(--bg1);
-  border-right: 1px solid var(--border);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
-}
-.logo {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 4px;
-  color: var(--green);
-  text-transform: uppercase;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border);
-}
-.logo span { color: var(--text3); }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 16px 16px 48px; display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 980px) { .wrap { grid-template-columns: 1fr; } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
+.card-h { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.card-h h2 { font-size: 18px; font-weight: 700; }
+.card-b { padding: 12px 14px; }
+.side { position: sticky; top: 12px; display: grid; gap: 12px; }
+@media (max-width: 980px) { .side { position: static; } }
 
-/* SIDEBAR SECTIONS */
-.sb-section {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-}
-.sb-section.collapsed .sb-content { display: none; }
-.sb-title {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--text3);
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
-.sb-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  margin-bottom: 0;
-}
-.sb-header .sb-title { margin-bottom: 0; }
-.sb-section.collapsed .sb-header { margin-bottom: 0; }
-.sb-section:not(.collapsed) .sb-header { margin-bottom: 10px; }
-.key-status {
-  display: flex;
-  gap: 8px;
-  font-family: var(--mono);
-  font-size: 10px;
-}
-.key-status .status {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.key-status .check { color: var(--green); }
-.key-status .x { color: var(--red); }
-.collapse-icon {
-  color: var(--text3);
-  font-size: 12px;
-  transition: transform 0.2s;
-}
-.sb-section.collapsed .collapse-icon { transform: rotate(-90deg); }
+/* controls */
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.lbl { font-size: 12px; font-weight: 600; color: var(--muted); min-width: 44px; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: transparent; padding: 6px 11px; font-weight: 600; font-size: 13px; border-left: 1px solid var(--line); }
+.seg button:first-child { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--navy); color: #fff; }
+.btn { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 6px; padding: 8px 12px; font-weight: 600; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { background: #8E390C; }
+.btn.small { padding: 4px 9px; font-size: 12px; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+textarea, input[type=text], input[type=password], input[type=number] { border: 1px solid var(--line-strong); border-radius: 6px; padding: 7px 9px; background: #fff; width: 100%; }
 
-.key-row { margin-bottom: 8px; }
-.key-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--text2);
-  letter-spacing: 1px;
-  margin-bottom: 4px;
-}
-.key-input {
-  width: 100%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--green);
-  font-family: var(--mono);
-  font-size: 11px;
-  padding: 8px 10px;
-  border-radius: 5px;
-  outline: none;
-  transition: border-color 0.2s;
-}
-.key-input:focus { border-color: var(--green); }
-.key-input::placeholder { color: var(--text3); }
+/* slip */
+.note { background: var(--navy-soft); border-radius: 6px; padding: 10px 12px; font-size: 13px; color: #1B2F4F; }
+.note .who { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy); display: block; margin-bottom: 3px; }
+.leg { border-top: 1px solid var(--line); padding: 10px 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; }
+.leg:first-child { border-top: 0; }
+.leg .who { font-weight: 600; }
+.leg .who small { font-weight: 400; color: var(--muted); }
+.leg .bet { font-size: 15px; font-weight: 700; color: var(--accent); }
+.leg .px { text-align: right; }
+.leg .px .num { font-weight: 600; }
+.leg .why { grid-column: 1 / -1; font-size: 13px; color: var(--ink); margin-top: 3px; }
+.leg .risk { grid-column: 1 / -1; font-size: 12.5px; color: var(--muted); }
+.leg .risk b { color: var(--warn); font-weight: 600; }
+.leg .x { border: 0; background: none; color: var(--muted); font-size: 12px; text-decoration: underline; padding: 0; }
+.bar { height: 6px; border-radius: 3px; background: #ECE7DD; overflow: hidden; min-width: 60px; }
+.bar i { display: block; height: 100%; background: var(--good); }
+.bar.mid i { background: #B07A00; } .bar.low i { background: var(--bad); }
+.totals { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px; }
+.tot { background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+.tot .k { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.tot .v { font-family: var(--f-data); font-size: 20px; font-weight: 600; }
+.fine { font-size: 12px; color: var(--muted); }
+.empty { color: var(--muted); padding: 16px 0; text-align: center; }
 
-/* BUTTONS */
-.btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text2);
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 8px 14px;
-  border-radius: 5px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: all 0.15s;
-  text-transform: uppercase;
-}
-.btn:hover { border-color: var(--text2); color: var(--text); }
-.btn-primary {
-  background: var(--green);
-  border-color: var(--green);
-  color: var(--bg);
-  font-weight: 600;
-}
-.btn-primary:hover { background: var(--green2); border-color: var(--green2); }
-.btn-gold { border-color: var(--gold); color: var(--gold); }
-.btn-gold:hover { background: var(--gold-bg); }
-.btn-red { border-color: var(--red); color: var(--red); }
-.btn-red:hover { background: var(--red-bg); }
-.btn-purple { border-color: var(--purple); color: var(--purple); }
-.btn-purple:hover { background: rgba(168,127,255,0.1); }
-.btn-sm { padding: 5px 10px; font-size: 9px; }
-.btn-group { display: flex; gap: 6px; flex-wrap: wrap; }
-
-/* TOGGLE BUTTONS */
-.toggle-group {
-  display: flex;
-  background: var(--bg);
-  border-radius: 5px;
-  padding: 3px;
-  gap: 2px;
-  flex-wrap: wrap;
-}
-.toggle-btn {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: var(--text3);
-  font-family: var(--mono);
-  font-size: 9px;
-  padding: 5px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
-  min-width: 40px;
-}
-.toggle-btn.active {
-  background: var(--bg2);
-  color: var(--green);
-}
-.toggle-btn:hover:not(.active) { color: var(--text2); }
-
-/* AUTO FIND ROW */
-.auto-find-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-.auto-find-row .btn { flex: 1; }
-.leg-toggles {
-  display: flex;
-  gap: 4px;
-}
-.leg-toggle {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  color: var(--text3);
-  font-family: var(--mono);
-  font-size: 10px;
-  padding: 6px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.leg-toggle.active {
-  border-color: var(--gold);
-  color: var(--gold);
-}
-.leg-toggle:hover:not(.active) { border-color: var(--text3); }
-
-/* PARLAY BUILDER - BIGGER to fit 6 legs */
-.parlay-box {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  min-height: 320px;
-}
-.parlay-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.parlay-count {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--green);
-}
-.parlay-legs {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 200px;
-}
-.parlay-empty {
-  color: var(--text3);
-  font-size: 12px;
-  text-align: center;
-  padding: 20px 10px;
-}
-.parlay-leg {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px;
-  background: var(--bg);
-  border-radius: 5px;
-  margin-bottom: 5px;
-  font-size: 11px;
-}
-.parlay-leg .player { font-weight: 500; color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.parlay-leg .prop { font-family: var(--mono); font-size: 9px; color: var(--green); white-space: nowrap; }
-.parlay-leg .odds { font-family: var(--mono); font-size: 9px; color: var(--gold); }
-.parlay-leg .remove {
-  background: none;
-  border: none;
-  color: var(--text3);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 2px 4px;
-}
-.parlay-leg .remove:hover { color: var(--red); }
-.parlay-summary {
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
-  margin-top: 8px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.parlay-odds {
-  font-family: var(--mono);
-  font-size: 14px;
-  color: var(--gold);
-}
-
-/* MAIN CONTENT */
-.main {
-  padding: 20px;
-  overflow-y: auto;
-}
-
-/* STATS BAR */
-.stats-bar {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.stat-card {
-  background: var(--bg1);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px;
-}
-.stat-label {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--text3);
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text);
-}
-.stat-value.green { color: var(--green); }
-.stat-value.gold { color: var(--gold); }
-
-/* GAMES GRID */
-.games-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-/* GAME CARD */
-.game-card {
-  background: var(--bg1);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.game-header {
-  background: var(--bg2);
-  padding: 12px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--border);
-}
-.game-teams {
-  font-weight: 500;
-  font-size: 14px;
-}
-.game-teams span { color: var(--text3); margin: 0 8px; }
-.game-meta {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-.game-time {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text2);
-}
-.pace-badge {
-  font-family: var(--mono);
-  font-size: 9px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  letter-spacing: 1px;
-}
-.pace-fast { background: var(--green-bg); color: var(--green); }
-.pace-avg { background: var(--bg); color: var(--text3); }
-.pace-slow { background: var(--red-bg); color: var(--red); }
-
-/* TEAM SECTIONS */
-.game-body { padding: 16px; }
-.team-section {
-  margin-bottom: 16px;
-}
-.team-section:last-child { margin-bottom: 0; }
-.team-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-.team-name {
-  font-weight: 600;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.home-badge {
-  font-family: var(--mono);
-  font-size: 8px;
-  background: var(--bg2);
-  padding: 2px 6px;
-  border-radius: 3px;
-  color: var(--text3);
-  letter-spacing: 1px;
-}
-.team-dvp {
-  font-family: var(--mono);
-  font-size: 9px;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-.dvp-soft { background: var(--green-bg); color: var(--green); }
-.dvp-neutral { background: var(--bg2); color: var(--text3); }
-.dvp-tough { background: var(--red-bg); color: var(--red); }
-
-/* PLAYER ROWS */
-.player-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.player-row {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  transition: border-color 0.2s;
-}
-.player-row:hover { border-color: var(--border2); }
-.player-row.value-pick { border-color: var(--green); background: var(--green-bg); }
-
-.player-main {
-  padding: 12px;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  align-items: center;
-  cursor: pointer;
-}
-.player-info { display: flex; flex-direction: column; gap: 4px; }
-.player-name {
-  font-weight: 500;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.value-badge {
-  font-family: var(--mono);
-  font-size: 8px;
-  background: var(--green);
-  color: var(--bg);
-  padding: 2px 6px;
-  border-radius: 3px;
-  letter-spacing: 1px;
-  font-weight: 600;
-}
-.prop-type-badge {
-  font-family: var(--mono);
-  font-size: 8px;
-  background: var(--bg3);
-  color: var(--text2);
-  padding: 2px 6px;
-  border-radius: 3px;
-  letter-spacing: 1px;
-}
-.expand-icon {
-  font-size: 10px;
-  color: var(--text3);
-  transition: transform 0.2s;
-}
-.player-row.expanded .expand-icon { transform: rotate(180deg); }
-
-.player-stats {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.player-stat {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.player-stat-label {
-  font-family: var(--mono);
-  font-size: 8px;
-  color: var(--text3);
-  letter-spacing: 1px;
-}
-.player-stat-value {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--text);
-}
-.player-stat-value.above { color: var(--green); }
-.player-stat-value.below { color: var(--red); }
-
-/* HIT RATE BAR */
-.hit-rate-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.hit-rate-bar {
-  width: 60px;
-  height: 6px;
-  background: var(--bg);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.hit-rate-fill {
-  height: 100%;
-  background: var(--green);
-  border-radius: 3px;
-  transition: width 0.3s;
-}
-.hit-rate-fill.medium { background: var(--gold); }
-.hit-rate-fill.low { background: var(--red); }
-.hit-rate-text {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text2);
-  min-width: 45px;
-}
-
-/* PROP ACTIONS */
-.prop-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-end;
-}
-.prop-line {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--text2);
-  text-align: right;
-}
-.prop-line strong { color: var(--text); }
-.prop-odds {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--gold);
-  font-weight: 600;
-}
-.add-btn {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text2);
-  font-family: var(--mono);
-  font-size: 9px;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  transition: all 0.15s;
-}
-.add-btn:hover { border-color: var(--green); color: var(--green); }
-.add-btn.added { background: var(--green); border-color: var(--green); color: var(--bg); }
-
-/* PLAYER DROPDOWN - L5 GAME LOG */
-.player-dropdown {
-  display: none;
-  border-top: 1px solid var(--border);
-  padding: 12px;
-  background: var(--bg);
-}
-.player-row.expanded .player-dropdown { display: block; }
-.dropdown-title {
-  font-family: var(--mono);
-  font-size: 9px;
-  color: var(--text3);
-  letter-spacing: 1px;
-  margin-bottom: 8px;
-}
-.game-log-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--mono);
-  font-size: 10px;
-}
-.game-log-table th {
-  text-align: left;
-  color: var(--text3);
-  font-weight: normal;
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--border);
-}
-.game-log-table td {
-  padding: 6px 8px;
-  color: var(--text2);
-  border-bottom: 1px solid var(--border);
-}
-.game-log-table tr:last-child td { border-bottom: none; }
-.game-log-table .hit { color: var(--green); font-weight: 600; }
-.game-log-table .miss { color: var(--red); }
-
-/* LOADING */
-.loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 60px;
-  color: var(--text3);
-}
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 2px solid var(--border);
-  border-top-color: var(--green);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 12px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading-status {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--text3);
-  margin-top: 8px;
-}
-
-/* EMPTY STATE */
-.empty-state {
-  text-align: center;
-  padding: 60px 20px;
-  color: var(--text3);
-}
-.empty-state h3 {
-  color: var(--text2);
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-/* AI ANALYSIS */
-.ai-box {
-  background: var(--bg2);
-  border: 1px solid var(--purple);
-  border-radius: 8px;
-  padding: 12px;
-  margin-top: 10px;
-}
-.ai-title {
-  font-family: var(--mono);
-  font-size: 9px;
-  letter-spacing: 2px;
-  color: var(--purple);
-  margin-bottom: 8px;
-}
-.ai-content {
-  font-size: 11px;
-  color: var(--text2);
-  line-height: 1.6;
-}
-.ai-content strong { color: var(--text); }
-
-/* SCROLLBAR */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border2); }
-
-/* MOBILE */
-@media (max-width: 900px) {
-  .sidebar {
-    position: relative;
-    height: auto;
-    max-height: none;
-  }
-  .player-main {
-    grid-template-columns: 1fr;
-  }
-  .prop-actions {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding-top: 8px;
-    border-top: 1px solid var(--border);
-    margin-top: 8px;
-  }
-}
+/* tabs and tables */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding: 0 10px; flex-wrap: wrap; }
+.tabs button { border: 0; background: none; padding: 11px 12px 9px; font-family: var(--f-display); font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.filters { display: flex; gap: 10px 16px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); align-items: center; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child > td { border-bottom: 0; }
+td.r, th.r { text-align: right; }
+.pname { font-weight: 600; }
+.sub { color: var(--muted); font-size: 12px; }
+.tag { display: inline-block; font-size: 11px; font-weight: 600; border-radius: 4px; padding: 1px 6px; margin-left: 6px; vertical-align: 1px; }
+.tag.pick { background: var(--good-soft); color: var(--good); }
+.tag.skip { background: var(--warn-soft); color: var(--warn); }
+.tag.q { background: var(--warn-soft); color: var(--warn); }
+.tag.out { background: var(--bad-soft); color: var(--bad); }
+.chance { display: grid; grid-template-columns: 42px 70px; gap: 8px; align-items: center; }
+.dots { font-family: var(--f-data); font-size: 12px; color: var(--muted); white-space: nowrap; }
+.dots b { color: var(--good); font-weight: 600; } .dots s { color: var(--bad); text-decoration: none; }
+.game { border-top: 1px solid var(--line); }
+.game:first-child { border-top: 0; }
+.game-h { padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 4px 16px; align-items: baseline; }
+.game-h h3 { font-size: 17px; font-weight: 700; }
+.inj { padding: 8px 14px; font-size: 12.5px; color: var(--muted); border-bottom: 1px solid var(--line); }
+.inj b { color: var(--ink); font-weight: 600; }
+tr.prow { cursor: pointer; }
+tr.prow:hover td { background: var(--surface-2); }
+tr.detail td { background: var(--surface-2); padding: 12px 14px; }
+.rungs { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.rung { border: 1px solid var(--line-strong); background: #fff; border-radius: 6px; padding: 5px 8px; text-align: left; font-size: 12.5px; line-height: 1.3; }
+.rung:hover { border-color: var(--accent); }
+.rung.on { background: var(--accent-soft); border-color: var(--accent); }
+.rung b { display: block; font-size: 13px; }
+.mini th, .mini td { padding: 4px 8px; font-size: 12.5px; }
+.mini td { font-family: var(--f-data); }
+.prose { padding: 14px; max-width: 78ch; }
+.prose p { margin: 0 0 10px; }
+.prose h3 { font-size: 16px; margin: 18px 0 6px; }
+.prose table { max-width: 560px; margin: 6px 0 12px; }
+.res-hit { color: var(--good); font-weight: 600; } .res-miss { color: var(--bad); font-weight: 600; }
+details.set summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
+details.set .in { display: grid; gap: 8px; margin-top: 8px; }
+.foot { max-width: 1400px; margin: 0 auto; padding: 0 16px 30px; color: var(--muted); font-size: 12px; }
+@media (max-width: 600px) { .hide-s { display: none; } th, td { padding: 7px 6px; } }
 </style>
+
 </head>
 <body>
-<div class="app">
+<header class="top"><div class="top-in">
+  <div class="brand">
+    <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M2 10h16M10 2v16M4.3 4.3c3 2.6 3 8.8 0 11.4M15.7 4.3c-3 2.6-3 8.8 0 11.4" fill="none" stroke="#fff" stroke-width="1.3"/></svg></div>
+    <div><h1>NBA Parlay Finder</h1><div class="by">Umbra Tech · Intel Suite</div></div>
+  </div>
+  <div class="meta" id="meta"></div>
+</div></header>
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="logo">NBA Parlay Finder <span>v2</span></div>
-  
-  <!-- API KEYS - COLLAPSIBLE -->
-  <div class="sb-section collapsed" id="api-section">
-    <div class="sb-header" onclick="toggleApiSection()">
-      <div class="sb-title">API Keys</div>
-      <div class="key-status">
-        <span class="status" id="odds-status"><span class="x">✗</span> Odds</span>
-        <span class="status" id="anthropic-status"><span class="x">✗</span> AI</span>
-        <span class="collapse-icon">▼</span>
+<div class="wrap">
+  <aside class="side">
+    <section class="card">
+      <div class="card-h"><h2>Tonight's parlay</h2><span class="fine" id="pickedBy"></span></div>
+      <div class="card-b" style="display:grid;gap:10px">
+        <div class="row"><span class="lbl">Legs</span><div class="seg" id="segLegs"></div></div>
+        <div class="row"><span class="lbl">Goal</span><div class="seg" id="segStyle">
+          <button data-v="safest">Most likely to hit</button><button data-v="payout">Bigger payout</button></div></div>
+        <div class="row"><button class="btn primary" id="buildBtn" style="flex:1">Build parlay</button>
+          <button class="btn" id="clearBtn">Clear</button></div>
+        <div class="note" id="slateNote" hidden></div>
+        <div id="slip"></div>
+        <div class="totals" id="totals" hidden>
+          <div class="tot"><div class="k">Chance all hit</div><div class="v" id="tChance">-</div></div>
+          <div class="tot"><div class="k">Pays on $<input id="stake" type="number" min="1" value="10" style="width:52px;padding:1px 4px;display:inline-block;font-size:11px"></div><div class="v" id="tPay">-</div></div>
+        </div>
+        <div class="fine" id="slipFine"></div>
       </div>
-    </div>
-    <div class="sb-content">
-      <div class="key-row">
-        <div class="key-label">Odds API (the-odds-api.com)</div>
-        <input type="text" class="key-input" id="odds-key" placeholder="Free key for prop lines" />
-      </div>
-      <div class="key-row">
-        <div class="key-label">Anthropic (for AI analysis)</div>
-        <input type="password" class="key-input" id="anthropic-key" placeholder="sk-ant-..." />
-      </div>
-      <button class="btn btn-primary" onclick="saveKeys()" style="width:100%;margin-top:8px;">Save Keys</button>
-    </div>
-  </div>
-  
-  <!-- SETTINGS -->
-  <div class="sb-section">
-    <div class="sb-title">Settings</div>
-    <div class="key-label" style="margin-bottom:6px;">Sample Size</div>
-    <div class="toggle-group" id="sample-toggle">
-      <button class="toggle-btn" data-val="5">L5</button>
-      <button class="toggle-btn active" data-val="10">L10</button>
-    </div>
-    <div class="key-label" style="margin-top:10px;margin-bottom:6px;">Prop Type</div>
-    <div class="toggle-group" id="prop-toggle">
-      <button class="toggle-btn" data-val="all">ALL</button>
-      <button class="toggle-btn active" data-val="points">PTS</button>
-      <button class="toggle-btn" data-val="rebounds">REB</button>
-      <button class="toggle-btn" data-val="assists">AST</button>
-      <button class="toggle-btn" data-val="threes">3PT</button>
-      <button class="toggle-btn" data-val="pra">PRA</button>
-    </div>
-    <div class="key-label" style="margin-top:10px;margin-bottom:6px;">Min Hit Rate</div>
-    <div class="toggle-group" id="hitrate-toggle">
-      <button class="toggle-btn active" data-val="0">Any</button>
-      <button class="toggle-btn" data-val="60">60%+</button>
-      <button class="toggle-btn" data-val="70">70%+</button>
-      <button class="toggle-btn" data-val="80">80%+</button>
-    </div>
-  </div>
-  
-  <!-- LOAD BUTTON -->
-  <button class="btn btn-primary" onclick="loadGames()" id="load-btn" style="width:100%;">
-    ◈ Load Today's Games
-  </button>
-  
-  <!-- AUTO FIND WITH LEG COUNT -->
-  <div class="auto-find-row" id="find-row" style="display:none;">
-    <button class="btn btn-gold" onclick="autoFindValue()" id="find-btn">
-      ⚡ Auto-Find
-    </button>
-    <div class="leg-toggles">
-      <button class="leg-toggle" data-legs="4" onclick="setLegCount(4)">4</button>
-      <button class="leg-toggle active" data-legs="5" onclick="setLegCount(5)">5</button>
-      <button class="leg-toggle" data-legs="6" onclick="setLegCount(6)">6</button>
-    </div>
-  </div>
-  
-  <!-- PARLAY BUILDER - BIGGER to fit 6 legs without scroll -->
-  <div class="parlay-box">
-    <div class="parlay-header">
-      <div class="sb-title" style="margin:0;">Parlay Builder</div>
-      <div class="parlay-count" id="leg-count">0 legs</div>
-    </div>
-    <div class="parlay-legs" id="parlay-legs">
-      <div class="parlay-empty">Add players below to build your parlay</div>
-    </div>
-    <div class="parlay-summary" id="parlay-summary" style="display:none;">
-      <button class="btn btn-red btn-sm" onclick="clearParlay()">Clear</button>
-      <div class="parlay-odds" id="parlay-odds">+0</div>
-    </div>
-  </div>
-  
-  <button class="btn btn-purple" onclick="analyzeParlay()" id="analyze-btn" style="width:100%;display:none;">
-    ◈ Analyze with AI
-  </button>
-  
-  <!-- AI ANALYSIS -->
-  <div class="ai-box" id="ai-box" style="display:none;">
-    <div class="ai-title">◈ AI Analysis</div>
-    <div class="ai-content" id="ai-content"></div>
-  </div>
-</aside>
+    </section>
+    <section class="card"><div class="card-b">
+      <details class="set" id="freshBox"><summary>Ask Umbra Read for a fresh pick</summary>
+        <div class="in">
+          <div class="fine">Re-runs the pick on the current board with your own instructions. Needs an analyst API key, which stays in this browser.</div>
+          <textarea id="steer" rows="2" placeholder="Optional. For example: no players from the Denver game, rebounds and assists only"></textarea>
+          <input id="akey" type="password" placeholder="Analyst API key" autocomplete="off">
+          <div class="row"><button class="btn" id="freshBtn">Get a fresh pick</button><span class="fine" id="freshMsg"></span></div>
+        </div>
+      </details>
+    </div></section>
+  </aside>
 
-<!-- MAIN -->
-<main class="main">
-  <div class="stats-bar" id="stats-bar" style="display:none;">
-    <div class="stat-card">
-      <div class="stat-label">Games Today</div>
-      <div class="stat-value" id="stat-games">0</div>
+  <main class="card" style="min-width:0">
+    <div class="tabs" role="tablist" id="tabs">
+      <button data-t="board" aria-selected="true">Best bets</button>
+      <button data-t="players" aria-selected="false">All players</button>
+      <button data-t="left" aria-selected="false">Left out</button>
+      <button data-t="record" aria-selected="false">Track record</button>
     </div>
-    <div class="stat-card">
-      <div class="stat-label">Value Picks</div>
-      <div class="stat-value green" id="stat-value">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">High Hit Rate (70%+)</div>
-      <div class="stat-value gold" id="stat-hitrate">0</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Players Loaded</div>
-      <div class="stat-value" id="stat-players">0</div>
-    </div>
-  </div>
-  
-  <div id="content">
-    <div class="empty-state">
-      <h3>Welcome to NBA Parlay Finder v2</h3>
-      <p>Click "Load Today's Games" to get started.</p>
-      <p style="margin-top:12px;font-size:11px;">Odds API key optional - get one free at <a href="https://the-odds-api.com" target="_blank" style="color:var(--green);">the-odds-api.com</a></p>
-    </div>
-  </div>
-</main>
-
+    <div id="pane"></div>
+  </main>
 </div>
+<div class="foot">For information and entertainment only. Nothing here is betting advice. Chances are estimates and every parlay loses more often than its legs suggest. Umbra Technologies LLC</div>
 
 <script>
-// ============ STATE ============
-let state = {
-  games: [],
-  players: [],
-  parlay: [],
-  sampleSize: 10,
-  propType: 'points',
-  minHitRate: 0,
-  legCount: 5,
-  oddsKey: '',
-  anthropicKey: '',
-  teamStats: {},
-  expandedPlayers: new Set()
-};
+let D = null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const STATS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["tpm", "Threes"], ["pra", "Pts+Reb+Ast"], ["pr", "Pts+Reb"], ["pa", "Pts+Ast"], ["ra", "Reb+Ast"]];
+const S = { legs: 3, style: "safest", slip: [], tab: "board", stat: "pts", game: "all", bstat: "all", open: null, picks: null };
+let P, L, G;
+const pct = p => Math.round(p * 100) + "%";
+const price = a => (a > 0 ? "+" : "") + a;
+const amer = d => d >= 2 ? "+" + Math.round((d - 1) * 100) : "-" + Math.round(100 / (d - 1));
+const barCls = p => p >= 0.7 ? "" : p >= 0.55 ? "mid" : "low";
+const bar = p => `<div class="chance"><span class="num">${pct(p)}</span><div class="bar ${barCls(p)}"><i style="width:${Math.round(p * 100)}%"></i></div></div>`;
+const tm = iso => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
-// Prop type display names
-const PROP_LABELS = {
-  points: 'PTS',
-  rebounds: 'REB',
-  assists: 'AST',
-  threes: '3PT',
-  pra: 'PRA'
-};
+const UNIT = { pts: "points", reb: "rebounds", ast: "assists", tpm: "threes", pra: "points + rebounds + assists", pr: "points + rebounds", pa: "points + assists", ra: "rebounds + assists" };
+const PARTS = { pts: ["pts"], reb: ["reb"], ast: ["ast"], tpm: ["tpm"], pra: ["pts", "reb", "ast"], pr: ["pts", "reb"], pa: ["pts", "ast"], ra: ["reb", "ast"] };
+function index() {
+  P = Object.fromEntries(D.players.map(p => [p.id, p]));
+  // legs arrive as [player id, stat, o/u/a, number, price, chance]; fill in the readable parts here
+  D.legs = D.legs.map(a => {
+    if (!Array.isArray(a)) return a;
+    const [pid, stat, k, num, price, p] = a, pl = P[pid], kind = k === "a" ? "alt" : k === "o" ? "over" : "under";
+    const vals = pl.log.map(g => PARTS[stat].reduce((s, c) => s + g[c], 0));
+    const ok = v => kind === "alt" ? v >= num : kind === "over" ? v > num : v < num;
+    return { id: `${pid}-${stat}-${k}${num}`, pid, gid: pl.gid, stat, kind, num, price, p, unit: UNIT[stat],
+      dec: price > 0 ? 1 + price / 100 : 1 + 100 / -price, be: price < 0 ? -price / (-price + 100) : 100 / (price + 100),
+      text: kind === "alt" ? `${num}+ ${UNIT[stat]}` : `${kind} ${num} ${UNIT[stat]}`, proj: pl.stats[stat].proj,
+      last: vals.slice(0, 8), hits: vals.filter(ok).length, of: vals.length };
+  });
+  L = Object.fromEntries(D.legs.map(l => [l.id, l]));
+  G = Object.fromEntries(D.games.map(g => [g.id, g]));
+  S.picks = D.picks;
+  S.slip = S.slip.filter(id => L[id]);
+}
 
-// ============ INIT ============
-document.addEventListener('DOMContentLoaded', () => {
-  // Load saved keys
-  state.oddsKey = localStorage.getItem('oddsApiKey') || '';
-  state.anthropicKey = localStorage.getItem('anthropicKey') || '';
-  document.getElementById('odds-key').value = state.oddsKey;
-  document.getElementById('anthropic-key').value = state.anthropicKey;
-  
-  // Update key status indicators
-  updateKeyStatus();
-  
-  // Setup toggle buttons
-  setupToggles();
+/* ---- chance that every leg hits, allowing for legs that move together (same player, teammates, opponents) ---- */
+function ninv(p) { // inverse normal CDF (Acklam)
+  const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239],
+    b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572],
+    c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783],
+    d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+  let q, r;
+  if (p < 0.02425) { q = Math.sqrt(-2 * Math.log(p)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  if (p > 1 - 0.02425) { q = Math.sqrt(-2 * Math.log(1 - p)); return -(((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+  q = p - 0.5; r = q * q;
+  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+}
+function link(a, b) {
+  if (a.gid !== b.gid) return 0;
+  const pa = P[a.pid], pb = P[b.pid];
+  const kind = a.pid === b.pid ? "same" : pa.team === pb.team ? "mate" : "opp";
+  const c = ((D.links[kind] || {})[a.stat] || {})[b.stat] || 0;
+  return c * (a.kind === "under" ? -1 : 1) * (b.kind === "under" ? -1 : 1);
+}
+function jointChance(ids) {
+  const legs = ids.map(id => L[id]), n = legs.length;
+  if (!n) return null;
+  if (n === 1) return legs[0].p;
+  const C = legs.map((a, i) => legs.map((b, j) => i === j ? 1 : Math.max(-0.95, Math.min(0.95, link(a, b)))));
+  let chol = null;
+  for (let shrink = 1; shrink > 0.05 && !chol; shrink *= 0.8) { // pull links toward zero until the matrix is usable
+    const A = C.map((r, i) => r.map((v, j) => i === j ? 1 : v * shrink)), Lm = A.map(r => r.map(() => 0));
+    let ok = true;
+    for (let i = 0; i < n && ok; i++) for (let j = 0; j <= i; j++) {
+      let s = A[i][j]; for (let k = 0; k < j; k++) s -= Lm[i][k] * Lm[j][k];
+      if (i === j) { if (s <= 1e-9) { ok = false; break; } Lm[i][j] = Math.sqrt(s); } else Lm[i][j] = s / Lm[j][j];
+    }
+    if (ok) chol = Lm;
+  }
+  if (!chol) return legs.reduce((a, l) => a * l.p, 1);
+  const thr = legs.map(l => ninv(1 - l.p));
+  let seed = 12345, hit = 0; const N = 20000, z = new Array(n);
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  for (let t = 0; t < N; t++) {
+    for (let i = 0; i < n; i++) z[i] = Math.sqrt(-2 * Math.log(rnd() + 1e-12)) * Math.cos(6.283185307 * rnd());
+    let all = true;
+    for (let i = 0; i < n && all; i++) { let v = 0; for (let k = 0; k <= i; k++) v += chol[i][k] * z[k]; if (v <= thr[i]) all = false; }
+    if (all) hit++;
+  }
+  return hit / N;
+}
+
+/* ---- parlay slip ---- */
+function why(id) { const s = S.picks; return [...(s.safest || []), ...(s.payout || [])].find(x => x.id === id) || {}; }
+function legText(l) { return (l.kind === "alt" ? "" : "") + l.text; }
+function build() {
+  const used = new Set(), games = {}, out = [];
+  for (const it of (S.picks[S.style] || [])) {
+    const l = L[it.id]; if (!l || used.has(l.pid) || (games[l.gid] || 0) >= 2) continue;
+    used.add(l.pid); games[l.gid] = (games[l.gid] || 0) + 1; out.push(l.id);
+    if (out.length >= S.legs) break;
+  }
+  S.slip = out; S.built = { style: S.style, n: out.length, want: S.legs };
+  render();
+}
+function toggle(id) {
+  const l = L[id]; if (!l) return;
+  if (S.slip.includes(id)) S.slip = S.slip.filter(x => x !== id);
+  else S.slip = S.slip.filter(x => !(L[x].pid === l.pid && L[x].stat === l.stat)).concat(id); // one bet per player and stat
+  S.built = null; render();
+}
+function renderSlip() {
+  const s = S.picks, el = $("#slip");
+  $("#pickedBy").textContent = s.by === "ai" ? "Chosen by Umbra Read, " + tm(s.at) : "Ranked by the model";
+  const note = $("#slateNote");
+  if (s.note) { note.hidden = false; note.innerHTML = `<span class="who">Umbra Read on tonight</span>${esc(s.note)}`; } else note.hidden = true;
+  if (!S.slip.length) {
+    el.innerHTML = `<div class="empty">${D.legs.length ? "Press Build parlay, or add bets from the tables." : "No bets are posted for this slate yet. Lines usually go up late morning Eastern time."}</div>`;
+    $("#totals").hidden = true; $("#slipFine").textContent = ""; return;
+  }
+  el.innerHTML = S.slip.map(id => {
+    const l = L[id], p = P[l.pid], w = why(id);
+    return `<div class="leg">
+      <div><div class="who">${esc(p.name)} <small>${p.team} ${p.home ? "vs" : "at"} ${p.opp}</small>${p.status === "questionable" ? '<span class="tag q">Questionable</span>' : ""}</div>
+        <div class="bet">${esc(legText(l))}</div></div>
+      <div class="px"><div class="num">${price(l.price)}</div>${bar(l.p)}</div>
+      ${w.why ? `<div class="why">${esc(w.why)}</div>` : `<div class="why sub">Projected ${l.proj} ${esc(l.unit)}. Did this in ${l.hits} of his last ${l.of} games.</div>`}
+      ${w.risk ? `<div class="risk"><b>${S.picks.by === "ai" ? "How it loses" : "Worth knowing"}:</b> ${esc(w.risk)}</div>` : ""}
+      <div class="risk"><button class="x" data-rm="${id}">Remove</button></div></div>`;
+  }).join("");
+  const dec = S.slip.reduce((a, id) => a * L[id].dec, 1), ch = jointChance(S.slip), naive = S.slip.reduce((a, id) => a * L[id].p, 1);
+  const stake = Math.max(1, +$("#stake").value || 10);
+  $("#totals").hidden = false;
+  $("#tChance").textContent = ch < 0.01 ? "<1%" : pct(ch);
+  $("#tPay").textContent = "$" + (stake * dec).toFixed(2);
+  let fine = `Parlay price ${amer(dec)}. That price needs the parlay to hit ${pct(1 / dec)} of the time to break even.`;
+  if (Math.abs(ch - naive) > 0.015) fine += ` Some of these legs tend to ${ch > naive ? "hit together" : "work against each other"}, which is counted in the chance shown.`;
+  if (S.built && S.built.n < S.built.want) fine += ` Only ${S.built.n} bets passed the cut for this goal tonight.`;
+  $("#slipFine").textContent = fine;
+}
+
+/* ---- best bets ---- */
+function tagFor(id) {
+  const s = S.picks;
+  if ((s.safest || []).some(x => x.id === id) || (s.payout || []).some(x => x.id === id)) return '<span class="tag pick">Picked</span>';
+  if ((s.skip || []).some(x => x.id === id)) return '<span class="tag skip">Left out</span>';
+  return "";
+}
+function dots(l) { return `<span class="dots">${l.last.map(v => { const ok = l.kind === "alt" ? v >= l.num : l.kind === "over" ? v > l.num : v < l.num; return ok ? `<b>${v}</b>` : `<s>${v}</s>`; }).join(" ")}</span>`; }
+function gameFilter(id) {
+  return `<select id="${id}"><option value="all">All games</option>${D.games.map(g => `<option value="${g.id}" ${S.game === g.id ? "selected" : ""}>${g.away} at ${g.home}</option>`).join("")}</select>`;
+}
+function renderBoard() {
+  const ids = [...new Set([...(D.pool.safest || []), ...(D.pool.payout || [])])];
+  let rows = ids.map(id => L[id]).filter(Boolean).filter(l => (S.game === "all" || l.gid === S.game) && (S.bstat === "all" || l.stat === S.bstat));
+  rows.sort((a, b) => b.p - a.p);
+  return `<div class="filters">${gameFilter("fGame")}
+      <select id="fStat"><option value="all">All stats</option>${STATS.map(([k, n]) => `<option value="${k}" ${S.bstat === k ? "selected" : ""}>${n}</option>`).join("")}</select>
+      <span class="fine">${rows.length} bets that cleared the model's cut, most likely first. Umbra Read picks from this list.</span></div>
+    <div class="scroll"><table><thead><tr><th>Player</th><th>Bet</th><th class="r">Price</th><th>Chance</th><th class="r hide-s">Price needs</th><th class="hide-s">Recent games</th><th></th></tr></thead><tbody>
+    ${rows.map(l => { const p = P[l.pid]; return `<tr><td><span class="pname">${esc(p.name)}</span>${tagFor(l.id)}${p.status === "questionable" ? '<span class="tag q">Questionable</span>' : ""}<div class="sub">${p.team} ${p.home ? "vs" : "at"} ${p.opp} · projected ${l.proj}</div></td>
+      <td><b>${esc(l.text)}</b></td><td class="r num">${price(l.price)}</td><td>${bar(l.p)}</td><td class="r num hide-s">${pct(l.be)}</td><td class="hide-s">${dots(l)}</td>
+      <td class="r"><button class="btn small" data-add="${l.id}">${S.slip.includes(l.id) ? "Added" : "Add"}</button></td></tr>`; }).join("") || `<tr><td colspan="7" class="empty">Nothing matches these filters.</td></tr>`}
+    </tbody></table></div>`;
+}
+
+/* ---- all players ---- */
+function renderPlayers() {
+  const games = D.games.filter(g => S.game === "all" || g.id === S.game);
+  const head = `<div class="filters">${gameFilter("fGame")}<div class="seg" id="segStat">${STATS.map(([k, n]) => `<button data-v="${k}" aria-pressed="${S.stat === k}">${n}</button>`).join("")}</div></div>`;
+  return head + games.map(g => {
+    const fav = (g.spread || 0) < 0 ? g.homeName : g.awayName;
+    const line = g.spread ? `${esc(fav)} favored by ${Math.abs(g.spread)}` : "No spread posted";
+    const inj = [g.away, g.home].map(t => (D.injuries[t] || []).length ? `<b>${t}:</b> ` + D.injuries[t].map(i => `${esc(i.name)} (${esc(i.status)})`).join(", ") : "").filter(Boolean).join(" &nbsp; ");
+    const ps = D.players.filter(p => p.gid === g.id).sort((a, b) => (b.stats[S.stat].proj || 0) - (a.stats[S.stat].proj || 0));
+    return `<div class="game"><div class="game-h"><h3>${esc(g.awayName)} at ${esc(g.homeName)}</h3><span class="sub">${tm(g.time)} · ${line}${g.total ? ` · ${g.total} total points expected` : ""}</span></div>
+      ${inj ? `<div class="inj">${inj}</div>` : ""}
+      <div class="scroll"><table><thead><tr><th>Player</th><th class="r">Min</th><th class="r">Projection</th><th class="r hide-s">Likely range</th><th class="r">Line</th><th>Chance over</th></tr></thead><tbody>
+      ${ps.map(p => { const s = p.stats[S.stat], key = p.id + "|" + S.stat, open = S.open === key;
+        return `<tr class="prow" data-open="${key}"><td><span class="pname">${esc(p.name)}</span> <span class="sub">${p.team}</span>${p.status === "questionable" ? '<span class="tag q">Questionable</span>' : ""}</td>
+          <td class="r num">${Math.round(p.min)}</td><td class="r num"><b>${s.proj}</b></td><td class="r num hide-s">${s.lo} to ${s.hi}</td>
+          <td class="r num">${s.line != null ? s.line : "-"}</td><td>${s.pOver != null ? bar(s.pOver) : '<span class="sub">no line</span>'}</td></tr>` + (open ? detail(p, S.stat) : ""); }).join("")}
+      </tbody></table></div></div>`;
+  }).join("");
+}
+function detail(p, stat) {
+  const legs = D.legs.filter(l => l.pid === p.id && l.stat === stat).sort((a, b) => (a.kind === "alt") - (b.kind === "alt") || a.num - b.num);
+  const btn = l => `<button class="rung ${S.slip.includes(l.id) ? "on" : ""}" data-add="${l.id}"><b>${esc(l.kind === "alt" ? l.num + "+" : l.kind + " " + l.num)}</b><span class="num">${price(l.price)}</span> · ${pct(l.p)}</button>`;
+  return `<tr class="detail"><td colspan="6">
+    ${p.flags.length ? `<div class="sub" style="margin-bottom:8px">${p.flags.map(esc).join(" · ")}</div>` : ""}
+    ${p.note ? `<div class="sub" style="margin-bottom:8px">${esc(p.note)}</div>` : ""}
+    ${legs.length ? `<div class="sub">Posted bets, with price and the chance of hitting. Tap to add.</div><div class="rungs">${legs.map(btn).join("")}</div>` : '<div class="sub" style="margin-bottom:8px">No bets posted for this stat.</div>'}
+    <div class="scroll"><table class="mini"><thead><tr><th>Date</th><th>Opp</th><th class="r">Min</th><th class="r">Pts</th><th class="r">Reb</th><th class="r">Ast</th><th class="r">3s</th></tr></thead><tbody>
+    ${p.log.map(g => `<tr><td>${g.d.slice(5)}</td><td>${esc(g.opp)}</td><td class="r">${g.min}</td><td class="r">${g.pts}</td><td class="r">${g.reb}</td><td class="r">${g.ast}</td><td class="r">${g.tpm}</td></tr>`).join("")}
+    </tbody></table></div></td></tr>`;
+}
+
+/* ---- left out ---- */
+function renderLeft() {
+  const sk = (S.picks.skip || []).filter(s => L[s.id]);
+  const q = D.players.filter(p => p.status === "questionable");
+  return `<div class="prose">
+    <h3 style="margin-top:0">Good numbers, left out anyway</h3>
+    ${sk.length ? sk.map(s => { const l = L[s.id], p = P[l.pid]; return `<p><b>${esc(p.name)} ${esc(l.text)}</b> <span class="num sub">${price(l.price)}, ${pct(l.p)}</span><br>${esc(s.why)}</p>`; }).join("")
+      : `<p class="sub">${S.picks.by === "ai" ? "Nothing was singled out this time." : "This list is written by Umbra Read. It was not available for this update, so the picks are the model's ranking with the basic rules applied: one bet per player, two per game, no questionable players."}</p>`}
+    <h3>Questionable to play</h3>
+    ${q.length ? q.map(p => `<p><b>${esc(p.name)}</b> <span class="sub">${p.team}</span><br><span class="sub">${esc(p.note || "Listed as questionable.")}</span></p>`).join("") : '<p class="sub">No one on tonight\'s board is listed as questionable.</p>'}
+    <h3>Ruled out</h3>
+    ${Object.entries(D.injuries).map(([t, list]) => { const o = list.filter(i => i.status === "out" || i.status === "doubtful"); return o.length ? `<p><b>${t}:</b> ${o.map(i => esc(i.name)).join(", ")}</p>` : ""; }).join("") || '<p class="sub">None listed.</p>'}
+  </div>`;
+}
+
+/* ---- track record ---- */
+function renderRecord() {
+  const r = D.record || {}, rep = D.report, sr = (r.safest || {}), pr = (r.payout || {});
+  const rate = x => x && x.n ? `${x.hit} of ${x.n} (${pct(x.hit / x.n)})` : "none yet";
+  const names = { pts: "Points", reb: "Rebounds", ast: "Assists", tpm: "Threes", pra: "Pts+Reb+Ast", pr: "Pts+Reb", pa: "Pts+Ast", ra: "Reb+Ast" };
+  const b0 = rep.bets.find(b => b.min_edge === 0) || rep.bets[0];
+  return `<div class="prose">
+    <h3 style="margin-top:0">Published picks</h3>
+    ${r.days ? `<p>Graded slates: ${r.days}. "Most likely" bets hit ${rate(sr)}. "Bigger payout" bets hit ${rate(pr)}.</p>
+      <table><thead><tr><th>Parlay size</th><th class="r">Hit</th></tr></thead><tbody>${Object.entries(r.parlays || {}).map(([n, x]) => `<tr><td>First ${n} "most likely" bets</td><td class="r num">${rate(x)}</td></tr>`).join("")}</tbody></table>
+      ${(r.recent || []).map(d => `<p><b>${d.day}</b><br>${d.legs.map(l => `<span class="${l.res === "hit" ? "res-hit" : l.res === "miss" ? "res-miss" : "sub"}">${esc(l.name)} ${esc(l.text)}${l.got != null ? " (" + l.got + ")" : l.res === "void" ? " (did not play)" : ""}</span>`).join("<br>")}</p>`).join("")}`
+      : `<p class="sub">Each day's picks are saved before the first game starts and graded from the box scores the next morning. Results will show here once the first slate is graded.</p>`}
+    <h3>How the model was tested</h3>
+    <p>The projections come from models trained on ${esc(D.trained_on)}. Every number below is from games the model had not seen when it made the prediction.</p>
+    <p><b>Average miss per player, per game.</b> Lower is better. "Recent average" is roughly what the old version of this page used.</p>
+    <table><thead><tr><th>Stat</th><th class="r">Model</th><th class="r">Recent average</th></tr></thead><tbody>
+    ${Object.entries(rep.avg_miss).map(([k, v]) => `<tr><td>${names[k]}</td><td class="r num">${v.model.toFixed(2)}</td><td class="r num">${v.recent_avg.toFixed(2)}</td></tr>`).join("")}</tbody></table>
+    <p><b>When it says 80%, does it happen 80% of the time?</b> Checked on "this many or more" bets set below the sportsbook's main line, across ${rep.line_games} games with DraftKings lines.</p>
+    <table><thead><tr><th>Chance shown</th><th class="r">How often it hit</th><th class="r">Bets checked</th></tr></thead><tbody>
+    ${rep.ladder.map(x => `<tr><td class="num">${pct(x.said)}</td><td class="r num">${pct(x.happened)}</td><td class="r num">${x.n.toLocaleString()}</td></tr>`).join("")}</tbody></table>
+    <p><b>Against the sportsbook.</b> On ${rep.lines.toLocaleString()} opening over/under lines, overs won ${pct(rep.over_rate)} of the time, so the book shades its lines high. The final chance on this page blends the model with the book's own price. In testing that blend predicted results slightly better than the book's price alone, and betting only where it disagreed with the price won ${pct(b0.won)} of ${b0.bets.toLocaleString()} bets. About ${pct(b0.under_share)} of those were unders. Two cautions: those were opening prices, which are easier to beat than the price near tip-off, and ${rep.line_games} games is a small sample.</p>
+    <h3>What Umbra Read adds</h3>
+    <p>The model sets the chance for every bet. Umbra Read then chooses and orders the legs. It reads the injury report, checks whether a bigger role has actually shown up in recent games, avoids lopsided games where starters may sit, keeps legs that work against each other apart, and writes down the main way each bet loses. It can only choose bets that are on the board at the price shown.</p>
+    <p class="sub">A parlay needs every leg to hit. Five bets at 80% each all hit about a third of the time.</p>
+  </div>`;
+}
+
+function render() {
+  $("#meta").innerHTML = `<span><b>${esc(D.day)}</b></span><span>${D.games.length} game${D.games.length === 1 ? "" : "s"} still to start</span><span>Lines: ${esc(D.book || "not posted yet")}</span><span>Updated ${new Date(D.generated).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>`;
+  $("#segLegs").innerHTML = [2, 3, 4, 5, 6].map(n => `<button data-v="${n}" aria-pressed="${S.legs === n}">${n}</button>`).join("");
+  document.querySelectorAll("#segStyle button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === S.style));
+  document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.t === S.tab));
+  renderSlip();
+  $("#pane").innerHTML = S.tab === "board" ? renderBoard() : S.tab === "players" ? renderPlayers() : S.tab === "left" ? renderLeft() : renderRecord();
+}
+
+/* ---- fresh pick with the user's own key ---- */
+function enforce(items, limit, used) {
+  const out = [], games = {};
+  for (const it of items || []) {
+    const l = L[it.id]; if (!l || used.has(l.pid) || (games[l.gid] || 0) >= 2) continue;
+    used.add(l.pid); games[l.gid] = (games[l.gid] || 0) + 1;
+    out.push({ id: l.id, why: String(it.why || "").replace(/\s*[—–]\s*/g, ", "), risk: String(it.risk || "").replace(/\s*[—–]\s*/g, ", ") });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+async function fresh() {
+  const key = $("#akey").value.trim(), msg = $("#freshMsg");
+  if (!key) { msg.textContent = "Enter an analyst API key first."; return; }
+  try { localStorage.setItem("anthropicKey", key); } catch (e) {}
+  $("#freshBtn").disabled = true; msg.textContent = "Working on it. This takes about 20 seconds.";
+  const steer = $("#steer").value.trim();
+  const prompt = D.prompt.rules + (steer ? "\n\nExtra instructions from the user for this request:\n" + steer : "") + "\n\n" + D.prompt.data;
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST",
+      headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: JSON.stringify({ model: D.prompt.model, max_tokens: 4000, messages: [{ role: "user", content: prompt }] }) });
+    const j = await res.json();
+    if (j.error) throw new Error(j.error.message);
+    const text = (j.content || []).filter(b => b.type === "text").map(b => b.text).join("").replace(/```(?:json)?/g, "");
+    const r = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+    const used = new Set();
+    const safest = enforce(r.safest, 8, used), payout = enforce(r.payout, 6, used);
+    if (!safest.length && !payout.length) throw new Error("No usable picks came back.");
+    S.picks = { by: "ai", at: new Date().toISOString(), safest, payout, skip: (r.skip || []).filter(s => L[s.id]).slice(0, 6), note: String(r.note || "") };
+    msg.textContent = "Done."; build();
+  } catch (e) { msg.textContent = "That did not work: " + e.message; }
+  $("#freshBtn").disabled = false;
+}
+
+document.addEventListener("click", e => {
+  const t = e.target.closest("button, tr.prow"); if (!t) return;
+  if (t.dataset.add) { toggle(t.dataset.add); return; }
+  if (t.dataset.rm) { toggle(t.dataset.rm); return; }
+  if (t.dataset.open) { S.open = S.open === t.dataset.open ? null : t.dataset.open; render(); return; }
+  if (t.parentElement.id === "segLegs") { S.legs = +t.dataset.v; if (S.built) build(); else render(); return; }
+  if (t.parentElement.id === "segStyle") { S.style = t.dataset.v; if (S.built) build(); else render(); return; }
+  if (t.parentElement.id === "segStat") { S.stat = t.dataset.v; S.open = null; render(); return; }
+  if (t.parentElement.id === "tabs") { S.tab = t.dataset.t; render(); return; }
+  if (t.id === "buildBtn") build();
+  if (t.id === "clearBtn") { S.slip = []; S.built = null; render(); }
+  if (t.id === "freshBtn") fresh();
+});
+document.addEventListener("change", e => {
+  if (e.target.id === "fGame") { S.game = e.target.value; render(); }
+  if (e.target.id === "fStat") { S.bstat = e.target.value; render(); }
+  if (e.target.id === "stake") renderSlip();
 });
 
-function updateKeyStatus() {
-  const oddsStatus = document.getElementById('odds-status');
-  const anthropicStatus = document.getElementById('anthropic-status');
-  
-  if (state.oddsKey) {
-    oddsStatus.innerHTML = '<span class="check">✓</span> Odds';
-  } else {
-    oddsStatus.innerHTML = '<span class="x">✗</span> Odds';
-  }
-  
-  if (state.anthropicKey) {
-    anthropicStatus.innerHTML = '<span class="check">✓</span> AI';
-  } else {
-    anthropicStatus.innerHTML = '<span class="x">✗</span> AI';
-  }
-}
-
-function toggleApiSection() {
-  const section = document.getElementById('api-section');
-  section.classList.toggle('collapsed');
-}
-
-function togglePlayerDropdown(playerId, propType) {
-  const key = `${playerId}_${propType}`;
-  if (state.expandedPlayers.has(key)) {
-    state.expandedPlayers.delete(key);
-  } else {
-    state.expandedPlayers.add(key);
-  }
-  renderGames();
-}
-
-function setupToggles() {
-  document.querySelectorAll('.toggle-group').forEach(group => {
-    group.querySelectorAll('.toggle-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        group.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        
-        const val = btn.dataset.val;
-        if (group.id === 'sample-toggle') state.sampleSize = parseInt(val);
-        if (group.id === 'prop-toggle') state.propType = val;
-        if (group.id === 'hitrate-toggle') state.minHitRate = parseInt(val);
-        
-        // Re-render if we have data
-        if (state.games.length > 0) {
-          renderGames();
-          updateStats();
-        }
-      });
-    });
-  });
-}
-
-function setLegCount(count) {
-  state.legCount = count;
-  document.querySelectorAll('.leg-toggle').forEach(btn => {
-    btn.classList.toggle('active', parseInt(btn.dataset.legs) === count);
-  });
-}
-
-function saveKeys() {
-  state.oddsKey = document.getElementById('odds-key').value.trim();
-  state.anthropicKey = document.getElementById('anthropic-key').value.trim();
-  localStorage.setItem('oddsApiKey', state.oddsKey);
-  localStorage.setItem('anthropicKey', state.anthropicKey);
-  updateKeyStatus();
-  
-  // Collapse the section after saving
-  document.getElementById('api-section').classList.add('collapsed');
-}
-
-// ============ DATA LOADING ============
-async function loadGames() {
-  const content = document.getElementById('content');
-  content.innerHTML = `<div class="loading"><div class="spinner"></div>Loading today's games...<div class="loading-status" id="load-status"></div></div>`;
-  
-  const updateStatus = (msg) => {
-    const el = document.getElementById('load-status');
-    if (el) el.textContent = msg;
-  };
-  
-  try {
-    // Get today's date
-    const today = new Date();
-    const dateStr = today.toISOString().split('T')[0].replace(/-/g, '');
-    
-    // Fetch games from ESPN
-    const gamesRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${dateStr}`);
-    const gamesData = await gamesRes.json();
-    
-    if (!gamesData.events || gamesData.events.length === 0) {
-      content.innerHTML = `<div class="empty-state"><h3>No games today</h3><p>Check back on a game day!</p></div>`;
-      return;
-    }
-    
-    state.games = gamesData.events.map(e => {
-      const comp = e.competitions[0];
-      const home = comp.competitors.find(c => c.homeAway === 'home');
-      const away = comp.competitors.find(c => c.homeAway === 'away');
-      return {
-        id: e.id,
-        name: e.name,
-        date: e.date,
-        status: e.status.type.name,
-        home: {
-          id: String(home.team.id),
-          name: home.team.displayName,
-          abbr: home.team.abbreviation
-        },
-        away: {
-          id: String(away.team.id),
-          name: away.team.displayName,
-          abbr: away.team.abbreviation
-        }
-      };
-    });
-    
-    console.log('Games loaded:', state.games.length);
-    updateStatus(`Found ${state.games.length} games today`);
-    
-    loadTeamStats();
-    
-    updateStatus('Loading player stats from box scores...');
-    await loadPlayerDataFromBoxScores(updateStatus);
-    
-    // Load prop lines if we have API key
-    if (state.oddsKey) {
-      updateStatus('Loading prop lines...');
-      await loadPropLines();
-    }
-    
-    // Show UI elements
-    document.getElementById('stats-bar').style.display = 'grid';
-    document.getElementById('find-row').style.display = 'flex';
-    
-    // Render
-    renderGames();
-    updateStats();
-    
-  } catch (err) {
-    console.error(err);
-    content.innerHTML = `<div class="empty-state"><h3>Error loading games</h3><p>${err.message}</p></div>`;
-  }
-}
-
-function loadTeamStats() {
-  const fastTeams = ['IND', 'ATL', 'SAC', 'MIL', 'MIN', 'PHX', 'UTA', 'POR'];
-  const slowTeams = ['MIA', 'NYK', 'CLE', 'DEN', 'LAC', 'MEM', 'ORL', 'HOU'];
-  const softDefense = ['WAS', 'POR', 'SAS', 'UTA', 'DET', 'CHI', 'TOR', 'BKN'];
-  const toughDefense = ['CLE', 'BOS', 'MIA', 'OKC', 'MIN', 'LAL', 'NYK', 'MEM'];
-  
-  state.teamStats = {};
-  
-  state.games.forEach(game => {
-    [game.home, game.away].forEach(team => {
-      let pace = 'avg';
-      if (fastTeams.includes(team.abbr)) pace = 'fast';
-      else if (slowTeams.includes(team.abbr)) pace = 'slow';
-      
-      let dvp = 'neutral';
-      if (softDefense.includes(team.abbr)) dvp = 'soft';
-      else if (toughDefense.includes(team.abbr)) dvp = 'tough';
-      
-      state.teamStats[team.id] = { pace, dvp, abbr: team.abbr };
-    });
-  });
-}
-
-async function loadPlayerDataFromBoxScores(updateStatus) {
-  const playerMap = {};
-  let gamesLoaded = 0;
-  const maxGames = 100;
-  
-  for (let daysAgo = 1; daysAgo <= 21 && gamesLoaded < maxGames; daysAgo++) {
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
-    const dateStr = d.toISOString().split('T')[0].replace(/-/g, '');
-    
-    try {
-      const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${dateStr}`);
-      const data = await res.json();
-      
-      for (const event of (data.events || [])) {
-        if (event.status?.type?.name !== 'STATUS_FINAL') continue;
-        if (gamesLoaded >= maxGames) break;
-        
-        try {
-          const boxRes = await fetch(`https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event=${event.id}`);
-          const boxData = await boxRes.json();
-          
-          const header = boxData.header?.competitions?.[0];
-          const homeTeamId = String(header?.competitors?.find(c => c.homeAway === 'home')?.id || '');
-          const gameDate = event.date?.split('T')[0] || '';
-          
-          // Get opponent abbreviations
-          const competitors = header?.competitors || [];
-          const homeAbbr = competitors.find(c => c.homeAway === 'home')?.team?.abbreviation || '?';
-          const awayAbbr = competitors.find(c => c.homeAway === 'away')?.team?.abbreviation || '?';
-          
-          for (const teamBox of (boxData.boxscore?.players || [])) {
-            const teamId = String(teamBox.team?.id || '');
-            const teamAbbr = teamBox.team?.abbreviation || '?';
-            const isHomeTeam = teamId === homeTeamId;
-            const opponent = isHomeTeam ? awayAbbr : homeAbbr;
-            
-            const stats = teamBox.statistics?.[0];
-            if (!stats?.athletes) continue;
-            
-            for (const a of stats.athletes) {
-              const athlete = a.athlete;
-              const s = a.stats || [];
-              if (!athlete?.id || s.length < 7) continue;
-              
-              const minutes = parseInt(s[0]) || 0;
-              if (minutes < 10) continue;
-              
-              const points = parseInt(s[1]) || 0;
-              const rebounds = parseInt(s[5]) || 0;
-              const assists = parseInt(s[6]) || 0;
-              
-              let threes = 0;
-              if (s[3] && s[3].includes('-')) {
-                threes = parseInt(s[3].split('-')[0]) || 0;
-              }
-              
-              const pra = points + rebounds + assists;
-              
-              const playerId = String(athlete.id);
-              
-              if (!playerMap[playerId]) {
-                playerMap[playerId] = {
-                  id: playerId,
-                  name: athlete.displayName,
-                  team: teamAbbr,
-                  teamId: teamId,
-                  games: []
-                };
-              }
-              
-              playerMap[playerId].games.push({ 
-                points, rebounds, assists, threes, pra, minutes, 
-                isHome: isHomeTeam, 
-                opponent,
-                date: gameDate
-              });
-            }
-          }
-          
-          gamesLoaded++;
-          if (gamesLoaded % 10 === 0) {
-            updateStatus(`Loaded ${gamesLoaded}/${maxGames} box scores...`);
-          }
-          
-        } catch (e) {
-          console.error(`Box score error:`, e);
-        }
-      }
-    } catch (e) {
-      console.error(`Date error:`, e);
-    }
-  }
-  
-  console.log(`Total players found: ${Object.keys(playerMap).length}`);
-  
-  // Match players to today's games
-  state.players = [];
-  
-  const todayTeamIds = new Set();
-  state.games.forEach(g => {
-    todayTeamIds.add(g.home.id);
-    todayTeamIds.add(g.away.id);
-  });
-  
-  for (const game of state.games) {
-    for (const p of Object.values(playerMap)) {
-      if (p.games.length < 2) continue;
-      
-      const isHome = p.teamId === game.home.id;
-      const isAway = p.teamId === game.away.id;
-      
-      if (!isHome && !isAway) continue;
-      
-      const calcAvg = (games, stat) => games.reduce((sum, g) => sum + g[stat], 0) / games.length;
-      
-      const l5 = p.games.slice(0, 5);
-      const l10 = p.games.slice(0, 10);
-      const homeGames = p.games.filter(g => g.isHome).slice(0, 10);
-      const awayGames = p.games.filter(g => !g.isHome).slice(0, 10);
-      
-      const player = {
-        id: p.id,
-        name: p.name,
-        team: p.team,
-        teamId: p.teamId,
-        teamName: isHome ? game.home.name : game.away.name,
-        opponent: isHome ? game.away.abbr : game.home.abbr,
-        oppId: isHome ? game.away.id : game.home.id,
-        isHome: isHome,
-        gameId: game.id,
-        gameName: game.name,
-        gameTime: game.date,
-        gameLogs: p.games,
-        gamesAvailable: p.games.length,
-        stats: {
-          l5: {
-            points: calcAvg(l5, 'points'),
-            rebounds: calcAvg(l5, 'rebounds'),
-            assists: calcAvg(l5, 'assists'),
-            threes: calcAvg(l5, 'threes'),
-            pra: calcAvg(l5, 'pra'),
-            minutes: calcAvg(l5, 'minutes')
-          },
-          l10: {
-            points: l10.length >= 5 ? calcAvg(l10, 'points') : calcAvg(l5, 'points'),
-            rebounds: l10.length >= 5 ? calcAvg(l10, 'rebounds') : calcAvg(l5, 'rebounds'),
-            assists: l10.length >= 5 ? calcAvg(l10, 'assists') : calcAvg(l5, 'assists'),
-            threes: l10.length >= 5 ? calcAvg(l10, 'threes') : calcAvg(l5, 'threes'),
-            pra: l10.length >= 5 ? calcAvg(l10, 'pra') : calcAvg(l5, 'pra'),
-            minutes: l10.length >= 5 ? calcAvg(l10, 'minutes') : calcAvg(l5, 'minutes')
-          },
-          home: homeGames.length >= 2 ? {
-            points: calcAvg(homeGames, 'points'),
-            rebounds: calcAvg(homeGames, 'rebounds'),
-            assists: calcAvg(homeGames, 'assists'),
-            threes: calcAvg(homeGames, 'threes'),
-            pra: calcAvg(homeGames, 'pra')
-          } : null,
-          away: awayGames.length >= 2 ? {
-            points: calcAvg(awayGames, 'points'),
-            rebounds: calcAvg(awayGames, 'rebounds'),
-            assists: calcAvg(awayGames, 'assists'),
-            threes: calcAvg(awayGames, 'threes'),
-            pra: calcAvg(awayGames, 'pra')
-          } : null
-        },
-        props: {}
-      };
-      
-      state.players.push(player);
-    }
-  }
-  
-  state.players.sort((a, b) => (b.stats.l5.minutes || 0) - (a.stats.l5.minutes || 0));
-  console.log(`Players for today's games: ${state.players.length}`);
-}
-
-async function loadPropLines() {
-  if (!state.oddsKey) return;
-  
-  try {
-    const eventsRes = await fetch(`https://api.the-odds-api.com/v4/sports/basketball_nba/events?apiKey=${state.oddsKey}`);
-    const events = await eventsRes.json();
-    
-    if (!Array.isArray(events)) {
-      console.error('Events API error:', events);
-      return;
-    }
-    
-    console.log(`Found ${events.length} events for props`);
-    
-    const propMap = {};
-    
-    // Markets to fetch - now includes threes and PRA
-    const markets = [
-      'player_points', 
-      'player_rebounds', 
-      'player_assists',
-      'player_threes',
-      'player_points_rebounds_assists'
-    ];
-    
-    for (const event of events) {
-      for (const market of markets) {
-        try {
-          const res = await fetch(`https://api.the-odds-api.com/v4/sports/basketball_nba/events/${event.id}/odds?apiKey=${state.oddsKey}&regions=us&markets=${market}&oddsFormat=american`);
-          const data = await res.json();
-          
-          if (data.bookmakers) {
-            for (const book of data.bookmakers) {
-              for (const mkt of (book.markets || [])) {
-                // Map market key to our prop type
-                let propType = mkt.key.replace('player_', '');
-                if (propType === 'points_rebounds_assists') propType = 'pra';
-                
-                for (const outcome of (mkt.outcomes || [])) {
-                  if (outcome.name !== 'Over') continue;
-                  const key = `${outcome.description}_${propType}`;
-                  if (!propMap[key] || book.key === 'fanduel' || (book.key === 'draftkings' && !propMap[key].fromFD)) {
-                    propMap[key] = { 
-                      line: outcome.point, 
-                      odds: outcome.price,
-                      fromFD: book.key === 'fanduel'
-                    };
-                  }
-                }
-              }
-            }
-          }
-        } catch (e) {
-          console.error(`Props error for ${market}:`, e);
-        }
-      }
-    }
-    
-    console.log(`Props loaded: ${Object.keys(propMap).length}`);
-    
-    // Match to players
-    let matched = 0;
-    for (const p of state.players) {
-      p.props = {
-        points: propMap[`${p.name}_points`] || null,
-        rebounds: propMap[`${p.name}_rebounds`] || null,
-        assists: propMap[`${p.name}_assists`] || null,
-        threes: propMap[`${p.name}_threes`] || null,
-        pra: propMap[`${p.name}_pra`] || null
-      };
-      if (p.props.points || p.props.rebounds || p.props.assists || p.props.threes || p.props.pra) matched++;
-    }
-    
-    console.log(`Matched props to ${matched} players`);
-    
-  } catch (err) {
-    console.error('Props error:', err);
-  }
-}
-
-// ============ RENDERING ============
-function renderGames() {
-  const content = document.getElementById('content');
-  
-  const gameMap = {};
-  state.games.forEach(g => {
-    gameMap[g.id] = { ...g, homePlayers: [], awayPlayers: [] };
-  });
-  
-  state.players.forEach(p => {
-    if (gameMap[p.gameId]) {
-      if (p.isHome) gameMap[p.gameId].homePlayers.push(p);
-      else gameMap[p.gameId].awayPlayers.push(p);
-    }
-  });
-  
-  let html = '<div class="games-grid">';
-  
-  Object.values(gameMap).forEach(game => {
-    const homeStats = state.teamStats[game.home.id] || {};
-    const awayStats = state.teamStats[game.away.id] || {};
-    const pace = (homeStats.pace === 'fast' || awayStats.pace === 'fast') ? 'fast' : 
-                 (homeStats.pace === 'slow' && awayStats.pace === 'slow') ? 'slow' : 'avg';
-    const paceLabel = pace === 'fast' ? 'FAST PACE' : pace === 'slow' ? 'SLOW PACE' : 'AVG PACE';
-    
-    const homeDvp = state.teamStats[game.away.id]?.dvp || 'neutral';
-    const awayDvp = state.teamStats[game.home.id]?.dvp || 'neutral';
-    
-    html += `
-      <div class="game-card">
-        <div class="game-header">
-          <div class="game-teams">
-            ${game.away.name} <span>@</span> ${game.home.name}
-          </div>
-          <div class="game-meta">
-            <span class="game-time">${formatTime(game.date)}</span>
-            <span class="pace-badge pace-${pace}">${paceLabel}</span>
-          </div>
-        </div>
-        <div class="game-body">
-          ${renderTeamSection(game.home, game.homePlayers, homeDvp, true)}
-          ${renderTeamSection(game.away, game.awayPlayers, awayDvp, false)}
-        </div>
-      </div>
-    `;
-  });
-  
-  html += '</div>';
-  content.innerHTML = html || '<div class="empty-state"><h3>No player data</h3></div>';
-}
-
-function renderTeamSection(team, players, dvp, isHome) {
-  const dvpClass = dvp === 'soft' ? 'dvp-soft' : dvp === 'tough' ? 'dvp-tough' : 'dvp-neutral';
-  const dvpLabel = dvp === 'soft' ? '🟢 SOFT MATCHUP' : dvp === 'tough' ? '🔴 TOUGH MATCHUP' : '⚪ NEUTRAL';
-  const sampleKey = `l${state.sampleSize}`;
-  
-  // Get prop types to check
-  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists', 'threes', 'pra'] : [state.propType];
-  
-  let playerRows = [];
-  
-  players.forEach(p => {
-    propTypes.forEach(propType => {
-      const prop = p.props?.[propType];
-      
-      if (!prop) {
-        if (state.propType !== 'all' && p.stats?.l5?.minutes >= 15) {
-          playerRows.push({ player: p, propType, prop: null });
-        }
-        return;
-      }
-      
-      if (state.minHitRate > 0) {
-        const hitRate = calculateHitRate(p, propType, prop.line);
-        if (hitRate.rate < state.minHitRate) return;
-      }
-      
-      playerRows.push({ player: p, propType, prop });
-    });
-  });
-  
-  playerRows.sort((a, b) => {
-    if (!a.prop && !b.prop) return 0;
-    if (!a.prop) return 1;
-    if (!b.prop) return -1;
-    
-    const avgA = a.player.stats?.[sampleKey]?.[a.propType] || 0;
-    const avgB = b.player.stats?.[sampleKey]?.[b.propType] || 0;
-    const diffA = avgA - a.prop.line;
-    const diffB = avgB - b.prop.line;
-    return diffB - diffA;
-  });
-  
-  playerRows = playerRows.slice(0, 10);
-  
-  let html = `
-    <div class="team-section">
-      <div class="team-header">
-        <div class="team-name">
-          ${team.name}
-          ${isHome ? '<span class="home-badge">HOME</span>' : ''}
-        </div>
-        <div class="team-dvp ${dvpClass}">${dvpLabel}</div>
-      </div>
-      <div class="player-grid">
-  `;
-  
-  if (playerRows.length === 0) {
-    html += `<div style="color:var(--text3);font-size:12px;padding:10px;">No players match current filters</div>`;
-  } else {
-    playerRows.forEach(({ player, propType, prop }) => {
-      html += renderPlayerRow(player, propType, prop);
-    });
-  }
-  
-  html += '</div></div>';
-  return html;
-}
-
-function renderPlayerRow(player, propType, prop) {
-  const sampleKey = `l${state.sampleSize}`;
-  const expandKey = `${player.id}_${propType}`;
-  const isExpanded = state.expandedPlayers.has(expandKey);
-  
-  const avg = player.stats[sampleKey]?.[propType] || 0;
-  const line = prop?.line;
-  const odds = prop?.odds;
-  
-  let hitRate = { rate: 0, hits: 0, total: 0 };
-  if (line !== null && line !== undefined) {
-    hitRate = calculateHitRate(player, propType, line);
-  }
-  
-  const isValue = line !== null && line !== undefined && isValuePick(player, propType, prop);
-  const valueClass = isValue ? 'value-pick' : '';
-  const expandedClass = isExpanded ? 'expanded' : '';
-  
-  const splitKey = player.isHome ? 'home' : 'away';
-  const splitAvg = player.stats[splitKey]?.[propType];
-  const splitDiff = splitAvg ? (splitAvg - avg).toFixed(1) : null;
-  const splitLabel = splitDiff > 0 ? `+${splitDiff}` : splitDiff;
-  
-  const hrClass = hitRate.rate >= 70 ? '' : hitRate.rate >= 50 ? 'medium' : 'low';
-  
-  const inParlay = state.parlay.some(leg => leg.playerId === player.id && leg.propType === propType);
-  const addBtnClass = inParlay ? 'add-btn added' : 'add-btn';
-  const addBtnText = inParlay ? '✓ ADDED' : '+ ADD';
-  
-  const propTypeBadge = state.propType === 'all' ? 
-    `<span class="prop-type-badge">${PROP_LABELS[propType] || propType.toUpperCase()}</span>` : '';
-  
-  // Build game log dropdown
-  const gameLogHtml = renderGameLog(player, propType, line);
-  
-  return `
-    <div class="player-row ${valueClass} ${expandedClass}" data-player-id="${player.id}">
-      <div class="player-main" onclick="togglePlayerDropdown('${player.id}', '${propType}')">
-        <div class="player-info">
-          <div class="player-name">
-            ${player.name}
-            ${propTypeBadge}
-            ${isValue ? '<span class="value-badge">VALUE</span>' : ''}
-            <span class="expand-icon">▼</span>
-          </div>
-          <div class="player-stats">
-            <div class="player-stat">
-              <span class="player-stat-label">L${state.sampleSize} AVG</span>
-              <span class="player-stat-value ${line !== undefined && avg > line ? 'above' : line !== undefined && avg < line ? 'below' : ''}">${avg.toFixed(1)}</span>
-            </div>
-            ${line !== undefined ? `
-            <div class="player-stat">
-              <span class="player-stat-label">LINE</span>
-              <span class="player-stat-value">${line}</span>
-            </div>
-            <div class="player-stat">
-              <span class="player-stat-label">HIT RATE</span>
-              <div class="hit-rate-container">
-                <div class="hit-rate-bar">
-                  <div class="hit-rate-fill ${hrClass}" style="width:${hitRate.rate}%"></div>
-                </div>
-                <span class="hit-rate-text">${hitRate.hits}/${hitRate.total}</span>
-              </div>
-            </div>
-            ` : `
-            <div class="player-stat">
-              <span class="player-stat-label">LINE</span>
-              <span class="player-stat-value" style="color:var(--text3)">--</span>
-            </div>
-            `}
-            ${splitDiff ? `
-            <div class="player-stat">
-              <span class="player-stat-label">${player.isHome ? 'HOME' : 'AWAY'}</span>
-              <span class="player-stat-value ${parseFloat(splitDiff) > 0 ? 'above' : parseFloat(splitDiff) < 0 ? 'below' : ''}">${splitLabel}</span>
-            </div>
-            ` : ''}
-            <div class="player-stat">
-              <span class="player-stat-label">MIN</span>
-              <span class="player-stat-value">${(player.stats[sampleKey]?.minutes || 0).toFixed(0)}</span>
-            </div>
-          </div>
-        </div>
-        <div class="prop-actions" onclick="event.stopPropagation()">
-          ${line !== undefined ? `
-          <div class="prop-line">O ${line} <strong>${PROP_LABELS[propType] || propType.toUpperCase()}</strong></div>
-          <div class="prop-odds">${formatOdds(odds)}</div>
-          <button class="${addBtnClass}" onclick="toggleParlay('${player.id}', '${propType}', ${line}, ${odds}, '${player.name.replace(/'/g, "\\'")}')">
-            ${addBtnText}
-          </button>
-          ` : `
-          <div class="prop-line" style="color:var(--text3)">No line available</div>
-          `}
-        </div>
-      </div>
-      <div class="player-dropdown">
-        ${gameLogHtml}
-      </div>
-    </div>
-  `;
-}
-
-function renderGameLog(player, propType, line) {
-  const logs = player.gameLogs.slice(0, 5);
-  if (logs.length === 0) return '<div style="color:var(--text3);font-size:11px;">No recent games</div>';
-  
-  const propLabel = PROP_LABELS[propType] || propType.toUpperCase();
-  
-  let html = `
-    <div class="dropdown-title">LAST 5 GAMES - ${propLabel}</div>
-    <table class="game-log-table">
-      <thead>
-        <tr>
-          <th>DATE</th>
-          <th>OPP</th>
-          <th>MIN</th>
-          <th>PTS</th>
-          <th>REB</th>
-          <th>AST</th>
-          <th>3PT</th>
-          <th>PRA</th>
-          ${line !== undefined ? `<th>${propLabel}</th>` : ''}
-        </tr>
-      </thead>
-      <tbody>
-  `;
-  
-  logs.forEach(g => {
-    const statVal = g[propType] || 0;
-    const hitClass = line !== undefined ? (statVal > line ? 'hit' : 'miss') : '';
-    const dateStr = g.date ? new Date(g.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '-';
-    const homeAway = g.isHome ? 'vs' : '@';
-    
-    html += `
-      <tr>
-        <td>${dateStr}</td>
-        <td>${homeAway} ${g.opponent || '?'}</td>
-        <td>${g.minutes}</td>
-        <td>${g.points}</td>
-        <td>${g.rebounds}</td>
-        <td>${g.assists}</td>
-        <td>${g.threes}</td>
-        <td>${g.pra}</td>
-        ${line !== undefined ? `<td class="${hitClass}">${statVal}</td>` : ''}
-      </tr>
-    `;
-  });
-  
-  html += '</tbody></table>';
-  return html;
-}
-
-// ============ HELPERS ============
-function calculateHitRate(player, propType, line) {
-  if (!player.gameLogs || player.gameLogs.length === 0) return { rate: 0, hits: 0, total: 0 };
-  
-  // Always use last 10 games for hit rate consistency
-  const logs = player.gameLogs.slice(0, 10);
-  const hits = logs.filter(g => g[propType] > line).length;
-  
-  return {
-    rate: Math.round((hits / logs.length) * 100),
-    hits: hits,
-    total: logs.length
-  };
-}
-
-function isValuePick(player, propType, prop) {
-  const sampleKey = `l${state.sampleSize}`;
-  const avg = player.stats[sampleKey]?.[propType] || 0;
-  
-  if (!prop) return false;
-  
-  return avg > prop.line && prop.odds >= -400;
-}
-
-function formatTime(dateStr) {
-  const d = new Date(dateStr);
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-}
-
-function formatOdds(odds) {
-  if (odds === undefined || odds === null) return '';
-  return odds > 0 ? `+${odds}` : odds.toString();
-}
-
-function updateStats() {
-  document.getElementById('stat-games').textContent = state.games.length;
-  document.getElementById('stat-players').textContent = state.players.length;
-  
-  let valuePicks = 0;
-  let highHitRate = 0;
-  
-  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists', 'threes', 'pra'] : [state.propType];
-  
-  state.players.forEach(p => {
-    propTypes.forEach(propType => {
-      const prop = p.props?.[propType];
-      if (prop) {
-        if (isValuePick(p, propType, prop)) valuePicks++;
-        const hr = calculateHitRate(p, propType, prop.line);
-        if (hr.rate >= 70) highHitRate++;
-      }
-    });
-  });
-  
-  document.getElementById('stat-value').textContent = valuePicks;
-  document.getElementById('stat-hitrate').textContent = highHitRate;
-}
-
-// ============ PARLAY MANAGEMENT ============
-function toggleParlay(playerId, propType, line, odds, playerName) {
-  const idx = state.parlay.findIndex(leg => leg.playerId === playerId && leg.propType === propType);
-  
-  if (idx >= 0) {
-    state.parlay.splice(idx, 1);
-  } else {
-    state.parlay.push({ playerId, propType, line, odds, playerName });
-  }
-  
-  renderParlay();
-  renderGames();
-}
-
-function clearParlay() {
-  state.parlay = [];
-  renderParlay();
-  renderGames();
-  document.getElementById('ai-box').style.display = 'none';
-}
-
-function renderParlay() {
-  const container = document.getElementById('parlay-legs');
-  const summary = document.getElementById('parlay-summary');
-  const countEl = document.getElementById('leg-count');
-  const analyzeBtn = document.getElementById('analyze-btn');
-  
-  if (state.parlay.length === 0) {
-    container.innerHTML = '<div class="parlay-empty">Add players below to build your parlay</div>';
-    summary.style.display = 'none';
-    analyzeBtn.style.display = 'none';
-    countEl.textContent = '0 legs';
-    return;
-  }
-  
-  let html = '';
-  state.parlay.forEach((leg, idx) => {
-    const propLabel = PROP_LABELS[leg.propType] || leg.propType.toUpperCase();
-    html += `
-      <div class="parlay-leg">
-        <span class="player">${leg.playerName}</span>
-        <span class="prop">O ${leg.line} ${propLabel}</span>
-        <span class="odds">${formatOdds(leg.odds)}</span>
-        <button class="remove" onclick="removeLeg(${idx})">×</button>
-      </div>
-    `;
-  });
-  
-  container.innerHTML = html;
-  summary.style.display = 'flex';
-  analyzeBtn.style.display = 'block';
-  countEl.textContent = `${state.parlay.length} leg${state.parlay.length > 1 ? 's' : ''}`;
-  
-  const combinedOdds = calculateParlayOdds(state.parlay.map(l => l.odds));
-  document.getElementById('parlay-odds').textContent = formatOdds(combinedOdds);
-}
-
-function removeLeg(idx) {
-  state.parlay.splice(idx, 1);
-  renderParlay();
-  renderGames();
-}
-
-function calculateParlayOdds(oddsArray) {
-  let multiplier = 1;
-  oddsArray.forEach(odds => {
-    if (odds > 0) multiplier *= (odds / 100) + 1;
-    else multiplier *= (100 / Math.abs(odds)) + 1;
-  });
-  
-  const american = multiplier >= 2 
-    ? Math.round((multiplier - 1) * 100)
-    : Math.round(-100 / (multiplier - 1));
-  
-  return american;
-}
-
-// ============ AUTO FIND VALUE ============
-function autoFindValue() {
-  const propTypes = state.propType === 'all' ? ['points', 'rebounds', 'assists', 'threes', 'pra'] : [state.propType];
-  
-  let allValuePicks = [];
-  
-  state.players.forEach(p => {
-    propTypes.forEach(propType => {
-      const prop = p.props?.[propType];
-      if (!prop) return;
-      
-      if (isValuePick(p, propType, prop)) {
-        const hr = calculateHitRate(p, propType, prop.line);
-        const sampleKey = `l${state.sampleSize}`;
-        const avg = p.stats[sampleKey]?.[propType] || 0;
-        const edge = avg - prop.line;
-        
-        allValuePicks.push({
-          player: p,
-          propType,
-          prop,
-          hitRate: hr.rate,
-          edge
-        });
-      }
-    });
-  });
-  
-  if (allValuePicks.length === 0) {
-    alert('No value picks found with current filters. Try adjusting settings.');
-    return;
-  }
-  
-  allValuePicks.sort((a, b) => {
-    if (b.hitRate !== a.hitRate) return b.hitRate - a.hitRate;
-    return b.edge - a.edge;
-  });
-  
-  const topPicks = allValuePicks.slice(0, state.legCount);
-  
-  state.parlay = topPicks.map(pick => ({
-    playerId: pick.player.id,
-    propType: pick.propType,
-    line: pick.prop.line,
-    odds: pick.prop.odds,
-    playerName: pick.player.name
-  }));
-  
-  renderParlay();
-  renderGames();
-}
-
-// ============ AI ANALYSIS ============
-async function analyzeParlay() {
-  if (!state.anthropicKey) {
-    alert('Enter your Anthropic API key to use AI analysis');
-    return;
-  }
-  
-  if (state.parlay.length === 0) {
-    alert('Add some picks to your parlay first');
-    return;
-  }
-  
-  const aiBox = document.getElementById('ai-box');
-  const aiContent = document.getElementById('ai-content');
-  
-  aiBox.style.display = 'block';
-  aiContent.innerHTML = '<em>Analyzing your parlay...</em>';
-  
-  const sampleKey = `l${state.sampleSize}`;
-  
-  const legDetails = state.parlay.map(leg => {
-    const player = state.players.find(p => p.id === leg.playerId);
-    if (!player) return null;
-    
-    const avg = player.stats[sampleKey]?.[leg.propType] || 0;
-    const hr = calculateHitRate(player, leg.propType, leg.line);
-    const splitKey = player.isHome ? 'home' : 'away';
-    const splitAvg = player.stats[splitKey]?.[leg.propType];
-    const dvp = state.teamStats[player.oppId]?.dvp || 'neutral';
-    const propLabel = PROP_LABELS[leg.propType] || leg.propType.toUpperCase();
-    
-    return {
-      name: player.name,
-      team: player.team,
-      opponent: player.opponent,
-      isHome: player.isHome,
-      prop: `Over ${leg.line} ${propLabel}`,
-      odds: leg.odds,
-      avg: avg.toFixed(1),
-      hitRate: `${hr.hits}/${hr.total} (${hr.rate}%)`,
-      splitAvg: splitAvg?.toFixed(1) || 'N/A',
-      matchup: dvp
-    };
-  }).filter(Boolean);
-  
-  const combinedOdds = formatOdds(calculateParlayOdds(state.parlay.map(l => l.odds)));
-  
-  const prompt = `You are an expert NBA sports betting analyst. Analyze this parlay and give a brief assessment (3-4 sentences max). Be direct and actionable.
-
-Parlay Legs:
-${legDetails.map((l, i) => `${i+1}. ${l.name} (${l.team} vs ${l.opponent}, ${l.isHome ? 'HOME' : 'AWAY'})
-   - Prop: ${l.prop} @ ${l.odds > 0 ? '+' : ''}${l.odds}
-   - L${state.sampleSize} Avg: ${l.avg} | Hit Rate: ${l.hitRate}
-   - ${l.isHome ? 'Home' : 'Away'} Split: ${l.splitAvg}
-   - Matchup: ${l.matchup} defense`).join('\n\n')}
-
-Combined odds: ${combinedOdds}
-
-Give a confidence rating (1-10), note the strongest and weakest leg, and any concerns.`;
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.anthropicKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 300,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    
-    const data = await res.json();
-    
-    if (data.content && data.content[0]) {
-      aiContent.innerHTML = data.content[0].text.replace(/\n/g, '<br>');
-    } else if (data.error) {
-      aiContent.innerHTML = `<em>Error: ${data.error.message}</em>`;
-    } else {
-      aiContent.innerHTML = '<em>Could not get analysis. Check your API key.</em>';
-    }
-  } catch (err) {
-    console.error('AI analysis error:', err);
-    aiContent.innerHTML = `<em>Error: ${err.message}</em>`;
-  }
-}
+function start(j) { D = j; index(); if ((D.picks.safest || []).length) build(); else render(); }
+try { $("#akey").value = localStorage.getItem("anthropicKey") || ""; } catch (e) {}
+$("#pane").innerHTML = '<div class="empty" style="padding:40px">Loading tonight\'s board.</div>';
+fetch("nba_parlay_data.json?t=" + Date.now()).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(start)
+  .catch(() => { $("#pane").innerHTML = '<div class="empty" style="padding:40px">Could not load the board. If you opened this file straight from your computer, open it from the Intel Suite site instead, since the page reads its data from a file next to it.</div>'; });
 </script>
 </body>
 </html>
