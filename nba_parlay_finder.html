@@ -46,8 +46,9 @@ h2, h3 { font-family: var(--f-display); text-transform: uppercase; letter-spacin
 .card-h { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .card-h h2 { font-size: 18px; font-weight: 700; }
 .card-b { padding: 12px 14px; }
-.side { position: sticky; top: 12px; display: grid; gap: 12px; }
-@media (max-width: 980px) { .side { position: static; } }
+/* the left column stays in view and scrolls on its own when the parlay is taller than the window */
+.side { position: sticky; top: 12px; display: grid; gap: 12px; max-height: calc(100vh - 24px); overflow-y: auto; overscroll-behavior: contain; padding-right: 4px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+@media (max-width: 980px) { .side { position: static; max-height: none; overflow: visible; padding-right: 0; } }
 
 /* controls */
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
