@@ -442,16 +442,17 @@ async function fresh() {
   const key = $("#akey").value.trim(), msg = $("#freshMsg");
   if (!key) { msg.textContent = "Enter an analyst API key first."; return; }
   try { localStorage.setItem("anthropicKey", key); } catch (e) {}
-  $("#freshBtn").disabled = true; msg.textContent = "Working on it. This takes about 20 seconds.";
+  $("#freshBtn").disabled = true; msg.textContent = "Working on it. This can take a minute or two.";
   const steer = $("#steer").value.trim();
   const prompt = D.prompt.rules + (steer ? "\n\nExtra instructions from the user for this request:\n" + steer : "") + "\n\n" + D.prompt.data;
   try {
     const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST",
       headers: { "content-type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-      body: JSON.stringify({ model: D.prompt.model, max_tokens: 4000, messages: [{ role: "user", content: prompt }] }) });
+      body: JSON.stringify({ model: D.prompt.model, max_tokens: 20000, messages: [{ role: "user", content: prompt }] }) });
     const j = await res.json();
     if (j.error) throw new Error(j.error.message);
     const text = (j.content || []).filter(b => b.type === "text").map(b => b.text).join("").replace(/```(?:json)?/g, "");
+    if (!text.trim()) throw new Error("no answer came back. Try again.");
     const r = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
     const used = new Set();
     const safest = enforce(r.safest, 8, used), payout = enforce(r.payout, 6, used);
