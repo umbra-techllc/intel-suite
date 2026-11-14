@@ -121,12 +121,17 @@ def extract_json(text):
     return json.loads(t[s:e + 1])
 
 
-def ask(prompt, max_tokens=4000):
-    r = requests.post("https://api.anthropic.com/v1/messages", timeout=240, headers={
+def ask(prompt, max_tokens=20000):
+    # The model reasons before it answers and that reasoning counts against max_tokens, so leave plenty of room.
+    r = requests.post("https://api.anthropic.com/v1/messages", timeout=600, headers={
         "x-api-key": os.environ["ANTHROPIC_API_KEY"], "anthropic-version": "2023-06-01", "content-type": "application/json"},
         json={"model": MODEL, "max_tokens": max_tokens, "messages": [{"role": "user", "content": prompt}]})
     r.raise_for_status()
-    return extract_json("".join(b.get("text", "") for b in r.json().get("content", []) if b.get("type") == "text"))
+    j = r.json()
+    text = "".join(b.get("text", "") for b in j.get("content", []) if b.get("type") == "text")
+    if not text.strip():
+        raise RuntimeError(f"no answer text came back (stop reason: {j.get('stop_reason')})")
+    return extract_json(text)
 
 
 def clean(text):
