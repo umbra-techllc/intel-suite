@@ -1,0 +1,50 @@
+# Adds the past week's box scores and opening lines to nba-propedge/data/ and retrains the models in
+# nba-propedge/model/. Runs Monday morning. To run it by hand: Actions tab > NBA Parlay Finder retrain > Run workflow.
+name: NBA Parlay Finder retrain
+
+on:
+  schedule:
+    - cron: "23 10 * * 1"   # about 5:23am ET Monday
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nba-parlay-retrain
+  cancel-in-progress: true
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: pip install pandas numpy requests lightgbm scikit-learn
+
+      - name: Top up history
+        working-directory: nba-propedge
+        run: python research/make_dataset.py
+
+      - name: Train
+        working-directory: nba-propedge/research
+        run: python fit_models.py
+
+      - name: Commit
+        run: |
+          git config user.name "umbra-propedge-bot"
+          git config user.email "umbra-propedge-bot@users.noreply.github.com"
+          git add nba-propedge/data nba-propedge/model
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "NBA Parlay Finder: weekly retrain"
+            git pull --rebase origin main
+            git push
+          fi

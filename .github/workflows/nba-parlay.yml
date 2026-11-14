@@ -1,0 +1,66 @@
+# Rebuilds nba_parlay_data.json, which nba_parlay_finder.html loads: tonight's projections, the chance for
+# every posted bet, and the parlay legs chosen by the AI step. Runs four times a day so late injury news is picked up.
+# The AI step needs the ANTHROPIC_API_KEY repository secret (the same one Defense Intel uses). Without it the
+# page still updates and the picks fall back to the model's ranking.
+# To run it by hand: Actions tab > NBA Parlay Finder refresh > Run workflow.
+name: NBA Parlay Finder refresh
+
+on:
+  schedule:
+    - cron: "7 16 * * *"    # about 11am ET
+    - cron: "7 19 * * *"    # about 2pm ET
+    - cron: "37 21 * * *"   # about 4:30pm ET
+    - cron: "7 23 * * *"    # about 6pm ET, close to the first tip-off
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nba-parlay
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install packages
+        run: pip install pandas numpy requests lightgbm
+
+      - name: Build tonight's board
+        id: build
+        working-directory: nba-propedge
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          set +e
+          python build_nba.py
+          code=$?
+          set -e
+          if [ "$code" = "3" ]; then
+            echo "No games coming up, keeping the current board."
+            echo "built=no" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$code" != "0" ]; then exit "$code"; fi
+          echo "built=yes" >> "$GITHUB_OUTPUT"
+
+      - name: Commit the new board
+        if: steps.build.outputs.built == 'yes'
+        run: |
+          git config user.name "umbra-propedge-bot"
+          git config user.email "umbra-propedge-bot@users.noreply.github.com"
+          git add nba_parlay_data.json nba-propedge/data/picks_log.json
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "NBA Parlay Finder: refresh board"
+            git pull --rebase origin main
+            git push
+          fi
