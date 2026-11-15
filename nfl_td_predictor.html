@@ -155,6 +155,8 @@ details.set .in { display: grid; gap: 8px; margin-top: 8px; }
 .fac { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 3px 8px; font-size: 12.5px; }
 .fac.up b { color: var(--good); } .fac.dn b { color: var(--bad); }
 .leg .px { min-width: 120px; }
+.live { max-width: 1400px; margin: 0 auto; padding: 0 16px 12px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.live .btn { border-color: var(--accent); color: var(--accent); }
 .bar.low i { background: #9A8F85; }
 </style>
 </head>
@@ -418,6 +420,7 @@ function renderPicks() {
   return `<div class="picks">
     ${s.note ? `<div class="note"><span class="who">Umbra Read on week ${D.week}</span>${esc(s.note)}</div>` : ""}
     <p class="fine" style="margin:10px 0 0">${head}</p>
+    ${D.liveAt ? `<p class="fine" style="margin:6px 0 0">Chances were redone against the lines loaded at ${new Date(D.liveAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. The picks and their reasons are from the last full update, and a pick is dropped if its bet is no longer posted.</p>` : ""}
     <h3>${CFG.styles.safest[1]}</h3><p class="fine">${CFG.styles.safest[2]}</p>
     ${(s.safest || []).map(pickCard).join("") || '<p class="sub">Nothing passed the cut.</p>'}
     <h3>${CFG.styles.payout[1]}</h3><p class="fine">${CFG.styles.payout[2]}</p>
@@ -491,7 +494,7 @@ function renderRecord() {
 }
 
 function render() {
-  $("#meta").innerHTML = `<span><b>Week ${D.week}</b></span><span>${D.games.length} game${D.games.length === 1 ? "" : "s"} still to start</span><span>Lines: ${esc(D.book || "not posted yet")}</span><span>Stats through week ${D.statsThrough}</span><span>Updated ${new Date(D.generated).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>`;
+  $("#meta").innerHTML = `<span><b>Week ${D.week}</b></span><span>${D.games.length} game${D.games.length === 1 ? "" : "s"} still to start</span><span>Lines: ${esc(D.book || "not posted yet")}</span><span>Stats through week ${D.statsThrough}</span><span>Full update ${new Date(D.generated).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>`;
   $("#segLegs").innerHTML = [2, 3, 4, 5, 6].map(n => `<button data-v="${n}" aria-pressed="${S.legs === n}">${n}</button>`).join("");
   $("#segStyle").innerHTML = ["safest", "payout"].map(k => `<button data-v="${k}" aria-pressed="${S.style === k}">${CFG.styles[k][0]}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.t === S.tab));
@@ -547,6 +550,7 @@ document.addEventListener("click", e => {
   if (t.id === "buildBtn") build();
   if (t.id === "clearBtn") { S.slip = []; S.built = null; render(); }
   if (t.id === "freshBtn") fresh();
+  if (t.id === "liveBtn" && typeof loadLive === "function") loadLive();
 });
 document.addEventListener("change", e => {
   if (e.target.id === "fGame") { S.game = e.target.value; render(); }

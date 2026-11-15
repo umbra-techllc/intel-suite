@@ -155,6 +155,8 @@ details.set .in { display: grid; gap: 8px; margin-top: 8px; }
 .fac { border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 3px 8px; font-size: 12.5px; }
 .fac.up b { color: var(--good); } .fac.dn b { color: var(--bad); }
 .leg .px { min-width: 120px; }
+.live { max-width: 1400px; margin: 0 auto; padding: 0 16px 12px; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.live .btn { border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
@@ -164,7 +166,8 @@ details.set .in { display: grid; gap: 8px; margin-top: 8px; }
     <div><h1>NFL PropEdge</h1><div class="by">Umbra Tech · Intel Suite</div></div>
   </div>
   <div class="meta" id="meta"></div>
-</div></header>
+</div>
+<div class="live"><button class="btn" id="liveBtn">Load latest games and lines</button><span class="fine" id="liveMsg">Pulls the current schedule and DraftKings lines and redoes every chance. The full update with new projections and picks runs on its own twice a day.</span></div></header>
 
 <div class="wrap">
   <aside class="side">
@@ -278,6 +281,101 @@ function tested() {
     <h3>What Umbra Read adds</h3>
     <p>The engine sets the chance for every bet. Umbra Read then reads what the numbers miss: the injury report, whether a bigger role has actually shown up in recent games, a new quarterback, weather, lopsided games, and bets that work against each other. It writes down the main way each pick loses. It can only choose bets that are on the board.</p>
     <p class="sub">A parlay needs every bet to hit. Five bets at 80% each all hit about a third of the time.</p>`;
+}
+
+/* ---- "Load latest games and lines": reads ESPN's scoreboard and the DraftKings lines straight from this browser ----
+   The models' ranges for each player come from the last full update; this redoes every chance against the newest lines
+   with the same three steps the build uses (see nfl-propedge/engine.py). */
+const ESPN_SB = "https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?seasontype=2&week=";
+const ESPN_CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl";
+const DK_MAIN = { "Total Passing Yards (incl. overtime)": "pass", "Total Rushing Yards (incl. overtime)": "rush", "Total Receiving Yards (incl. overtime)": "rec" };
+const DK_STEPS = { "Passing Yards Milestones": "pass", "Rushing Yards Milestones": "rush", "Receiving Yards Milestones": "rec" };
+const TEAM_FIX = { WSH: "WAS", LAR: "LA" };
+function gOver(yq, line) { // chance of landing above the line, from 101 outcome points
+  const n = yq.length - 1;
+  if (line < yq[0]) return 0.998;
+  if (line >= yq[n]) return 0.002;
+  let lo = 0, hi = n; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (yq[m] <= line) lo = m; else hi = m; }
+  const frac = yq[hi] === yq[lo] ? 0.5 : (line - yq[lo]) / (yq[hi] - yq[lo]);
+  return Math.min(0.998, Math.max(0.002, 1 - (lo + frac) / n));
+}
+function gShape(yq, shift, scale) {
+  const mid = yq[(yq.length - 1) / 2]; let top = -Infinity;
+  return yq.map(v => (top = Math.max(top, Math.max(-10, mid + shift + (v - mid) * scale))));
+}
+function gAnchor(yq, line, target, scale) {
+  let lo = -(yq[yq.length - 1] - yq[0]) - 50, hi = -lo;
+  for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (gOver(gShape(yq, m, scale), line) < target) lo = m; else hi = m; }
+  return gShape(yq, (lo + hi) / 2, scale);
+}
+const lgt = p => { p = Math.min(Math.max(p, 1e-3), 1 - 1e-3); return Math.log(p / (1 - p)); };
+async function getJSON(url) { const r = await fetch(url, { cache: "no-store" }); if (!r.ok) throw new Error(url.includes("scoreboard") ? "ESPN's schedule did not load" : "the lines did not load"); return r.json(); }
+async function gameLines(id) {
+  const out = { main: {}, steps: {} };
+  for (let page = 1, pages = 1; page <= pages; page++) {
+    const d = await getJSON(`${ESPN_CORE}/events/${id}/competitions/${id}/odds/100/propBets?limit=1000&page=${page}`);
+    pages = d.pageCount || 1;
+    for (const it of d.items || []) {
+      const t = (it.type || {}).name, ref = ((it.athlete || {}).$ref || "").split("athletes/")[1];
+      if (!ref) continue;
+      const a = ref.split("?")[0], cur = ((it.current || {}).target || {}).value, open = ((it.open || {}).target || {}).value;
+      if (cur == null) continue;
+      if (DK_MAIN[t]) { const k = a + "|" + DK_MAIN[t]; if (!out.main[k]) out.main[k] = { line: +cur, open: open == null ? null : +open }; }
+      else if (DK_STEPS[t]) { const k = a + "|" + DK_STEPS[t]; (out.steps[k] = out.steps[k] || new Set()).add(+cur); }
+    }
+  }
+  return out;
+}
+async function loadLive() {
+  const btn = $("#liveBtn"), msg = $("#liveMsg");
+  btn.disabled = true; msg.textContent = "Loading games and lines.";
+  try {
+    // 1. the newest full update, in case one has been published since this page was opened
+    const fresh = await fetch(CFG.file + "?t=" + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);
+    const base = fresh && fresh.generated >= D.generated ? fresh : D;
+    if (!base.players.some(p => Object.values(p.stats).some(s => s.g))) throw new Error("this needs the next full update first. Try again later today.");
+    // 2. games: find any that have started, and the current point spread and total
+    const sb = await getJSON(ESPN_SB + base.week);
+    const live = {};
+    for (const e of sb.events || []) {
+      const c = e.competitions[0], o = (c.odds || [{}])[0];
+      live[e.id] = { pre: ((c.status || {}).type || {}).state === "pre", total: o.overUnder, spread: o.spread };
+    }
+    const games = base.games.filter(g => !live[g.id] || live[g.id].pre);
+    // 3. DraftKings lines for every game still to start
+    const lines = {}; let got = 0, failed = 0;
+    await Promise.all(games.map(g => gameLines(g.id).then(x => { lines[g.id] = x; }).catch(() => { failed++; })));
+    if (games.length && failed === games.length) throw new Error("the lines did not load. Try again in a minute.");
+    // nothing above changed the page; from here on the new numbers replace the old ones
+    const before = base.games.length;
+    D = base; D.games = games;
+    for (const g of D.games) { const x = live[g.id];
+      if (x && x.total != null && x.spread != null) { g.total = x.total; g.homeSpread = +x.spread; g.homeITT = Math.round((x.total / 2 - x.spread / 2) * 10) / 10; g.awayITT = Math.round((x.total / 2 + x.spread / 2) * 10) / 10; } }
+    const open = new Set(D.games.map(g => g.id));
+    D.players = D.players.filter(p => open.has(p.gid || p.game));
+    // 4. redo every chance against those lines
+    const legs = [];
+    for (const p of D.players) for (const [stat, s] of Object.entries(p.stats)) {
+      const gl = lines[p.gid || p.game], w = (D.weights || {})[stat];
+      if (!gl || !s.g || !w || !p.eid) { if (gl) { delete s.line; delete s.pOver; } continue; }
+      const m = gl.main[p.eid + "|" + stat];
+      if (!m) { delete s.line; delete s.open; delete s.pOver; s.proj = s.model; s.lo = Math.max(0, s.g[20]); s.hi = s.g[80]; continue; }
+      got++;
+      const pm = gOver(s.g, m.line), pf = 1 / (1 + Math.exp(-(w.base + w.model * lgt(pm))));
+      const fin = gAnchor(s.g, m.line, pf, w.scale || 1), r1 = v => Math.round(v * 10) / 10, r3 = v => Math.round(v * 1000) / 1000;
+      Object.assign(s, { line: m.line, open: m.open, proj: r1(fin[50]), lo: r1(Math.max(0, fin[20])), hi: r1(fin[80]), pOver: r3(gOver(fin, m.line)) });
+      const add = (k, n, ch, mch) => { if (ch >= 0.03 && ch <= 0.97) legs.push([p.id || p.pid, stat, k, n, r3(ch), r3(mch)]); };
+      add("o", m.line, s.pOver, pm); add("u", m.line, 1 - s.pOver, 1 - pm);
+      for (const n of [...(gl.steps[p.eid + "|" + stat] || [])].sort((a, b) => a - b))
+        if (Math.abs(n - 0.5 - m.line) > 0.01) add("a", n, gOver(fin, n - 0.5), gOver(s.g, n - 0.5));
+    }
+    D.legs = legs; D.book = "DraftKings"; D.liveAt = new Date().toISOString();
+    S.open = null; index();
+    const gone = before - D.games.length;
+    msg.textContent = !got ? "DraftKings has no player lines posted for these games right now." : `Lines loaded ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}: ${got} player lines across ${D.games.length} game${D.games.length === 1 ? "" : "s"}.` + (gone ? ` ${gone} game${gone === 1 ? " has" : "s have"} started and ${gone === 1 ? "was" : "were"} removed.` : "") + (failed ? ` ${failed} game${failed === 1 ? "" : "s"} did not load.` : "");
+    if (S.built) build(); else render();
+  } catch (e) { msg.textContent = "Could not load: " + e.message; }
+  btn.disabled = false;
 }
 
 let D = null;
@@ -419,6 +517,7 @@ function renderPicks() {
   return `<div class="picks">
     ${s.note ? `<div class="note"><span class="who">Umbra Read on week ${D.week}</span>${esc(s.note)}</div>` : ""}
     <p class="fine" style="margin:10px 0 0">${head}</p>
+    ${D.liveAt ? `<p class="fine" style="margin:6px 0 0">Chances were redone against the lines loaded at ${new Date(D.liveAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}. The picks and their reasons are from the last full update, and a pick is dropped if its bet is no longer posted.</p>` : ""}
     <h3>${CFG.styles.safest[1]}</h3><p class="fine">${CFG.styles.safest[2]}</p>
     ${(s.safest || []).map(pickCard).join("") || '<p class="sub">Nothing passed the cut.</p>'}
     <h3>${CFG.styles.payout[1]}</h3><p class="fine">${CFG.styles.payout[2]}</p>
@@ -492,7 +591,7 @@ function renderRecord() {
 }
 
 function render() {
-  $("#meta").innerHTML = `<span><b>Week ${D.week}</b></span><span>${D.games.length} game${D.games.length === 1 ? "" : "s"} still to start</span><span>Lines: ${esc(D.book || "not posted yet")}</span><span>Stats through week ${D.statsThrough}</span><span>Updated ${new Date(D.generated).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>`;
+  $("#meta").innerHTML = `<span><b>Week ${D.week}</b></span><span>${D.games.length} game${D.games.length === 1 ? "" : "s"} still to start</span><span>Lines: ${esc(D.book || "not posted yet")}</span><span>Stats through week ${D.statsThrough}</span><span>Full update ${new Date(D.generated).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>`;
   $("#segLegs").innerHTML = [2, 3, 4, 5, 6].map(n => `<button data-v="${n}" aria-pressed="${S.legs === n}">${n}</button>`).join("");
   $("#segStyle").innerHTML = ["safest", "payout"].map(k => `<button data-v="${k}" aria-pressed="${S.style === k}">${CFG.styles[k][0]}</button>`).join("");
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.t === S.tab));
@@ -548,6 +647,7 @@ document.addEventListener("click", e => {
   if (t.id === "buildBtn") build();
   if (t.id === "clearBtn") { S.slip = []; S.built = null; render(); }
   if (t.id === "freshBtn") fresh();
+  if (t.id === "liveBtn" && typeof loadLive === "function") loadLive();
 });
 document.addEventListener("change", e => {
   if (e.target.id === "fGame") { S.game = e.target.value; render(); }
