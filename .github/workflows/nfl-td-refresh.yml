@@ -1,5 +1,7 @@
-# Rebuilds nfl_td_predictor.html and nfl_td_data.json with the current week's slate, stats, play-by-play,
-# odds, injuries and depth charts. Runs twice a day, plus Sunday late morning after inactives.
+# Rebuilds nfl_td_data.json, which nfl_td_predictor.html loads: the week's games, stats, play-by-play,
+# injuries, depth charts, the touchdown bets DraftKings lists (from ESPN, no key needed) and the picks.
+# The step where Umbra Read chooses the bets needs the ANTHROPIC_API_KEY repository secret; without it
+# the picks fall back to the model's own ranking. Runs twice a day, plus Sunday late morning after inactives.
 # To run it by hand: Actions tab > NFL TD Predictor refresh > Run workflow.
 name: NFL TD Predictor refresh
 
@@ -34,6 +36,8 @@ jobs:
       - name: Build the slate
         id: build
         working-directory: nfl-td
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
           set +e
           if [ -n "${{ github.event.inputs.week }}" ]; then
@@ -44,20 +48,18 @@ jobs:
           code=$?
           set -e
           if [ "$code" = "3" ]; then
-            echo "Nothing to build right now, keeping the current page."
+            echo "Nothing to build right now, keeping the current board."
             echo "built=no" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           if [ "$code" != "0" ]; then exit "$code"; fi
-          python make_page.py data.json --site ../nfl_td_predictor.html
-          cp data.json ../nfl_td_data.json
           echo "built=yes" >> "$GITHUB_OUTPUT"
-      - name: Commit the new page
+      - name: Commit the new board
         if: steps.build.outputs.built == 'yes'
         run: |
           git config user.name "umbra-propedge-bot"
           git config user.email "umbra-propedge-bot@users.noreply.github.com"
-          git add nfl_td_predictor.html nfl_td_data.json
+          git add nfl_td_data.json nfl-td/data/picks_log.json
           if git diff --cached --quiet; then
             echo "No changes."
           else

@@ -1,12 +1,16 @@
 """
 NFL TD Predictor weekly build.
 
-Pulls nflverse weekly stats and play-by-play (this season and last), the week's schedule, odds and weather
-(ESPN), the injury report and depth charts (ESPN), then writes touchdown predictions to data.json.
+Pulls nflverse weekly stats and play-by-play (this season and last), the week's schedule, game odds and weather
+(ESPN), the injury report and depth charts (ESPN), and the touchdown bets DraftKings lists (from ESPN). Then
+predicts every player's chance to score and every starting quarterback's touchdown passes, has the AI choose
+and order the bets from the strongest candidates, grades earlier weeks' picks, and writes ../nfl_td_data.json,
+which nfl_td_predictor.html loads.
 
 Run:  python build_td.py            (current week, detected from ESPN)
       python build_td.py --week 7   (a specific week)
-Needs: pandas, numpy, pyarrow, lightgbm, requests
+      python build_td.py --no-ai    (skip the AI step and rank by the model alone)
+Needs: pandas, numpy, pyarrow, lightgbm, requests. Set ANTHROPIC_API_KEY for the AI step.
 """
 import argparse, gzip, io, json, math, os, re, sys
 from datetime import datetime, timezone
@@ -17,7 +21,9 @@ import requests
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(1, os.path.join(os.path.dirname(HERE), "nfl-propedge"))  # shared: DraftKings lines and the AI pick step
 import td_engine as E
+import dk_lines as DK, picker
 
 STATS_URL = "https://github.com/nflverse/nflverse-data/releases/download/stats_player/stats_player_week_{season}.csv"
 PBP_URL = "https://github.com/nflverse/nflverse-data/releases/download/pbp/play_by_play_{season}.parquet"
@@ -56,7 +62,7 @@ QB_GROUPS = [
 
 
 def get_json(url):
-    r = requests.get(url, timeout=30); r.raise_for_status(); return r.json()
+    return DK.get_json(url)  # with retries
 
 
 def cached(url, path):
@@ -76,8 +82,8 @@ def parse_slate(sb):
     games = []
     for e in sb.get("events", []):
         c = e["competitions"][0]
-        if c.get("status", {}).get("type", {}).get("completed"):
-            continue
+        if c.get("status", {}).get("type", {}).get("state", "pre") != "pre":
+            continue  # under way or finished
         teams = {t["homeAway"]: ESPN_TO_NFLVERSE.get(t["team"]["abbreviation"], t["team"]["abbreviation"]) for t in c["competitors"]}
         odds = (c.get("odds") or [{}])[0]
         total, spread = odds.get("overUnder"), odds.get("spread")
@@ -112,8 +118,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--season", type=int, default=2026)
     ap.add_argument("--week", type=int)
-    ap.add_argument("--out", default="data.json")
+    ap.add_argument("--no-ai", action="store_true")
+    ap.add_argument("--out", default=os.path.join(os.path.dirname(HERE), "nfl_td_data.json"))
     args = ap.parse_args()
+    if args.no_ai:
+        os.environ.pop("ANTHROPIC_API_KEY", None)
     season, week = args.season, args.week
     auto = week is None
     if auto:
@@ -127,6 +136,7 @@ def main():
         week += 1; sb = get_json(ESPN_SCOREBOARD.format(week=week)); games = parse_slate(sb)
     if not games:
         print(f"No upcoming games with odds posted for week {week}. Nothing built."); sys.exit(NOTHING_TO_BUILD)
+    started = len(sb.get("events", [])) - len(games)  # games of this week already under way or finished
     print(f"Week {week}: {len(games)} games")
 
     cache = os.path.join(HERE, "research", "cache"); os.makedirs(cache, exist_ok=True)
@@ -288,12 +298,156 @@ def main():
             t = g[side]
             g[side + "XTD"] = round(sum(-math.log(max(1e-6, 1 - pl["p"])) for pl in players if pl["team"] == t and pl["pos"] != "QB") +
                                     sum(-math.log(max(1e-6, 1 - pl["p"])) for pl in players if pl["team"] == t and pl["pos"] == "QB"), 2)
-    out = {"season": season, "week": week, "built": datetime.now(timezone.utc).isoformat(timespec="minutes"),
+    # ---------- the touchdown bets DraftKings lists (from ESPN) ----------
+    listed, book = {}, None
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+        to_pid = DK.id_map(os.path.join(cache, "player_ids.csv"))
+        with ThreadPoolExecutor(5) as ex:
+            for g, gl in zip(games, ex.map(lambda g: DK.game_lines(g["id"]), games)):
+                book = book or gl["book"]
+                listed[g["id"]] = {"td1": {to_pid.get(a) for a in gl["td1"]}, "td2": {to_pid.get(a) for a in gl["td2"]},
+                                   "ptd": {to_pid.get(a): v for (a, k), v in gl["main"].items() if k == "ptd"},
+                                   "steps": {to_pid.get(a): v for (a, k), v in gl["steps"].items() if k == "ptd"}}
+    except Exception as e:
+        print("Could not read the DraftKings lists:", e)
+
+    # every bet as a dict; "td" = scores n or more touchdowns, "ptd" = throws n or more (or over/under the line)
+    legs = []
+    def leg(pl, stat, kind, num, chance):
+        if 0.03 <= chance <= 0.97:
+            legs.append({"id": f'{pl["pid"]}-{stat}-{kind[0]}{num:g}', "pid": pl["pid"], "gid": pl["game"], "stat": stat, "kind": kind,
+                         "num": num, "p": round(float(chance), 3)})
+    pois = lambda L, n: 1 - sum(math.exp(-L) * L ** k / math.factorial(k) for k in range(int(n)))
+    for pl in players:
+        ls = listed.get(pl["game"]) or {"td1": set(), "td2": set(), "ptd": {}, "steps": {}}
+        if pl["pos"] != "QB" or pl["p"] >= 0.12:
+            if not ls["td1"] or pl["pid"] in ls["td1"]:
+                leg(pl, "td", "alt", 1, pl["p"])
+            if (not ls["td2"] or pl["pid"] in ls["td2"]) and pl["p2"] >= 0.08:
+                leg(pl, "td", "alt", 2, pl["p2"])
+        if pl.get("qb"):
+            L = pl["qb"]["lam"]
+            main = ls["ptd"].get(pl["pid"])
+            if main:
+                pl["qb"]["line"] = main["line"]
+                po = pois(L, math.floor(main["line"]) + 1)
+                leg(pl, "ptd", "over", main["line"], po); leg(pl, "ptd", "under", main["line"], 1 - po)
+            for n in (ls["steps"].get(pl["pid"]) or [1, 2, 3]):
+                if not (main and abs(n - 0.5 - main["line"]) < 0.01):
+                    leg(pl, "ptd", "alt", int(n), pois(L, n))
+    P = {pl["pid"]: pl for pl in players}
+    def describe(l):
+        pl = P[l["pid"]]
+        vals = [g["ptd" if l["stat"] == "ptd" else "td"] for g in reversed(pl["logs"])]
+        num, kind = l["num"], l["kind"]
+        hit = (lambda v: v >= num) if kind == "alt" else ((lambda v: v > num) if kind == "over" else (lambda v: v < num))
+        what = "touchdown passes" if l["stat"] == "ptd" else "touchdowns"
+        if kind != "alt":
+            text = f"{kind} {num:g} touchdown passes"
+        elif l["stat"] == "ptd":
+            text = "throws a touchdown pass" if num == 1 else f"throws {num}+ touchdown passes"
+        else:
+            text = "scores a touchdown" if num == 1 else f"scores {num}+ touchdowns"
+        return {**l, "text": text, "unit": what, "hits": sum(hit(v) for v in vals), "of": len(vals), "last": vals[:8]}
+    full = [describe(l) for l in legs]
+
+    # candidates for the AI: most likely bets, and longer shots that pay more
+    safe = sorted([l for l in full if l["kind"] == "alt" and ((l["stat"] == "td" and l["num"] == 1 and l["p"] >= 0.38) or
+                                                              (l["stat"] == "ptd" and 0.5 <= l["p"] <= 0.93))], key=lambda l: -l["p"])
+    best = {}
+    for l in safe:  # one bet per player: for a quarterback, the hardest touchdown-pass bet that is still better than 60%
+        if l["stat"] == "ptd" and l["pid"] in best and not (l["p"] >= 0.6 and l["num"] > best[l["pid"]]["num"]):
+            continue
+        if l["stat"] == "td" and l["pid"] in best:
+            continue
+        best[l["pid"]] = l
+    # players scoring come first; a quarterback's touchdown-pass bet has to be much more likely to rank alongside them
+    safe = sorted(best.values(), key=lambda l: -(l["p"] - (0.3 if l["stat"] == "ptd" else 0)))[:36]
+    pay = sorted([l for l in full if l["id"] not in {x["id"] for x in safe} and l["stat"] == "td" and
+                  ((l["num"] == 1 and 0.22 <= l["p"] < 0.38) or (l["num"] == 2 and l["p"] >= 0.12))], key=lambda l: -l["p"])[:24]
+
+    def row(l):
+        pl = P[l["pid"]]
+        r = pl["role"]
+        extra = (f'expected touchdown passes {pl["qb"]["lam"]:.1f}, last three games {pl["qb"]["last3"]}' if l["stat"] == "ptd" else
+                 f'per game: {r["rz_car"]:g} runs and {r["rz_tgt"]:g} passes thrown to him inside the 20, {r["g10"]:g} chances inside the 10; '
+                 f'{r["season_tds"]} touchdowns this season')
+        notes = [e["label"] + (" (helps)" if e["delta"] > 0 else " (hurts)") for e in (pl["qb"]["effects"] if l["stat"] == "ptd" else pl["effects"])[:3]]
+        return (f'{l["id"]} | {pl["name"]}, {pl["pos"]} ({pl["team"]} {"vs" if pl["home"] else "at"} {pl["opp"]}) | {l["text"]} | chance {round(l["p"] * 100)}% '
+                f'| his team is expected to score about {pl["itt"]:g} points | {extra} | did this in {l["hits"]} of {l["of"]} games this season '
+                f'| {l["unit"]} by game, newest first: {", ".join(str(v) for v in l["last"])} | biggest factors: {"; ".join(notes)}'
+                + (f' | listed as {pl["status"].lower()}' if pl["status"] and pl["status"] != "Active" else "")
+                + (f' | injury note: {pl["note"]}' if pl["note"] and pl["status"] != "Active" else ""))
+    text = [f"NFL week {week}, {season} season. Touchdown bets listed by {book or 'the sportsbook'}.", "", "GAMES"]
+    for g in games:
+        fav = g["home"] if g["homeSpread"] < 0 else g["away"]
+        text.append(f'- {g["away"]} at {g["home"]}: {fav} favored by {abs(g["homeSpread"]):g}, expected points {g["away"]} {g["awayITT"]:g}, {g["home"]} {g["homeITT"]:g}, '
+                    f'{"indoors" if g["indoor"] else "weather: " + (g["weather"] or "not posted")}')
+        for t in (g["away"], g["home"]):
+            if out_list.get(t):
+                text.append(f"    {t} out: " + "; ".join(f'{x["name"]} ({x["pos"]}, {x["status"].lower()})' for x in out_list[t]))
+            if q_list.get(t):
+                text.append(f"    {t} questionable: " + "; ".join(f'{x["name"]} ({x["pos"]})' for x in q_list[t]))
+    text += ["", "CANDIDATES FOR THE SAFEST LIST"] + [row(l) for l in safe] + ["", "CANDIDATES FOR THE PAYOUT LIST"] + [row(l) for l in pay]
+    text = "\n".join(text)
+
+    def fallback(l):
+        pl = P[l["pid"]]
+        r = pl["role"]
+        why = (f'Expected to throw about {pl["qb"]["lam"]:.1f} touchdown passes and did this in {l["hits"]} of his {l["of"]} games this season.' if l["stat"] == "ptd" else
+               f'Gets about {r["rz_car"] + r["rz_tgt"]:.1f} chances a game inside the 20 and did this in {l["hits"]} of his {l["of"]} games this season.')
+        return why, f'His team is expected to score about {pl["itt"]:g} points.', pl["status"] in ("", "Active") and pl["n"] >= 3
+    picks = picker.pick("td", text, safe, pay, fallback)
+    print(f'{len(legs)} bets, picked by {picks["by"]}: {len(picks["safest"])} safest, {len(picks["payout"])} payout')
+
+    # ---------- results log: the picks as they stood before the week's first kickoff, graded the week after ----------
+    log_path = os.path.join(HERE, "data", "picks_log.json")
+    log = json.load(open(log_path)) if os.path.exists(log_path) else {"weeks": {}}
+    for d_ in log["weeks"].values():
+        if d_.get("graded") or d_.get("season") != season or d_["week"] >= week:
+            continue
+        got = stats[(stats.season == season) & (stats.week == d_["week"])].drop_duplicates("player_id").set_index("player_id")
+        if got.empty:
+            continue
+        for l in d_.get("safest", []) + d_.get("payout", []):
+            if l["pid"] not in got.index:
+                l["res"] = "void"; continue
+            r = got.loc[l["pid"]]
+            v = int(r.passing_tds or 0) if l["stat"] == "ptd" else int((r.rushing_tds or 0) + (r.receiving_tds or 0))
+            l["got"] = v
+            l["res"] = "hit" if (v >= l["num"] if l["kind"] == "alt" else v > l["num"] if l["kind"] == "over" else v < l["num"]) else "miss"
+        d_["graded"] = True
+    key = f"{season}-W{week:02d}"
+    Lf = {l["id"]: l for l in full}
+    if picks["safest"] and (started == 0 or key not in log["weeks"]):
+        keep = lambda items: [{**{k: Lf[i["id"]][k] for k in ("id", "pid", "gid", "stat", "kind", "num", "p", "text")}, "name": P[Lf[i["id"]]["pid"]]["name"]} for i in items]
+        log["weeks"][key] = {"season": season, "week": week, "by": picks["by"], "at": picks["at"], "safest": keep(picks["safest"]), "payout": keep(picks["payout"])}
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    json.dump(log, open(log_path, "w"), separators=(",", ":"))
+    rec = {"weeks": 0, "safest": {"hit": 0, "n": 0}, "payout": {"hit": 0, "n": 0}, "recent": []}
+    for k in sorted(log["weeks"], reverse=True):
+        d_ = log["weeks"][k]
+        if not d_.get("graded"):
+            continue
+        rec["weeks"] += 1
+        for st_ in ("safest", "payout"):
+            live = [l for l in d_.get(st_, []) if l.get("res") in ("hit", "miss")]
+            rec[st_]["hit"] += sum(l["res"] == "hit" for l in live); rec[st_]["n"] += len(live)
+        if len(rec["recent"]) < 8:
+            rec["recent"].append({"week": d_["week"], "by": d_.get("by"), "legs": [{"name": l["name"], "text": l["text"], "res": l.get("res"), "got": l.get("got"), "style": st_}
+                                                                                 for st_ in ("safest", "payout") for l in d_.get(st_, [])]})
+
+    out = {"season": season, "week": week, "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"), "book": book,
            "statsThrough": int(cur.week.max()) if len(cur) else 0, "games": games, "players": players,
            "injuries": {"out": out_list, "questionable": q_list}, "corr": bundle["correlations"],
-           "modelInfo": bundle["trained_on"], "baseRate": bundle["base_rate"]}
+           "modelInfo": bundle["trained_on"], "baseRate": bundle["base_rate"],
+           # every bet as [player id, td or ptd, o/u/a (over, under, "or more"), number, chance]
+           "legs": [[l["pid"], l["stat"], l["kind"][0], l["num"], l["p"]] for l in legs],
+           "picks": picks, "pool": {"safest": [l["id"] for l in safe], "payout": [l["id"] for l in pay]},
+           "prompt": {"rules": picker.rules("td"), "data": text, "model": picker.MODEL}, "record": rec}
     json.dump(out, open(args.out, "w"), separators=(",", ":"))
-    print(f"{len(games)} games, {len(players)} players ({int(qbmask.sum())} QBs) -> {args.out}")
+    print(f"{len(games)} games, {len(players)} players ({int(qbmask.sum())} QBs) -> {args.out}", os.path.getsize(args.out) // 1024, "KB")
 
 
 if __name__ == "__main__":

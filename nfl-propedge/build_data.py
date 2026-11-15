@@ -1,15 +1,20 @@
 """
 NFL PropEdge data build.
 
-Pulls weekly player stats (nflverse), the current week's schedule, odds and
-weather (ESPN scoreboard), and the injury report (ESPN), then writes
-projections for passing, rushing and receiving yard props to data.json.
+Pulls weekly player stats (nflverse), the current week's schedule, game odds and weather (ESPN scoreboard),
+the injury report and depth charts (ESPN), and the DraftKings player lines ESPN publishes. Then:
+
+  1. projects passing, rushing and receiving yards for every player with the trained models,
+  2. blends each projection with the DraftKings line and works out a chance for every posted bet (engine.py),
+  3. has the AI choose and order the bets from the strongest candidates (picker.py),
+  4. grades earlier weeks' picks, and writes ../nfl_propedge_data.json, which nfl_propedge.html loads.
 
 Run:  python build_data.py            (current week, detected from ESPN)
       python build_data.py --week 5   (a specific week)
-Needs: pandas, scipy, requests
+      python build_data.py --no-ai    (skip the AI step and rank by the engine alone)
+Needs: pandas, scipy, requests, lightgbm. Set ANTHROPIC_API_KEY for the AI step. Exit code 3 means nothing to build.
 """
-import argparse, json, math, os, re, sys, io
+import argparse, json, math, os, re, sys, io, time
 from datetime import datetime, timezone
 
 import numpy as np
@@ -141,6 +146,7 @@ def apply_models(props):
             p["median"] = round(float(yq[50]), 1)
             p["estLine"] = half_line(yq[50])
             p["q"] = [round(float(v), 1) for v in yq[::2]]
+            p["_grid"] = yq
             p["factors"] = {"base": round(float(base[i]), 1), "top": groups[:5]}
             p["model"] = "learned"
     return True
@@ -157,9 +163,16 @@ def get_csv(url):
 
 
 def get_json(url):
-    r = requests.get(url, timeout=30)
-    r.raise_for_status()
-    return r.json()
+    last = None
+    for i in range(4):  # ESPN now and then refuses a request; a short wait fixes it
+        try:
+            r = requests.get(url, timeout=30, headers={"User-Agent": "Mozilla/5.0 (umbra-intel-suite)"})
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            last = e
+            time.sleep(2 * (i + 1))
+    raise last
 
 
 def norm_name(s):
@@ -553,8 +566,8 @@ def parse_slate(sb):
     games = []
     for e in sb.get("events", []):
         c = e["competitions"][0]
-        if c.get("status", {}).get("type", {}).get("completed"):
-            continue
+        if c.get("status", {}).get("type", {}).get("state", "pre") != "pre":
+            continue  # under way or finished
         teams = {}
         for t in c["competitors"]:
             ab = ESPN_TO_NFLVERSE.get(t["team"]["abbreviation"], t["team"]["abbreviation"])
@@ -583,12 +596,75 @@ def parse_slate(sb):
 
 
 
+def candidate_pools(full, P):
+    """Narrow the full board to the bets worth the AI's attention."""
+    by = {}
+    for l in full:
+        by.setdefault((l["pid"], l["stat"]), []).append(l)
+    safe, pay = [], []
+    for ls in by.values():
+        # safest: the most demanding "this many or more" bet that still has at least a 76% chance
+        s = [l for l in ls if l["kind"] == "alt" and 0.76 <= l["p"] <= 0.93]
+        if s:
+            safe.append(max(s, key=lambda l: l["num"]))
+        # payout: whichever side of the main line the engine leans to
+        m = [l for l in ls if l["kind"] in ("over", "under") and l["p"] >= 0.53]
+        if m:
+            pay.append(max(m, key=lambda l: l["p"]))
+    # where the model and the line disagree a lot about a "safe" bet, trust it less
+    score = lambda l: l["p"] - 0.5 * abs(l["p"] - l["pm"]) - (0.04 if P[l["pid"]]["status"] else 0)
+    safe.sort(key=score, reverse=True); pay.sort(key=lambda l: -l["p"])
+    def cap(pool, n, per_player):
+        out, seen = [], {}
+        for l in pool:
+            if seen.get(l["pid"], 0) < per_player:
+                seen[l["pid"]] = seen.get(l["pid"], 0) + 1; out.append(l)
+            if len(out) >= n:
+                break
+        return out
+    return cap(safe, 40, 1), cap(pay, 24, 1)
+
+
+def board_text(data, safe, pay, P):
+    """The board written out for the AI."""
+    def row(l):
+        p = P[l["pid"]]
+        last = ", ".join(str(x) for x in l["last"])
+        return (f'{l["id"]} | {p["name"]}, {p["pos"]} ({p["team"]} {"vs" if p["home"] else "at"} {p["opp"]}) | {l["text"]} '
+                f'| chance {round(l["p"] * 100)}% (model alone {round(l["pm"] * 100)}%) | projection {l["proj"]}, model alone {l["model"]}'
+                + (f', DraftKings line {l["line"]:g}' if l.get("line") is not None else "")
+                + f' | did this in {l["hits"]} of {l["of"]} games this season | games, newest first: {last}'
+                + (f' | notes: {"; ".join(p["flags"])}' if p["flags"] else "")
+                + (f' | injury note: {p["note"]}' if p["note"] else ""))
+    out = [f'NFL week {data["week"]}, {data["season"]} season. Player lines from {data["book"] or "the sportsbook"}.', "", "GAMES"]
+    for g in data["games"]:
+        fav = g["home"] if g["homeSpread"] < 0 else g["away"]
+        out.append(f'- {g["away"]} at {g["home"]}: {fav} favored by {abs(g["homeSpread"]):g}, expected total points {g["total"]:g}, '
+                   f'{"indoors" if g["indoor"] else "weather: " + (g["weather"] or "not posted")}')
+        for t in (g["away"], g["home"]):
+            o = [f'{x["name"]} ({x["pos"]}, {x["status"].lower()})' for x in data["injuries"]["out"].get(t, [])]
+            q = [f'{x["name"]} ({x["pos"]})' for x in data["injuries"]["questionable"].get(t, [])]
+            if o:
+                out.append(f"    {t} out: " + "; ".join(o))
+            if q:
+                out.append(f"    {t} questionable: " + "; ".join(q))
+    out += ["", "CANDIDATES FOR THE SAFEST LIST"] + [row(l) for l in safe]
+    out += ["", "CANDIDATES FOR THE PAYOUT LIST"] + [row(l) for l in pay]
+    return "\n".join(out)
+
+
 def main():
+    import board as BD, dk_lines as DK, picker
+    from concurrent.futures import ThreadPoolExecutor
+    here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser()
     ap.add_argument("--season", type=int, default=2026)
     ap.add_argument("--week", type=int, help="Week to build. Leave out to use the current week from ESPN.")
-    ap.add_argument("--out", default="data.json")
+    ap.add_argument("--no-ai", action="store_true")
+    ap.add_argument("--out", default=os.path.join(os.path.dirname(here), "nfl_propedge_data.json"))
     args = ap.parse_args()
+    if args.no_ai:
+        os.environ.pop("ANTHROPIC_API_KEY", None)
     season, cur_week = args.season, args.week
     auto_week = cur_week is None
     if auto_week:
@@ -608,7 +684,7 @@ def main():
     cur = cur[(cur.season_type == "REG") & (cur.position.isin(skill))].copy()
     prev = prev[(prev.season_type == "REG") & (prev.position.isin(skill))].copy()
 
-    # ---------- games on the slate (not yet final) ----------
+    # ---------- games on the slate (not yet started) ----------
     games = parse_slate(sb)
     if not games and auto_week:
         # Early in the week ESPN can still be showing the finished week: move on to the next one
@@ -620,6 +696,7 @@ def main():
     if not games:
         print(f"No upcoming games with odds posted for week {cur_week}. Nothing built.")
         sys.exit(NOTHING_TO_BUILD)
+    started = len(sb.get("events", [])) - len(games)  # games of this week already under way or finished
 
     # ---------- injuries ----------
     status_by = {}
@@ -663,25 +740,76 @@ def main():
     except Exception as e:
         print(f"Depth charts unavailable ({e}); using last game's passer as the starter")
 
-    props, league, defense, injuries = project(cur, prev, games, cur_week, status_of, note_of, depth=depth)
-    learned = apply_models(props)
-    print("Learned models applied" if learned else "Learned models not found; using the opportunity-based engine")
+    # only games before this week count as history, even if this week's early games are already in the stats file
+    props, league, defense, injuries = project(cur[cur.week < cur_week], prev, games, cur_week, status_of, note_of, depth=depth)
+    if not apply_models(props):
+        print("Trained models not found in model/. Nothing built.")
+        sys.exit(1)
+    change = {p["team"]: (p["role"] or {}).get("replacing") or "first start" for p in props
+              if p["kind"] == "pass" and p.get("role") and (p["role"].get("replacing") or p["role"].get("firstStart"))}
     for p in props:
-        p.pop("feat", None)
+        if p["team"] in change:
+            p["qbChange"] = change[p["team"]]
 
+    # ---------- DraftKings lines (from ESPN), keyed to the same player ids as the stats ----------
+    lines_by_game, book = {}, None
+    try:
+        espn_to_pid = DK.id_map(os.path.join(here, "research", "cache", "player_ids.csv"))
+        with ThreadPoolExecutor(5) as ex:
+            for g, gl in zip(games, ex.map(lambda g: DK.game_lines(g["id"]), games)):
+                book = book or gl["book"]
+                lines_by_game[g["id"]] = {
+                    "main": {(espn_to_pid.get(a), k): v for (a, k), v in gl["main"].items() if espn_to_pid.get(a)},
+                    "steps": {(espn_to_pid.get(a), k): v for (a, k), v in gl["steps"].items() if espn_to_pid.get(a)}}
+    except Exception as e:
+        print("Could not read the DraftKings lines:", e)
+    blend = BD.load_blend()
+    players, legs = BD.build(props, games, lines_by_game, blend)
+    P = {p["id"]: p for p in players}
+    full = [BD.describe(l, P) for l in legs]
+    bundle = json.load(open(os.path.join(MODEL_DIR, "bundle.json")))
 
-    out = {
-        "season": season, "week": cur_week,
-        "built": datetime.now(timezone.utc).isoformat(timespec="minutes"),
-        "statsThrough": int(cur.week.max()),
-        "league": league,
-        "games": games, "props": props, "injuries": injuries, "depth": depth,
-        "calib": CALIB, "modelInfo": json.load(open(os.path.join(MODEL_DIR, "bundle.json"))).get("trained_on") if os.path.exists(os.path.join(MODEL_DIR, "bundle.json")) else None,
-        "defense": {k: {kk: round(vv, 3) for kk, vv in v.items()} for k, v in defense.items()},
+    data = {
+        "season": season, "week": cur_week, "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
+        "statsThrough": int(cur[cur.week < cur_week].week.max()), "book": book,
+        "games": games, "injuries": injuries, "players": players,
+        # every posted bet as [player id, stat, o/u/a (over, under, "or more"), number, chance, the model's own chance]
+        "legs": [[l["pid"], l["stat"], l["kind"][0], l["num"], l["p"], l["pm"]] for l in legs],
+        "links": BD.LINKS, "report": blend.get("report"), "weights": blend.get("weights"),
+        "trained_on": bundle.get("trained_on"),
+        "model_miss": {k: {"model": m["oof_mae"], "simple": m["engine_mae"], "n": m["n"]} for k, m in bundle["markets"].items()},
     }
+    safe, pay = candidate_pools(full, P)
+    text = board_text(data, safe, pay, P)
+    def fallback(l):
+        p = P[l["pid"]]
+        why = f'Projected for {l["proj"]:g} {l["unit"]} and did this in {l["hits"]} of his {l["of"]} games this season.'
+        return why, "; ".join(p["flags"][:2]), p["status"] == "" and p["n"] >= 3
+    picks = picker.pick("yards", text, safe, pay, fallback)
+    data["picks"] = picks
+    data["pool"] = {"safest": [l["id"] for l in safe], "payout": [l["id"] for l in pay]}
+    data["prompt"] = {"rules": picker.rules("yards"), "data": text, "model": picker.MODEL}
+    print(f'{len(games)} games, {len(players)} players, {len(legs)} posted bets, picked by {picks["by"]}: '
+          f'{len(picks["safest"])} safest, {len(picks["payout"])} payout')
+
+    # ---------- results log: the picks as they stood before the week's first kickoff, graded the week after ----------
+    log_path = os.path.join(here, "data", "picks_log.json")
+    log = json.load(open(log_path)) if os.path.exists(log_path) else {"weeks": {}}
+    BD.grade(log, cur, season, cur_week)
+    key = f"{season}-W{cur_week:02d}"
+    L = {l["id"]: l for l in full}
+    if picks["safest"] and (started == 0 or key not in log["weeks"]):
+        keep = lambda items: [{**{k: L[i["id"]][k] for k in ("id", "pid", "gid", "stat", "kind", "num", "p", "text")},
+                               "name": P[L[i["id"]]["pid"]]["name"]} for i in items]
+        log["weeks"][key] = {"season": season, "week": cur_week, "by": picks["by"], "at": picks["at"],
+                             "safest": keep(picks["safest"]), "payout": keep(picks["payout"])}
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+    json.dump(log, open(log_path, "w"), separators=(",", ":"))
+    data["record"] = BD.record(log)
+
     with open(args.out, "w") as f:
-        json.dump(out, f, separators=(",", ":"))
-    print(f"{len(games)} games, {len(props)} props -> {args.out}")
+        json.dump(data, f, separators=(",", ":"))
+    print("wrote", args.out, os.path.getsize(args.out) // 1024, "KB")
 
 
 if __name__ == "__main__":
