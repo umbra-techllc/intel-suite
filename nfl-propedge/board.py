@@ -47,7 +47,7 @@ def flags_for(p, g, line):
     return f
 
 
-def build(props, games, lines_by_game, blend):
+def build(props, games, lines_by_game, blend, espn_id=None):
     """props: output of build_data.project + apply_models (each still carrying its outcome grid in "_grid").
     lines_by_game: {game id: {"main": {(pid, kind): {line, open}}, "steps": {(pid, kind): [n]}}} keyed by nflverse player id.
     Returns (players, legs)."""
@@ -70,13 +70,15 @@ def build(props, games, lines_by_game, blend):
             pm, final = None, raw
         pl = players.setdefault(p["pid"], {
             "id": p["pid"], "name": p["name"], "team": p["team"], "opp": p["opp"], "home": bool(p["home"]), "pos": p["pos"],
-            "gid": p["game"], "status": "" if p["status"] == "Active" else p["status"], "note": "" if p["status"] == "Active" else p["note"], "n": p["n"], "flags": [], "stats": {},
+            "gid": p["game"], "eid": (espn_id or {}).get(p["pid"]), "status": "" if p["status"] == "Active" else p["status"], "note": "" if p["status"] == "Active" else p["note"], "n": p["n"], "flags": [], "stats": {},
             "log": [{k: l[k] for k in ("wk", "opp", "pass", "att", "rush", "car", "rec", "tgt")} for l in reversed(p["logs"])]})
         for f in flags_for(p, G[p["game"]], line):
             if f not in pl["flags"]:
                 pl["flags"].append(f)
         entry = {"proj": round(float(final[50]), 1), "lo": round(float(max(0, final[20])), 1), "hi": round(float(final[80]), 1),
-                 "model": round(float(raw[50]), 1), "factors": (p.get("factors") or {}).get("top", [])[:4]}
+                 "model": round(float(raw[50]), 1), "factors": (p.get("factors") or {}).get("top", [])[:4],
+                 # the model's own range of outcomes, so the page can redo the chances when it loads newer lines
+                 "g": [round(float(v), 1) for v in raw]}
         def leg(kind, num, chance, model_chance):
             if 0.03 <= chance <= 0.97:
                 legs.append({"id": f'{p["pid"]}-{p["kind"]}-{kind[0]}{num:g}', "pid": p["pid"], "gid": p["game"], "stat": p["kind"],

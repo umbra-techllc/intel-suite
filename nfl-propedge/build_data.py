@@ -752,7 +752,7 @@ def main():
             p["qbChange"] = change[p["team"]]
 
     # ---------- DraftKings lines (from ESPN), keyed to the same player ids as the stats ----------
-    lines_by_game, book = {}, None
+    lines_by_game, book, espn_to_pid = {}, None, {}
     try:
         espn_to_pid = DK.id_map(os.path.join(here, "research", "cache", "player_ids.csv"))
         with ThreadPoolExecutor(5) as ex:
@@ -764,7 +764,7 @@ def main():
     except Exception as e:
         print("Could not read the DraftKings lines:", e)
     blend = BD.load_blend()
-    players, legs = BD.build(props, games, lines_by_game, blend)
+    players, legs = BD.build(props, games, lines_by_game, blend, {v: k for k, v in espn_to_pid.items()})
     P = {p["id"]: p for p in players}
     full = [BD.describe(l, P) for l in legs]
     bundle = json.load(open(os.path.join(MODEL_DIR, "bundle.json")))
