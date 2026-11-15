@@ -37,11 +37,19 @@ jobs:
         working-directory: nfl-propedge
         run: python research/fit_models.py
 
+      - name: Save last week's DraftKings lines
+        working-directory: nfl-propedge
+        run: python research/fetch_lines.py
+
+      - name: Refit the blend between the models and the lines, and rewrite the accuracy report
+        working-directory: nfl-propedge
+        run: python research/fit_blend.py
+
       - name: Commit the new models
         run: |
           git config user.name "umbra-propedge-bot"
           git config user.email "umbra-propedge-bot@users.noreply.github.com"
-          git add nfl-propedge/model
+          git add nfl-propedge/model nfl-propedge/data
           if git diff --cached --quiet; then
             echo "No changes."
           else
