@@ -112,22 +112,28 @@ def describe(l, P):
 def grade(log, stats, season, cur_week):
     """Mark saved picks as hit or missed once that week is over. stats: nflverse weekly rows for the season."""
     col = {"pass": "passing_yards", "rush": "rushing_yards", "rec": "receiving_yards"}
+    team_of = stats.sort_values("week").groupby("player_id").team.last()
     for key, d in log["weeks"].items():
-        if d.get("graded") or d.get("season") != season or d["week"] >= cur_week:
-            continue  # graded from the following week's build on, when every game of that week is in
+        legs = d.get("safest", []) + d.get("payout", [])
+        if d.get("season") != season or d["week"] >= cur_week:
+            continue
+        if d.get("graded") and not any(l.get("res") == "void" for l in legs):
+            continue
         wk = stats[stats.week == d["week"]]
         if wk.empty:
             continue
-        got = wk.set_index("player_id")
-        for l in d.get("safest", []) + d.get("payout", []):
+        got, played, waiting = wk.drop_duplicates("player_id").set_index("player_id"), set(wk.team), False
+        for l in legs:
             if l["pid"] not in got.index:
+                # No stats for him. If his team's game is not in the file yet (Monday games arrive a day or two
+                # later), check again on the next build instead of calling it "did not play".
                 l["res"] = "void"
+                waiting = waiting or team_of.get(l["pid"]) not in played
                 continue
-            row = got.loc[l["pid"]]
-            v = float(row[col[l["stat"]]].iloc[0] if hasattr(row[col[l["stat"]]], "iloc") else row[col[l["stat"]]])
+            v = float(got.loc[l["pid"], col[l["stat"]]])
             l["got"] = int(v)
             l["res"] = "hit" if (v >= l["num"] if l["kind"] == "alt" else v > l["num"] if l["kind"] == "over" else v < l["num"]) else "miss"
-        d["graded"] = True
+        d["graded"] = not waiting
 
 
 def record(log):

@@ -404,20 +404,30 @@ def main():
     # ---------- results log: the picks as they stood before the week's first kickoff, graded the week after ----------
     log_path = os.path.join(HERE, "data", "picks_log.json")
     log = json.load(open(log_path)) if os.path.exists(log_path) else {"weeks": {}}
+    season_stats = stats[stats.season == season]
+    team_of = season_stats.sort_values("week").groupby("player_id").team.last()
     for d_ in log["weeks"].values():
-        if d_.get("graded") or d_.get("season") != season or d_["week"] >= week:
+        legs_ = d_.get("safest", []) + d_.get("payout", [])
+        if d_.get("season") != season or d_["week"] >= week:
             continue
-        got = stats[(stats.season == season) & (stats.week == d_["week"])].drop_duplicates("player_id").set_index("player_id")
-        if got.empty:
+        if d_.get("graded") and not any(l.get("res") == "void" for l in legs_):
             continue
-        for l in d_.get("safest", []) + d_.get("payout", []):
+        wk_ = season_stats[season_stats.week == d_["week"]]
+        if wk_.empty:
+            continue
+        got, played, waiting = wk_.drop_duplicates("player_id").set_index("player_id"), set(wk_.team), False
+        for l in legs_:
             if l["pid"] not in got.index:
-                l["res"] = "void"; continue
+                # No stats for him. If his team's game is not in the file yet (Monday games arrive a day or two
+                # later), check again on the next build instead of calling it "did not play".
+                l["res"] = "void"
+                waiting = waiting or team_of.get(l["pid"]) not in played
+                continue
             r = got.loc[l["pid"]]
             v = int(r.passing_tds or 0) if l["stat"] == "ptd" else int((r.rushing_tds or 0) + (r.receiving_tds or 0))
             l["got"] = v
             l["res"] = "hit" if (v >= l["num"] if l["kind"] == "alt" else v > l["num"] if l["kind"] == "over" else v < l["num"]) else "miss"
-        d_["graded"] = True
+        d_["graded"] = not waiting
     key = f"{season}-W{week:02d}"
     Lf = {l["id"]: l for l in full}
     if picks["safest"] and (started == 0 or key not in log["weeks"]):
