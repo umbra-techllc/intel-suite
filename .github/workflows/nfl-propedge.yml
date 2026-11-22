@@ -8,9 +8,12 @@ name: NFL PropEdge refresh
 
 on:
   schedule:
-    - cron: "17 13 * * *"   # about 9:17am ET every day
-    - cron: "17 21 * * *"   # about 5:17pm ET every day
-    - cron: "47 15 * * 0"   # about 11:47am ET Sunday, after inactives
+    # GitHub has been starting this repo's scheduled runs 4 to 7 hours late, so these times are set about
+    # 5 hours ahead of when the run is wanted. Times are UTC. If runs start arriving on time, move them back.
+    - cron: "17 8 * * *"    # wanted about 8am ET every day
+    - cron: "17 16 * * *"   # wanted about 4pm ET every day
+    - cron: "47 10 * * 0"   # Sunday, wanted late morning ET after inactives are announced
+    - cron: "47 15 * * 0"   # Sunday again, in case the run above starts on time and is too early for inactives
   workflow_dispatch:
     inputs:
       week:

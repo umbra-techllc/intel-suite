@@ -7,9 +7,12 @@ name: NFL TD Predictor refresh
 
 on:
   schedule:
-    - cron: "27 13 * * *"   # about 9:27am ET every day
-    - cron: "27 21 * * *"   # about 5:27pm ET every day
-    - cron: "52 15 * * 0"   # about 11:52am ET Sunday, after inactives
+    # GitHub has been starting this repo's scheduled runs 4 to 7 hours late, so these times are set about
+    # 5 hours ahead of when the run is wanted. Times are UTC. If runs start arriving on time, move them back.
+    - cron: "27 8 * * *"    # wanted about 8am ET every day
+    - cron: "27 16 * * *"   # wanted about 4pm ET every day
+    - cron: "52 10 * * 0"   # Sunday, wanted late morning ET after inactives are announced
+    - cron: "52 15 * * 0"   # Sunday again, in case the run above starts on time and is too early for inactives
   workflow_dispatch:
     inputs:
       week:
