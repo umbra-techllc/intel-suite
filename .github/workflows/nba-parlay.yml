@@ -1,5 +1,7 @@
 # Rebuilds nba_parlay_data.json, which nba_parlay_finder.html loads: tonight's projections, the chance for
-# every posted bet, and the parlay legs chosen by the AI step. Runs four times a day so late injury news is picked up.
+# every posted bet, and the parlay legs chosen by the AI step. The page's Load lines button redoes the chances against
+# fresh lines on demand and can also start this workflow (with a GitHub token saved in its settings). The schedule
+# below keeps the page current when it is opened, grades yesterday's picks, and saves lines close to tip-off.
 # The AI step needs the ANTHROPIC_API_KEY repository secret (the same one Defense Intel uses). Without it the
 # page still updates and the picks fall back to the model's ranking.
 # To run it by hand: Actions tab > NBA Parlay Finder refresh > Run workflow.
@@ -11,6 +13,7 @@ on:
     - cron: "7 19 * * *"    # about 2pm ET
     - cron: "37 21 * * *"   # about 4:30pm ET
     - cron: "7 23 * * *"    # about 6pm ET, close to the first tip-off
+    - cron: "7 1 * * *"     # about 8pm ET, for late games
   workflow_dispatch:
 
 permissions:
@@ -56,7 +59,7 @@ jobs:
         run: |
           git config user.name "umbra-propedge-bot"
           git config user.email "umbra-propedge-bot@users.noreply.github.com"
-          git add nba_parlay_data.json nba-propedge/data/picks_log.json
+          git add nba_parlay_data.json nba-propedge/data/picks_log.json nba-propedge/data/late
           if git diff --cached --quiet; then
             echo "No changes."
           else

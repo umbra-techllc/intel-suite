@@ -156,9 +156,9 @@ def board(pred, hist, props_by_game, status, absent, inj, bundle):
             else:
                 loc2, tier = loc, M.tier_of(s["cuts"], loc)
             q = s["zq"][tier]
-            chance = lambda line: M.p_over(loc2, sc, s["cuts"], s["zq"], line, tier)
+            chance = lambda line: M.top_fix(M.p_over(loc2, sc, s["cuts"], s["zq"], line, tier), s.get("top", 0))
             entry.update(proj=round(max(0.0, loc2 + sc * q[100]), 1), lo=round(max(0.0, loc2 + sc * q[30]), 1),
-                         hi=round(max(0.0, loc2 + sc * q[170]), 1), model=round(loc, 1))
+                         hi=round(max(0.0, loc2 + sc * q[170]), 1), model=round(loc, 1), loc=round(loc, 5), sc=round(sc, 5))
             def leg(kind, num, price, pr):
                 be = M.implied(price)
                 if pr - be > 0.2 or price < -2500:
@@ -187,6 +187,36 @@ def describe(l, p):
     return {**l, "dec": round(M.decimal(l["price"]), 3), "be": round(M.implied(l["price"]), 3), "unit": UNIT[t],
             "text": f"{num}+ {UNIT[t]}" if kind == "alt" else f"{kind} {num:g} {UNIT[t]}", "proj": p["stats"][t]["proj"],
             "hits": sum(hit(v) for v in vals), "of": len(vals), "last": vals[:8]}
+
+
+def save_late_lines(pre, props_by_game, book, now):
+    """Keep each game's lines from the last build inside 90 minutes of its tip-off (data/late/<day>.csv.gz).
+    History only has opening lines, because ESPN's 'current' numbers turn into in-game lines after the tip.
+    These files are what the blend can later be refit on, since late lines carry more news than openers."""
+    if book != "DraftKings":
+        return
+    rows = []
+    for e in pre:
+        t = dt.datetime.fromisoformat(e["date"].replace("Z", "+00:00"))
+        mins = (t - now).total_seconds() / 60
+        if not 0 < mins <= 90:
+            continue
+        for (pid, stat), m in props_by_game.get(e["id"], ({}, {}))[0].items():
+            if m["over"] is not None and m["under"] is not None:
+                rows.append({"gid": e["id"], "pid": pid, "stat": stat, "line": m["line"], "over": m["over"], "under": m["under"],
+                             "oline": m["oline"], "mins": round(mins), "season": e["season"]})
+    if not rows:
+        return
+    day = min(e["date"] for e in pre)
+    day = dt.datetime.fromisoformat(day.replace("Z", "+00:00")).astimezone(ET).strftime("%Y%m%d")
+    path = os.path.join(HERE, "data", "late", f"{day}.csv.gz")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    new = pd.DataFrame(rows)
+    if os.path.exists(path):
+        old = pd.read_csv(path, dtype={"gid": str, "pid": str})
+        new = pd.concat([old[~old.gid.isin(set(new.gid))], new], ignore_index=True)
+    new.sort_values(["gid", "pid", "stat"]).to_csv(path, index=False, compression={"method": "gzip", "compresslevel": 9, "mtime": 0})
+    print(f"kept {len(rows)} late lines in {os.path.basename(path)}")
 
 
 def grade(log, hist):
@@ -221,14 +251,17 @@ def record(log):
         for style in ("safest", "payout"):
             live = [l for l in d.get(style, []) if l.get("res") in ("hit", "miss")]
             out[style]["hit"] += sum(l["res"] == "hit" for l in live); out[style]["n"] += len(live)
+            out[style]["said"] = out[style].get("said", 0.0) + sum(l["p"] for l in live)
         s = [l for l in d.get("safest", []) if l.get("res") in ("hit", "miss")]
         for n in range(2, 7):
             if len(s) >= n:
                 k = out["parlays"].setdefault(str(n), {"hit": 0, "n": 0})
                 k["n"] += 1; k["hit"] += int(all(l["res"] == "hit" for l in s[:n]))
-        if len(out["recent"]) < 10:
+        if len(out["recent"]) < 10 and d.get("safest"):
             out["recent"].append({"day": day, "by": d.get("by"), "legs": [{"name": l["name"], "text": l["text"], "res": l.get("res"), "got": l.get("got")}
                                                                           for l in d.get("safest", [])]})
+    for style in ("safest", "payout"):
+        out[style]["said"] = round(out[style].get("said", 0.0) / out[style]["n"], 3) if out[style]["n"] else None
     return out
 
 
@@ -270,6 +303,8 @@ def main():
         for gid, pr, bk in ex.map(game_props, pre):
             props_by_game[gid] = pr; book = book or bk
 
+    save_late_lines(pre, props_by_game, book, now)
+
     players, legs = board(pred, hist, props_by_game, status, absent, inj, bundle)
     P = {p["id"]: p for p in players}
     full = [describe(l, P[l["pid"]]) for l in legs]  # with text, recent results and break-even, for the picker
@@ -281,7 +316,7 @@ def main():
             continue
         t = dt.datetime.fromisoformat(pre[0]["date"].replace("Z", "+00:00"))
         st = status.get(pid) or read_status(i, t, now)
-        injuries.setdefault(ab, []).append({"name": i["name"], "status": st or "listed", "what": i.get("what", ""), "note": i.get("note", "")})
+        injuries.setdefault(ab, []).append({"id": pid, "name": i["name"], "status": st or "listed", "what": i.get("what", ""), "note": i.get("note", "")})
     for ab in injuries:
         injuries[ab].sort(key=lambda x: {"out": 0, "doubtful": 1, "questionable": 2}.get(x["status"], 3))
 
