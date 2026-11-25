@@ -8,7 +8,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=Red+Hat+Mono:wght@400;500;600&display=swap">
 <style>
-/* Layout: parlay slip on the left (sticky), board and player tables on the right. One column on phones. Light theme only. */
+/* Layout: status bar with the Load lines button on top, parlay slip on the left (sticky), bet table on the right.
+   One column on phones. Light theme only. */
 :root {
   color-scheme: light;
   --bg: #F1EEE8; --surface: #FFFFFF; --surface-2: #F8F6F1; --ink: #20242B; --muted: #5A6170;
@@ -32,18 +33,23 @@ button { cursor: pointer; }
 h2, h3 { font-family: var(--f-display); text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
 
 .top { background: var(--surface); border-bottom: 1px solid var(--line); }
-.top-in { max-width: 1400px; margin: 0 auto; padding: 14px 16px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 24px; justify-content: space-between; }
-.brand { display: flex; align-items: center; gap: 12px; }
-.mark { width: 34px; height: 34px; border-radius: 7px; background: var(--accent); display: grid; place-items: center; flex: none; }
-.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 28px; line-height: 1; margin: 0; text-transform: uppercase; }
+.top-in { max-width: 1400px; margin: 0 auto; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 24px; justify-content: space-between; }
+.brand h1 { font-family: var(--f-display); font-weight: 700; font-size: 26px; line-height: 1; margin: 0; text-transform: uppercase; }
 .brand .by { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-top: 3px; }
-.meta { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--muted); font-size: 13px; }
-.meta b { color: var(--ink); font-weight: 600; }
+.live { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.stamps { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 13px; color: var(--muted); }
+.stamps b { color: var(--ink); font-weight: 600; }
+.stamps .old b { color: var(--bad); }
+.status { max-width: 1400px; margin: 0 auto; padding: 0 16px; }
+.status div { margin-top: 12px; border-radius: 6px; padding: 9px 12px; font-size: 13px; }
+.status .warn { background: var(--warn-soft); color: #4F3300; border: 1px solid #E3CF9C; }
+.status .info { background: var(--navy-soft); color: #1B2F4F; border: 1px solid #C5D3E8; }
+.status .err { background: var(--bad-soft); color: #6E1F12; border: 1px solid #E6BFB6; }
 
-.wrap { max-width: 1400px; margin: 0 auto; padding: 16px 16px 48px; display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 16px; align-items: start; }
+.wrap { max-width: 1400px; margin: 0 auto; padding: 14px 16px 40px; display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 16px; align-items: start; }
 @media (max-width: 980px) { .wrap { grid-template-columns: 1fr; } }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); }
-.card-h { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.card-h { padding: 11px 14px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .card-h h2 { font-size: 18px; font-weight: 700; }
 .card-b { padding: 12px 14px; }
 /* the left column stays in view and scrolls on its own when the parlay is taller than the window */
@@ -63,12 +69,14 @@ h2, h3 { font-family: var(--f-display); text-transform: uppercase; letter-spacin
 .btn.primary:hover { background: #8E390C; }
 .btn.small { padding: 4px 9px; font-size: 12px; }
 .btn:disabled { opacity: 0.55; cursor: default; }
+select { border: 1px solid var(--line-strong); border-radius: 6px; padding: 5px 7px; background: #fff; }
 textarea, input[type=text], input[type=password], input[type=number] { border: 1px solid var(--line-strong); border-radius: 6px; padding: 7px 9px; background: #fff; width: 100%; }
+label.chk { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; white-space: nowrap; }
 
 /* slip */
 .note { background: var(--navy-soft); border-radius: 6px; padding: 10px 12px; font-size: 13px; color: #1B2F4F; }
 .note .who { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--navy); display: block; margin-bottom: 3px; }
-.leg { border-top: 1px solid var(--line); padding: 10px 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; }
+.leg { border-top: 1px solid var(--line); padding: 9px 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; }
 .leg:first-child { border-top: 0; }
 .leg .who { font-weight: 600; }
 .leg .who small { font-weight: 400; color: var(--muted); }
@@ -93,11 +101,16 @@ textarea, input[type=text], input[type=password], input[type=number] { border: 1
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding: 0 10px; flex-wrap: wrap; }
 .tabs button { border: 0; background: none; padding: 11px 12px 9px; font-family: var(--f-display); font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); border-bottom: 3px solid transparent; }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
-.filters { display: flex; gap: 10px 16px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); align-items: center; }
+.tabs .cnt { font-family: var(--f-data); font-size: 12px; background: var(--warn-soft); color: var(--warn); border-radius: 9px; padding: 0 6px; margin-left: 4px; }
+.filters { display: flex; gap: 8px 14px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--surface-2); align-items: center; }
+.filters .f { display: inline-flex; gap: 6px; align-items: center; font-size: 12px; font-weight: 600; color: var(--muted); }
 .scroll { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; }
 th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th.sort { cursor: pointer; user-select: none; }
+th.sort:hover { color: var(--ink); }
+th.sort.on { color: var(--ink); }
+td { padding: 7px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 tr:last-child > td { border-bottom: 0; }
 td.r, th.r { text-align: right; }
 .pname { font-weight: 600; }
@@ -126,37 +139,38 @@ tr.detail td { background: var(--surface-2); padding: 12px 14px; }
 .rung b { display: block; font-size: 13px; }
 .mini th, .mini td { padding: 4px 8px; font-size: 12.5px; }
 .mini td { font-family: var(--f-data); }
-.prose { padding: 14px; max-width: 78ch; }
+.prose { padding: 14px; max-width: 80ch; }
 .prose p { margin: 0 0 10px; }
 .prose h3 { font-size: 16px; margin: 18px 0 6px; }
 .prose table { max-width: 560px; margin: 6px 0 12px; }
+.prose ul { margin: 0 0 10px; padding-left: 18px; }
 .res-hit { color: var(--good); font-weight: 600; } .res-miss { color: var(--bad); font-weight: 600; }
 details.set summary { cursor: pointer; font-weight: 600; font-size: 13px; color: var(--muted); }
 details.set .in { display: grid; gap: 8px; margin-top: 8px; }
 .foot { max-width: 1400px; margin: 0 auto; padding: 0 16px 30px; color: var(--muted); font-size: 12px; }
 @media (max-width: 600px) { .hide-s { display: none; } th, td { padding: 7px 6px; } }
 </style>
-
 </head>
 <body>
 <header class="top"><div class="top-in">
-  <div class="brand">
-    <div class="mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M2 10h16M10 2v16M4.3 4.3c3 2.6 3 8.8 0 11.4M15.7 4.3c-3 2.6-3 8.8 0 11.4" fill="none" stroke="#fff" stroke-width="1.3"/></svg></div>
-    <div><h1>NBA Parlay Finder</h1><div class="by">Umbra Tech · Intel Suite</div></div>
+  <div class="brand"><h1>NBA Parlay Finder</h1><div class="by">Umbra Tech · Intel Suite</div></div>
+  <div class="live">
+    <div class="stamps" id="stamps"></div>
+    <button class="btn primary" id="liveBtn">Load lines</button>
   </div>
-  <div class="meta" id="meta"></div>
 </div></header>
+<div class="status" id="status"></div>
 
 <div class="wrap">
   <aside class="side">
     <section class="card">
-      <div class="card-h"><h2>Tonight's parlay</h2><span class="fine" id="pickedBy"></span></div>
+      <div class="card-h"><h2>Parlay</h2><span class="fine" id="pickedBy"></span></div>
       <div class="card-b" style="display:grid;gap:10px">
         <div class="row"><span class="lbl">Legs</span><div class="seg" id="segLegs"></div></div>
         <div class="row"><span class="lbl">Goal</span><div class="seg" id="segStyle">
           <button data-v="safest">Most likely to hit</button><button data-v="payout">Bigger payout</button></div></div>
         <div class="row"><button class="btn primary" id="buildBtn" style="flex:1">Build parlay</button>
-          <button class="btn" id="clearBtn">Clear</button></div>
+          <button class="btn" id="copyBtn">Copy</button><button class="btn" id="clearBtn">Clear</button></div>
         <div class="note" id="slateNote" hidden></div>
         <div id="slip"></div>
         <div class="totals" id="totals" hidden>
@@ -166,13 +180,20 @@ details.set .in { display: grid; gap: 8px; margin-top: 8px; }
         <div class="fine" id="slipFine"></div>
       </div>
     </section>
-    <section class="card"><div class="card-b">
-      <details class="set" id="freshBox"><summary>Ask Umbra Read for a fresh pick</summary>
+    <section class="card"><div class="card-b" style="display:grid;gap:10px">
+      <details class="set" id="setBox"><summary>Settings</summary>
         <div class="in">
-          <div class="fine">Re-runs the pick on the current board with your own instructions. Needs an analyst API key, which stays in this browser.</div>
+          <label class="chk"><input type="checkbox" id="autoLines"> Load lines when the page opens</label>
+          <div class="fine"><b>Full rebuild.</b> Load lines redoes every chance against the newest lines and injury report, using the projections from the last full build. With a GitHub token saved here, the same button also starts a full build (new box scores, minutes and projections), which takes about a minute. Create a fine-grained token for the intel-suite repository with Actions set to read and write. It stays in this browser.</div>
+          <input id="ghTok" type="password" placeholder="GitHub token (optional)" autocomplete="off">
+        </div>
+      </details>
+      <details class="set" id="freshBox"><summary>Ask Umbra Read for a pick</summary>
+        <div class="in">
+          <div class="fine">Runs the pick on the board as it stands now, with your own instructions. Needs an analyst API key, which stays in this browser.</div>
           <textarea id="steer" rows="2" placeholder="Optional. For example: no players from the Denver game, rebounds and assists only"></textarea>
           <input id="akey" type="password" placeholder="Analyst API key" autocomplete="off">
-          <div class="row"><button class="btn" id="freshBtn">Get a fresh pick</button><span class="fine" id="freshMsg"></span></div>
+          <div class="row"><button class="btn" id="freshBtn">Get a pick</button><span class="fine" id="freshMsg"></span></div>
         </div>
       </details>
     </div></section>
@@ -180,22 +201,211 @@ details.set .in { display: grid; gap: 8px; margin-top: 8px; }
 
   <main class="card" style="min-width:0">
     <div class="tabs" role="tablist" id="tabs">
-      <button data-t="board" aria-selected="true">Best bets</button>
-      <button data-t="players" aria-selected="false">All players</button>
-      <button data-t="left" aria-selected="false">Left out</button>
-      <button data-t="record" aria-selected="false">Track record</button>
+      <button data-t="board" aria-selected="true">Bets</button>
+      <button data-t="players" aria-selected="false">Players</button>
+      <button data-t="news" aria-selected="false">Injuries<span class="cnt" id="newsCnt" hidden></span></button>
+      <button data-t="record" aria-selected="false">Record</button>
     </div>
     <div id="pane"></div>
   </main>
 </div>
-<div class="foot">For information and entertainment only. Nothing here is betting advice. Chances are estimates and every parlay loses more often than its legs suggest. Umbra Technologies LLC</div>
+<div class="foot">Chances are estimates, not guarantees. A parlay needs every leg to hit. Umbra Technologies LLC</div>
+
+<script id="engine">
+/* ================= engine =================
+   Same math as nba-propedge/model.py, build_nba.py (board) and picker.py (pools, fallback ranking), so the page can
+   redo every chance against lines pulled straight from ESPN. Nothing in this block touches the page itself. */
+const SITE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba";
+const CORE = "https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba";
+const STAT_KEYS = ["pts", "reb", "ast", "tpm", "pra", "pr", "pa", "ra"];
+const UNIT = { pts: "points", reb: "rebounds", ast: "assists", tpm: "threes", pra: "points + rebounds + assists", pr: "points + rebounds", pa: "points + assists", ra: "rebounds + assists" };
+const PARTS = { pts: ["pts"], reb: ["reb"], ast: ["ast"], tpm: ["tpm"], pra: ["pts", "reb", "ast"], pr: ["pts", "reb"], pa: ["pts", "ast"], ra: ["reb", "ast"] };
+const DK_MAIN = { "Total Points": "pts", "Total Rebounds": "reb", "Total Assists": "ast", "Total 3-Point Field Goals": "tpm",
+  "Total Points, Rebounds, and Assists": "pra", "Total Points and Rebounds": "pr", "Total Points and Assists": "pa", "Total Assists and Rebounds": "ra" };
+const DK_ALT = { "Points Milestones": "pts", "Rebounds Milestones": "reb", "Assists Milestones": "ast", "3-Point Field Goals Milestones": "tpm",
+  "Points + Assists + Rebounds Milestones": "pra", "Points + Rebounds Milestones": "pr", "Points + Assists Milestones": "pa", "Rebounds + Assists Milestones": "ra" };
+const NOFAIR = 0.47, MAX_SAFE = 8, MAX_PAY = 6;
+const OUT_WORDS = ["ruled out", "will not play", "won't play", "is out for", "listed as out", "will miss", "will sit out", "not expected to play", "has been ruled out", "will be sidelined", "out for the season", "remains out"];
+const OK_WORDS = ["probable", "is available", "will play", "expected to play", "will return", "cleared to play", "good to go"];
+
+const lgt = p => { p = Math.min(Math.max(p, 1e-3), 1 - 1e-3); return Math.log(p / (1 - p)); };
+const sig = x => 1 / (1 + Math.exp(-x));
+const imp = a => a < 0 ? -a / (-a + 100) : 100 / (a + 100);
+const decOf = a => a > 0 ? 1 + a / 100 : 1 + 100 / -a;
+const r1 = v => Math.round(v * 10) / 10, r3 = v => Math.round(v * 1000) / 1000;
+const fl1 = v => Number.isInteger(v) ? v.toFixed(1) : String(v); // 34 written as 34.0, the way the build writes it
+const evenRound = v => { const f = Math.floor(v); return v - f === 0.5 ? f + (f % 2) : Math.round(v); }; // halves go to the even number, as the build does
+function tierOf(cuts, loc) { let k = 0; while (k < cuts.length && cuts[k] < loc) k++; return k; }
+function pOver(loc, sc, q, line) { // chance of landing above the line; q is the measured shape of misses for this projection size
+  const r = (line - loc) / sc, n = q.length - 1;
+  if (r < q[0]) return 0.999;
+  if (r >= q[n]) return 0.001;
+  let lo = 0, hi = n; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (q[m] <= r) lo = m; else hi = m; }
+  const frac = q[hi] === q[lo] ? 0.5 : (r - q[lo]) / (q[hi] - q[lo]);
+  return Math.min(0.999, Math.max(0.001, 1 - (lo + frac) / n));
+}
+function blendP(pModel, fair, w) { return sig(w.base + w.model * lgt(pModel) + w.book * lgt(fair == null ? NOFAIR : fair)); }
+function anchorLoc(loc, sc, q, line, target) { // slide the projection until its chance on the main line equals the blended chance
+  let lo = loc - 5 * sc, hi = loc + 5 * sc;
+  for (let i = 0; i < 40; i++) { const m = (lo + hi) / 2; if (pOver(m, sc, q, line) < target) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
+function topFix(p, c) { // same as model.top_fix: pulls high chances down for stats that tested too sure of themselves (threes)
+  if (!c || p <= 0.7) return p;
+  const x = lgt(p), k = Math.log(0.7 / 0.3);
+  return sig(x - c * (x - k));
+}
+function fairOver(over, under) { if (over == null || under == null) return null; const a = imp(over), b = imp(under); return a + b > 1.01 && a + b < 1.15 ? a / (a + b) : null; }
+
+/* ESPN lists some first-quarter ladders under the full-game name. Each ladder arrives as a run of rising numbers: keep the
+   run that agrees with the main line (or reaches highest), and add rungs from other runs only if they fit between its prices. */
+function cleanLadders(alt, main) {
+  const groups = new Map(), out = {};
+  for (const a of alt) { const k = a.pid + "|" + a.stat; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(a); }
+  for (const [key, items] of groups) {
+    const runs = [[items[0]]];
+    for (const a of items.slice(1)) { const last = runs[runs.length - 1]; if (a.n > last[last.length - 1].n) last.push(a); else runs.push([a]); }
+    const m = main[key]; let base;
+    if (m) {
+      const near = run => run.reduce((b, a) => Math.abs(a.n - (m.line + 0.5)) < Math.abs(b.n - (m.line + 0.5)) ? a : b);
+      const score = run => { const x = near(run); return Math.abs(x.n - (m.line + 0.5)) * 0.2 + Math.abs(imp(x.price) - 0.5); };
+      base = runs.reduce((b, r) => score(r) < score(b) ? r : b);
+    } else base = runs.reduce((b, r) => { const x = r[r.length - 1].n, y = b[b.length - 1].n; return x > y || (x === y && r.length > b.length) ? r : b; });
+    const keep = new Map(base.map(a => [a.n, a]));
+    for (const run of runs) { if (run === base) continue;
+      for (const a of run) { if (keep.has(a.n)) continue;
+        const ks = [...keep.keys()], lo = ks.filter(k => k < a.n), hi = ks.filter(k => k > a.n), p = imp(a.price);
+        if ((!lo.length || imp(keep.get(Math.max(...lo)).price) >= p) && (!hi.length || imp(keep.get(Math.min(...hi)).price) <= p) && (lo.length || hi.length)) keep.set(a.n, a);
+      } }
+    out[key] = [...keep.keys()].sort((x, y) => x - y).map(n => keep.get(n));
+  }
+  return out;
+}
+function parseProps(items) { // -> { main: {"pid|stat": {line, over, under}}, alt: {"pid|stat": [{n, price}]} }
+  const main = {}, alt = [];
+  for (const it of items) {
+    const t = (it.type || {}).name, ref = ((it.athlete || {}).$ref || "").split("athletes/")[1];
+    if (!ref) continue;
+    const pid = ref.split("?")[0], raw = String(((it.odds || {}).american || {}).value).replace("+", "");
+    if (!/^-?\d+$/.test(raw)) continue;
+    const price = parseInt(raw, 10), tgt = ((it.current || {}).target || {}).value;
+    if (tgt == null) continue;
+    if (DK_MAIN[t]) { const k = pid + "|" + DK_MAIN[t]; // ESPN lists the over first, then the under
+      if (!main[k]) main[k] = { line: +tgt, over: price, under: null }; else if (main[k].under == null) main[k].under = price; }
+    else if (DK_ALT[t]) alt.push({ pid, stat: DK_ALT[t], n: Math.trunc(+tgt), price });
+  }
+  return { main, alt: cleanLadders(alt, main) };
+}
+
+/* Projection + lines -> the numbers shown for one player and stat, and its priced bets. Mirrors board() in build_nba.py. */
+function priceStat(s, shape, w, m, rungs) {
+  const tier = tierOf(shape.cuts, s.loc), q = shape.zq[tier], e = { model: s.model, loc: s.loc, sc: s.sc }, legs = [];
+  let ref = null;
+  if (m) { ref = [m.line, fairOver(m.over, m.under)]; e.line = m.line; e.over = m.over; e.under = m.under; }
+  else if (rungs.length) { const near = rungs.reduce((b, a) => Math.abs(imp(a.price) - 0.5) < Math.abs(imp(b.price) - 0.5) ? a : b);
+    if (imp(near.price) >= 0.3 && imp(near.price) <= 0.7) ref = [near.n - 0.5, imp(near.price) / 1.07]; }
+  const loc2 = ref ? anchorLoc(s.loc, s.sc, q, ref[0], blendP(pOver(s.loc, s.sc, q, ref[0]), ref[1], w)) : s.loc;
+  const chance = line => topFix(pOver(loc2, s.sc, q, line), shape.top || 0);
+  e.proj = r1(Math.max(0, loc2 + s.sc * q[100])); e.lo = r1(Math.max(0, loc2 + s.sc * q[30])); e.hi = r1(Math.max(0, loc2 + s.sc * q[170]));
+  const leg = (k, num, price, pr) => { if (pr - imp(price) > 0.2 || price < -2500) return; legs.push([k, num, price, r3(pr)]); };
+  if (m) { const po = chance(m.line); e.pOver = r3(po); leg("o", m.line, m.over, po); if (m.under != null) leg("u", m.line, m.under, 1 - po); }
+  for (const a of rungs) leg("a", a.n, a.price, chance(a.n - 0.5));
+  return { entry: e, legs };
+}
+
+function readStatus(i, gameTime, now) { // out / doubtful / questionable / probable / "" from ESPN's status, return date and note
+  if (!i) return "";
+  const note = (i.note || "").toLowerCase(), ret = i.ret || "";
+  const gameDay = new Date(gameTime).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+  const t = Date.parse(i.date), fresh = isFinite(t) && now - t < 40 * 3600e3;
+  if (i.status === "Out" || i.status === "Suspension") return i.tag === "GTD" && ret && ret <= gameDay ? "questionable" : "out";
+  if (note.includes("doubtful")) return "doubtful";
+  if (fresh && OUT_WORDS.some(w => note.includes(w)) && !(ret && ret < gameDay)) return "out";
+  if (OK_WORDS.some(w => note.includes(w))) return "probable";
+  return "questionable";
+}
+function parseInjuries(d) {
+  const out = {};
+  for (const t of d.injuries || []) for (const i of t.injuries || []) {
+    const a = i.athlete || {}; let pid = null;
+    for (const l of a.links || []) { const h = l.href || ""; if (h.includes("/id/")) { pid = h.split("/id/")[1].split("/")[0]; break; } }
+    if (!pid) continue;
+    const det = i.details || {};
+    out[pid] = { status: i.status || "", note: i.shortComment || "", date: i.date || "", name: a.displayName || "", team: t.displayName || "",
+      tag: (det.fantasyStatus || {}).abbreviation || "", ret: det.returnDate || "",
+      what: [det.side, det.type].filter(x => x && x !== "Not Specified").join(" ").trim() };
+  }
+  return out;
+}
+
+/* a leg with the readable extras worked out from the player's game log */
+function mkLeg(pl, stat, k, num, price, p) {
+  const kind = k === "a" ? "alt" : k === "o" ? "over" : "under";
+  const vals = pl.log.map(g => PARTS[stat].reduce((s, c) => s + g[c], 0));
+  const ok = v => kind === "alt" ? v >= num : kind === "over" ? v > num : v < num;
+  return { id: `${pl.id}-${stat}-${k}${num}`, pid: pl.id, gid: pl.gid, stat, kind, num, price, p, unit: UNIT[stat], dec: decOf(price), be: imp(price),
+    text: kind === "alt" ? `${num}+ ${UNIT[stat]}` : `${kind} ${num} ${UNIT[stat]}`, proj: pl.stats[stat].proj, last: vals.slice(0, 8), hits: vals.filter(ok).length, of: vals.length };
+}
+
+/* candidates: for each player and stat, the rung with the best chance that still pays something, and the best one near even money */
+function pools(legs, P) {
+  const by = new Map(); let safe = [], pay = [];
+  for (const l of legs) { const k = l.pid + "|" + l.stat; if (!by.has(k)) by.set(k, []); by.get(k).push(l); }
+  const best = (ls, f) => ls.reduce((b, l) => f(l) > f(b) ? l : b);
+  const be = l => r3(l.be), dc = l => r3(l.dec); // the build rounds these before it compares them
+  const sKey = l => l.p + 0.6 * (l.p - be(l)), vKey = l => l.p - be(l);
+  for (const [k, ls] of by) {
+    const st = P[k.split("|")[0]].status;
+    if (st === "out" || st === "doubtful") continue;
+    const s = ls.filter(l => l.p >= 0.70 && dc(l) >= 1.13); if (s.length) safe.push(best(s, sKey));
+    const v = ls.filter(l => dc(l) >= 1.65 && l.p >= 0.50 && l.p - be(l) >= 0.015); if (v.length) pay.push(best(v, vKey));
+  }
+  const top = (pool, key, per, n) => { const out = [], seen = {};
+    for (const l of pool.map((l, i) => [l, i]).sort((a, b) => key(b[0]) - key(a[0]) || a[1] - b[1]).map(x => x[0])) {
+      if ((seen[l.pid] || 0) >= per) continue; seen[l.pid] = (seen[l.pid] || 0) + 1; out.push(l); if (out.length >= n) break; }
+    return out; };
+  return { safe: top(safe, sKey, 2, 40), pay: top(pay, vKey, 1, 24) };
+}
+function enforce(items, L, limit, used) { // real ids only, one bet per player, two per game
+  const out = [], games = {};
+  for (const it of items || []) {
+    const l = L[it.id]; if (!l || used.has(l.pid) || (games[l.gid] || 0) >= 2) continue;
+    used.add(l.pid); games[l.gid] = (games[l.gid] || 0) + 1;
+    out.push({ id: l.id, why: String(it.why || "").replace(/\s*[—–]\s*/g, ", "), risk: String(it.risk || "").replace(/\s*[—–]\s*/g, ", ") });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+function modelRanking(pool, P) { // most likely first, leaving out anyone on the injury report or with little history
+  const ok = l => P[l.pid].status === "" && P[l.pid].n_prev >= 8;
+  const item = l => ({ id: l.id, why: `Projected for ${fl1(l.proj)} ${l.unit} and did this in ${l.hits} of his last ${l.of} games.`, risk: P[l.pid].flags.slice(0, 2).join("; ") });
+  const srt = (a, f) => a.map((l, i) => [l, i]).sort((x, y) => f(x[0]) - f(y[0]) || x[1] - y[1]).map(x => x[0]);
+  return { safest: srt(pool.safe, l => -l.p).filter(ok).map(item), payout: srt(pool.pay, l => r3(l.be) - l.p).filter(ok).map(item) };
+}
+/* the board as text for the analyst step (same layout as picker.prompt_data) */
+function promptData(D, pool, P) {
+  const fl = fl1;
+  const line = l => { const p = P[l.pid];
+    return `${l.id} | ${p.name} (${p.team} ${p.home ? "vs" : "at"} ${p.opp}) | ${l.text} | price ${l.price > 0 ? "+" : ""}${l.price} | model chance ${evenRound(l.p * 100)}%, price implies ${evenRound(r3(l.be) * 100)}% | projection ${fl(l.proj)} | hit in ${l.hits} of last ${l.of} | last games, newest first: ${l.last.join(", ")} | minutes lately ${evenRound(p.min)}` + (p.flags.length ? ` | notes: ${p.flags.join("; ")}` : ""); };
+  const out = [`NBA slate for ${D.day}. Lines from ${D.book || "the sportsbook"}.`, "", "GAMES"];
+  for (const g of D.games) {
+    const fav = (g.spread || 0) < 0 ? g.home : g.away;
+    out.push(`- ${g.away} at ${g.home}: ${g.spread ? `${fav} favored by ${fl(Math.abs(g.spread))}` : "no spread posted"}, expected total points ${g.total == null ? "None" : fl(g.total)}`);
+    for (const side of [g.away, g.home]) { const inj = (D.injuries[side] || []).map(i => `${i.name} (${i.status}${i.what ? ", " + i.what : ""})`); if (inj.length) out.push(`    ${side} injuries: ` + inj.join("; ")); }
+  }
+  return out.concat(["", "CANDIDATES FOR THE SAFEST LIST"], pool.safe.map(line), ["", "CANDIDATES FOR THE PAYOUT LIST"], pool.pay.map(line)).join("\n");
+}
+</script>
 
 <script>
-let D = null;
+/* ================= page ================= */
+const CFG = { repo: "umbra-techllc/intel-suite", workflow: "nba-parlay.yml", file: "nba_parlay_data.json", bundle: "nba-propedge/model/bundle.json" };
+let D = null, B = null; // D: the board. B: the model bundle (outcome shapes), fetched the first time lines are loaded
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const STATS = [["pts", "Points"], ["reb", "Rebounds"], ["ast", "Assists"], ["tpm", "Threes"], ["pra", "Pts+Reb+Ast"], ["pr", "Pts+Reb"], ["pa", "Pts+Ast"], ["ra", "Reb+Ast"]];
-const S = { legs: 3, style: "safest", slip: [], tab: "board", stat: "pts", game: "all", bstat: "all", open: null, picks: null };
+const S = { legs: 3, style: "safest", slip: [], tab: "board", stat: "pts", game: "all", open: null, picks: null, built: null,
+  f: { stat: "all", kind: "all", minP: 0.7, minPrice: -800, best: true, hideQ: true }, sort: { k: "p", dir: -1 }, more: false, msgs: [] };
 let P, L, G;
 const pct = p => Math.round(p * 100) + "%";
 const price = a => (a > 0 ? "+" : "") + a;
@@ -203,26 +413,18 @@ const amer = d => d >= 2 ? "+" + Math.round((d - 1) * 100) : "-" + Math.round(10
 const barCls = p => p >= 0.7 ? "" : p >= 0.55 ? "mid" : "low";
 const bar = p => `<div class="chance"><span class="num">${pct(p)}</span><div class="bar ${barCls(p)}"><i style="width:${Math.round(p * 100)}%"></i></div></div>`;
 const tm = iso => new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+const when = iso => { const d = new Date(iso), same = d.toDateString() === new Date().toDateString(); return (same ? "" : d.toLocaleDateString([], { weekday: "short" }) + " ") + tm(iso); };
+const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { v == null || v === "" ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} } };
+const qTag = p => p.status === "questionable" ? '<span class="tag q">Questionable</span>' : p.status === "out" || p.status === "doubtful" ? '<span class="tag out">Out</span>' : "";
 
-const UNIT = { pts: "points", reb: "rebounds", ast: "assists", tpm: "threes", pra: "points + rebounds + assists", pr: "points + rebounds", pa: "points + assists", ra: "rebounds + assists" };
-const PARTS = { pts: ["pts"], reb: ["reb"], ast: ["ast"], tpm: ["tpm"], pra: ["pts", "reb", "ast"], pr: ["pts", "reb"], pa: ["pts", "ast"], ra: ["reb", "ast"] };
 function index() {
   P = Object.fromEntries(D.players.map(p => [p.id, p]));
-  // legs arrive as [player id, stat, o/u/a, number, price, chance]; fill in the readable parts here
-  D.legs = D.legs.map(a => {
-    if (!Array.isArray(a)) return a;
-    const [pid, stat, k, num, price, p] = a, pl = P[pid], kind = k === "a" ? "alt" : k === "o" ? "over" : "under";
-    const vals = pl.log.map(g => PARTS[stat].reduce((s, c) => s + g[c], 0));
-    const ok = v => kind === "alt" ? v >= num : kind === "over" ? v > num : v < num;
-    return { id: `${pid}-${stat}-${k}${num}`, pid, gid: pl.gid, stat, kind, num, price, p, unit: UNIT[stat],
-      dec: price > 0 ? 1 + price / 100 : 1 + 100 / -price, be: price < 0 ? -price / (-price + 100) : 100 / (price + 100),
-      text: kind === "alt" ? `${num}+ ${UNIT[stat]}` : `${kind} ${num} ${UNIT[stat]}`, proj: pl.stats[stat].proj,
-      last: vals.slice(0, 8), hits: vals.filter(ok).length, of: vals.length };
-  });
+  // legs arrive from the build as [player id, stat, o/u/a, number, price, chance]
+  D.legs = D.legs.map(a => Array.isArray(a) ? mkLeg(P[a[0]], a[1], a[2], a[3], a[4], a[5]) : a);
   L = Object.fromEntries(D.legs.map(l => [l.id, l]));
   G = Object.fromEntries(D.games.map(g => [g.id, g]));
-  S.picks = D.picks;
   S.slip = S.slip.filter(id => L[id]);
+  if (S.game !== "all" && !G[S.game]) S.game = "all";
 }
 
 /* ---- chance that every leg hits, allowing for legs that move together (same player, teammates, opponents) ---- */
@@ -274,7 +476,6 @@ function jointChance(ids) {
 
 /* ---- parlay slip ---- */
 function why(id) { const s = S.picks; return [...(s.safest || []), ...(s.payout || [])].find(x => x.id === id) || {}; }
-function legText(l) { return (l.kind === "alt" ? "" : "") + l.text; }
 function build() {
   const used = new Set(), games = {}, out = [];
   for (const it of (S.picks[S.style] || [])) {
@@ -293,18 +494,18 @@ function toggle(id) {
 }
 function renderSlip() {
   const s = S.picks, el = $("#slip");
-  $("#pickedBy").textContent = s.by === "ai" ? "Chosen by Umbra Read, " + tm(s.at) : "Ranked by the model";
+  $("#pickedBy").textContent = s.by === "ai" ? "Picked by Umbra Read, " + tm(s.at) : "Ranked by the model";
   const note = $("#slateNote");
   if (s.note) { note.hidden = false; note.innerHTML = `<span class="who">Umbra Read on tonight</span>${esc(s.note)}`; } else note.hidden = true;
   if (!S.slip.length) {
-    el.innerHTML = `<div class="empty">${D.legs.length ? "Press Build parlay, or add bets from the tables." : "No bets are posted for this slate yet. Lines usually go up late morning Eastern time."}</div>`;
+    el.innerHTML = `<div class="empty">${!D.games.length ? "No games left to start on this slate." : D.legs.length ? "Press Build parlay, or add bets from the table." : "No bets are posted for these games yet. Press Load lines to check again."}</div>`;
     $("#totals").hidden = true; $("#slipFine").textContent = ""; return;
   }
   el.innerHTML = S.slip.map(id => {
     const l = L[id], p = P[l.pid], w = why(id);
     return `<div class="leg">
-      <div><div class="who">${esc(p.name)} <small>${p.team} ${p.home ? "vs" : "at"} ${p.opp}</small>${p.status === "questionable" ? '<span class="tag q">Questionable</span>' : ""}</div>
-        <div class="bet">${esc(legText(l))}</div></div>
+      <div><div class="who">${esc(p.name)} <small>${p.team} ${p.home ? "vs" : "at"} ${p.opp}</small>${qTag(p)}</div>
+        <div class="bet">${esc(l.text)}</div></div>
       <div class="px"><div class="num">${price(l.price)}</div>${bar(l.p)}</div>
       ${w.why ? `<div class="why">${esc(w.why)}</div>` : `<div class="why sub">Projected ${l.proj} ${esc(l.unit)}. Did this in ${l.hits} of his last ${l.of} games.</div>`}
       ${w.risk ? `<div class="risk"><b>${S.picks.by === "ai" ? "How it loses" : "Worth knowing"}:</b> ${esc(w.risk)}</div>` : ""}
@@ -315,13 +516,19 @@ function renderSlip() {
   $("#totals").hidden = false;
   $("#tChance").textContent = ch < 0.01 ? "<1%" : pct(ch);
   $("#tPay").textContent = "$" + (stake * dec).toFixed(2);
-  let fine = `Parlay price ${amer(dec)}. That price needs the parlay to hit ${pct(1 / dec)} of the time to break even.`;
+  let fine = `Parlay price ${amer(dec)}, which needs ${pct(1 / dec)} to break even.`;
   if (Math.abs(ch - naive) > 0.015) fine += ` Some of these legs tend to ${ch > naive ? "hit together" : "work against each other"}, which is counted in the chance shown.`;
-  if (S.built && S.built.n < S.built.want) fine += ` Only ${S.built.n} bets passed the cut for this goal tonight.`;
+  if (S.built && S.built.n < S.built.want) fine += ` Only ${S.built.n} bets passed the cut for this goal.`;
   $("#slipFine").textContent = fine;
 }
+function copySlip() {
+  if (!S.slip.length) return;
+  const dec = S.slip.reduce((a, id) => a * L[id].dec, 1);
+  const text = S.slip.map(id => { const l = L[id], p = P[l.pid]; return `${p.name} (${p.team}): ${l.text}, ${price(l.price)}, ${pct(l.p)}`; }).join("\n") + `\nParlay ${amer(dec)}, chance all hit ${pct(jointChance(S.slip))}`;
+  (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => { $("#copyBtn").textContent = "Copied"; setTimeout(() => { $("#copyBtn").textContent = "Copy"; }, 1200); }).catch(() => {});
+}
 
-/* ---- best bets ---- */
+/* ---- bets ---- */
 function tagFor(id) {
   const s = S.picks;
   if ((s.safest || []).some(x => x.id === id) || (s.payout || []).some(x => x.id === id)) return '<span class="tag pick">Picked</span>';
@@ -329,120 +536,282 @@ function tagFor(id) {
   return "";
 }
 function dots(l) { return `<span class="dots">${l.last.map(v => { const ok = l.kind === "alt" ? v >= l.num : l.kind === "over" ? v > l.num : v < l.num; return ok ? `<b>${v}</b>` : `<s>${v}</s>`; }).join(" ")}</span>`; }
-function gameFilter(id) {
-  return `<select id="${id}"><option value="all">All games</option>${D.games.map(g => `<option value="${g.id}" ${S.game === g.id ? "selected" : ""}>${g.away} at ${g.home}</option>`).join("")}</select>`;
+function gameFilter() {
+  return `<select id="fGame"><option value="all">All games</option>${D.games.map(g => `<option value="${g.id}" ${S.game === g.id ? "selected" : ""}>${g.away} at ${g.home}</option>`).join("")}</select>`;
+}
+const opt = (v, t, cur) => `<option value="${v}" ${String(cur) === String(v) ? "selected" : ""}>${t}</option>`;
+function boardRows() {
+  const f = S.f;
+  let rows = D.legs.filter(l => (S.game === "all" || l.gid === S.game) && (f.stat === "all" || l.stat === f.stat)
+    && (f.kind === "all" || (f.kind === "alt" ? l.kind === "alt" : l.kind !== "alt")) && l.p >= f.minP && l.price >= f.minPrice
+    && !(f.hideQ && P[l.pid].status !== "" && P[l.pid].status !== "probable"));
+  if (f.best) { // one row per player and stat: the likeliest rung, with a small nod to the better price
+    const by = new Map(), key = l => l.p + 0.6 * (l.p - l.be);
+    for (const l of rows) { const k = l.pid + "|" + l.stat, b = by.get(k); if (!b || key(l) > key(b)) by.set(k, l); }
+    rows = [...by.values()];
+  }
+  const k = S.sort.k, val = l => k === "gap" ? l.p - l.be : k === "name" ? P[l.pid].name : l[k];
+  rows.sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * S.sort.dir || b.p - a.p; });
+  return rows;
 }
 function renderBoard() {
-  const ids = [...new Set([...(D.pool.safest || []), ...(D.pool.payout || [])])];
-  let rows = ids.map(id => L[id]).filter(Boolean).filter(l => (S.game === "all" || l.gid === S.game) && (S.bstat === "all" || l.stat === S.bstat));
-  rows.sort((a, b) => b.p - a.p);
-  return `<div class="filters">${gameFilter("fGame")}
-      <select id="fStat"><option value="all">All stats</option>${STATS.map(([k, n]) => `<option value="${k}" ${S.bstat === k ? "selected" : ""}>${n}</option>`).join("")}</select>
-      <span class="fine">${rows.length} bets that cleared the model's cut, most likely first. Umbra Read picks from this list.</span></div>
-    <div class="scroll"><table><thead><tr><th>Player</th><th>Bet</th><th class="r">Price</th><th>Chance</th><th class="r hide-s">Price needs</th><th class="hide-s">Recent games</th><th></th></tr></thead><tbody>
-    ${rows.map(l => { const p = P[l.pid]; return `<tr><td><span class="pname">${esc(p.name)}</span>${tagFor(l.id)}${p.status === "questionable" ? '<span class="tag q">Questionable</span>' : ""}<div class="sub">${p.team} ${p.home ? "vs" : "at"} ${p.opp} · projected ${l.proj}</div></td>
-      <td><b>${esc(l.text)}</b></td><td class="r num">${price(l.price)}</td><td>${bar(l.p)}</td><td class="r num hide-s">${pct(l.be)}</td><td class="hide-s">${dots(l)}</td>
-      <td class="r"><button class="btn small" data-add="${l.id}">${S.slip.includes(l.id) ? "Added" : "Add"}</button></td></tr>`; }).join("") || `<tr><td colspan="7" class="empty">Nothing matches these filters.</td></tr>`}
-    </tbody></table></div>`;
+  const f = S.f, rows = boardRows(), shown = S.more ? rows : rows.slice(0, 80);
+  const th = (k, t, cls) => `<th class="sort ${cls || ""} ${S.sort.k === k ? "on" : ""}" data-sort="${k}">${t}${S.sort.k === k ? (S.sort.dir < 0 ? " ▾" : " ▴") : ""}</th>`;
+  return `<div class="filters">${gameFilter()}
+      <select id="fStat">${opt("all", "All stats", f.stat)}${STATS.map(([k, n]) => opt(k, n, f.stat)).join("")}</select>
+      <select id="fKind">${opt("all", "All bet types", f.kind)}${opt("alt", "This many or more", f.kind)}${opt("ou", "Over / under", f.kind)}</select>
+      <span class="f">Chance at least <select id="fMinP">${[0.5, 0.6, 0.7, 0.8, 0.9].map(v => opt(v, pct(v), f.minP)).join("")}</select></span>
+      <span class="f">Price no shorter than <select id="fPrice">${opt(-100000, "any", f.minPrice)}${[-800, -500, -300, -200, -120].map(v => opt(v, v, f.minPrice)).join("")}</select></span>
+      <label class="chk"><input type="checkbox" id="fBest" ${f.best ? "checked" : ""}> Best per player and stat</label>
+      <label class="chk"><input type="checkbox" id="fHideQ" ${f.hideQ ? "checked" : ""}> Hide questionable</label>
+      <span class="fine">${rows.length} bet${rows.length === 1 ? "" : "s"}</span></div>
+    <div class="scroll"><table><thead><tr>${th("name", "Player")}<th>Bet</th>${th("p", "Chance")}${th("price", "Price", "r")}${th("gap", "Vs price", "r hide-s")}${th("proj", "Proj", "r hide-s")}<th class="hide-s">Recent games</th><th></th></tr></thead><tbody>
+    ${shown.map(l => { const p = P[l.pid], gap = Math.round((l.p - l.be) * 100); return `<tr><td><span class="pname">${esc(p.name)}</span>${tagFor(l.id)}${qTag(p)}<div class="sub">${p.team} ${p.home ? "vs" : "at"} ${p.opp} · ${Math.round(p.min)} min</div></td>
+      <td><b>${esc(l.text)}</b></td><td>${bar(l.p)}</td><td class="r num">${price(l.price)}</td><td class="r num hide-s" title="Chance minus what the price needs to break even (${pct(l.be)})">${gap > 0 ? "+" : ""}${gap}</td><td class="r num hide-s">${l.proj}</td><td class="hide-s">${dots(l)}</td>
+      <td class="r"><button class="btn small" data-add="${l.id}">${S.slip.includes(l.id) ? "Added" : "Add"}</button></td></tr>`; }).join("") || `<tr><td colspan="8" class="empty">${D.legs.length ? "Nothing matches these filters." : "No bets posted yet."}</td></tr>`}
+    </tbody></table></div>${rows.length > shown.length ? `<div class="card-b"><button class="btn small" id="moreBtn">Show all ${rows.length}</button></div>` : ""}`;
 }
 
-/* ---- all players ---- */
+/* ---- players ---- */
 function renderPlayers() {
   const games = D.games.filter(g => S.game === "all" || g.id === S.game);
-  const head = `<div class="filters">${gameFilter("fGame")}<div class="seg" id="segStat">${STATS.map(([k, n]) => `<button data-v="${k}" aria-pressed="${S.stat === k}">${n}</button>`).join("")}</div></div>`;
-  return head + games.map(g => {
+  const head = `<div class="filters">${gameFilter()}<div class="seg" id="segStat">${STATS.map(([k, n]) => `<button data-v="${k}" aria-pressed="${S.stat === k}">${n}</button>`).join("")}</div></div>`;
+  return head + (games.map(g => {
     const fav = (g.spread || 0) < 0 ? g.homeName : g.awayName;
     const line = g.spread ? `${esc(fav)} favored by ${Math.abs(g.spread)}` : "No spread posted";
     const inj = [g.away, g.home].map(t => (D.injuries[t] || []).length ? `<b>${t}:</b> ` + D.injuries[t].map(i => `${esc(i.name)} (${esc(i.status)})`).join(", ") : "").filter(Boolean).join(" &nbsp; ");
     const ps = D.players.filter(p => p.gid === g.id).sort((a, b) => (b.stats[S.stat].proj || 0) - (a.stats[S.stat].proj || 0));
-    return `<div class="game"><div class="game-h"><h3>${esc(g.awayName)} at ${esc(g.homeName)}</h3><span class="sub">${tm(g.time)} · ${line}${g.total ? ` · ${g.total} total points expected` : ""}</span></div>
+    return `<div class="game"><div class="game-h"><h3>${esc(g.awayName)} at ${esc(g.homeName)}</h3><span class="sub">${tm(g.time)} · ${line}${g.total ? ` · total ${g.total}` : ""}</span></div>
       ${inj ? `<div class="inj">${inj}</div>` : ""}
       <div class="scroll"><table><thead><tr><th>Player</th><th class="r">Min</th><th class="r">Projection</th><th class="r hide-s">Likely range</th><th class="r">Line</th><th>Chance over</th></tr></thead><tbody>
       ${ps.map(p => { const s = p.stats[S.stat], key = p.id + "|" + S.stat, open = S.open === key;
-        return `<tr class="prow" data-open="${key}"><td><span class="pname">${esc(p.name)}</span> <span class="sub">${p.team}</span>${p.status === "questionable" ? '<span class="tag q">Questionable</span>' : ""}</td>
+        return `<tr class="prow" data-open="${key}"><td><span class="pname">${esc(p.name)}</span> <span class="sub">${p.team}</span>${qTag(p)}</td>
           <td class="r num">${Math.round(p.min)}</td><td class="r num"><b>${s.proj}</b></td><td class="r num hide-s">${s.lo} to ${s.hi}</td>
           <td class="r num">${s.line != null ? s.line : "-"}</td><td>${s.pOver != null ? bar(s.pOver) : '<span class="sub">no line</span>'}</td></tr>` + (open ? detail(p, S.stat) : ""); }).join("")}
       </tbody></table></div></div>`;
-  }).join("");
+  }).join("") || '<div class="empty" style="padding:30px">No games left to start on this slate.</div>');
 }
 function detail(p, stat) {
   const legs = D.legs.filter(l => l.pid === p.id && l.stat === stat).sort((a, b) => (a.kind === "alt") - (b.kind === "alt") || a.num - b.num);
+  const s = p.stats[stat];
   const btn = l => `<button class="rung ${S.slip.includes(l.id) ? "on" : ""}" data-add="${l.id}"><b>${esc(l.kind === "alt" ? l.num + "+" : l.kind + " " + l.num)}</b><span class="num">${price(l.price)}</span> · ${pct(l.p)}</button>`;
   return `<tr class="detail"><td colspan="6">
+    <div class="sub" style="margin-bottom:8px">Model alone projects ${s.model}. After weighing the sportsbook's line: ${s.proj}.</div>
     ${p.flags.length ? `<div class="sub" style="margin-bottom:8px">${p.flags.map(esc).join(" · ")}</div>` : ""}
     ${p.note ? `<div class="sub" style="margin-bottom:8px">${esc(p.note)}</div>` : ""}
-    ${legs.length ? `<div class="sub">Posted bets, with price and the chance of hitting. Tap to add.</div><div class="rungs">${legs.map(btn).join("")}</div>` : '<div class="sub" style="margin-bottom:8px">No bets posted for this stat.</div>'}
+    ${legs.length ? `<div class="rungs">${legs.map(btn).join("")}</div>` : '<div class="sub" style="margin-bottom:8px">No bets posted for this stat.</div>'}
     <div class="scroll"><table class="mini"><thead><tr><th>Date</th><th>Opp</th><th class="r">Min</th><th class="r">Pts</th><th class="r">Reb</th><th class="r">Ast</th><th class="r">3s</th></tr></thead><tbody>
     ${p.log.map(g => `<tr><td>${g.d.slice(5)}</td><td>${esc(g.opp)}</td><td class="r">${g.min}</td><td class="r">${g.pts}</td><td class="r">${g.reb}</td><td class="r">${g.ast}</td><td class="r">${g.tpm}</td></tr>`).join("")}
     </tbody></table></div></td></tr>`;
 }
 
-/* ---- left out ---- */
-function renderLeft() {
-  const sk = (S.picks.skip || []).filter(s => L[s.id]);
+/* ---- injuries ---- */
+function renderNews() {
+  const ch = D.changes || [], sk = (S.picks.skip || []).filter(s => L[s.id]);
   const q = D.players.filter(p => p.status === "questionable");
   return `<div class="prose">
-    <h3 style="margin-top:0">Good numbers, left out anyway</h3>
-    ${sk.length ? sk.map(s => { const l = L[s.id], p = P[l.pid]; return `<p><b>${esc(p.name)} ${esc(l.text)}</b> <span class="num sub">${price(l.price)}, ${pct(l.p)}</span><br>${esc(s.why)}</p>`; }).join("")
-      : `<p class="sub">${S.picks.by === "ai" ? "Nothing was singled out this time." : "This list is written by Umbra Read. It was not available for this update, so the picks are the model's ranking with the basic rules applied: one bet per player, two per game, no questionable players."}</p>`}
+    <h3 style="margin-top:0">Changed since the last full build</h3>
+    ${ch.length ? `<ul>${ch.map(c => `<li>${esc(c)}</li>`).join("")}</ul><p class="sub">Players ruled out are already off the board. Their teammates' projections still assume they play until the next full build, although the newest lines already account for it and carry most of the weight.</p>`
+      : `<p class="sub">${D.liveAt ? "Nothing. The injury report matches the one the projections were built on." : `Injuries are as of the last full build, ${when(D.generated)}. Load lines checks the current report against it.`}</p>`}
     <h3>Questionable to play</h3>
-    ${q.length ? q.map(p => `<p><b>${esc(p.name)}</b> <span class="sub">${p.team}</span><br><span class="sub">${esc(p.note || "Listed as questionable.")}</span></p>`).join("") : '<p class="sub">No one on tonight\'s board is listed as questionable.</p>'}
+    ${q.length ? q.map(p => `<p><b>${esc(p.name)}</b> <span class="sub">${p.team}</span><br><span class="sub">${esc(p.note || "Listed as questionable.")}</span></p>`).join("") : '<p class="sub">No one on the board is listed as questionable.</p>'}
     <h3>Ruled out</h3>
-    ${Object.entries(D.injuries).map(([t, list]) => { const o = list.filter(i => i.status === "out" || i.status === "doubtful"); return o.length ? `<p><b>${t}:</b> ${o.map(i => esc(i.name)).join(", ")}</p>` : ""; }).join("") || '<p class="sub">None listed.</p>'}
+    ${Object.entries(D.injuries).map(([t, list]) => { const o = list.filter(i => i.status === "out" || i.status === "doubtful"); return o.length ? `<p><b>${esc(t)}:</b> ${o.map(i => esc(i.name)).join(", ")}</p>` : ""; }).join("") || '<p class="sub">None listed.</p>'}
+    ${sk.length ? `<h3>Left out by Umbra Read</h3>` + sk.map(s => { const l = L[s.id], p = P[l.pid]; return `<p><b>${esc(p.name)} ${esc(l.text)}</b> <span class="num sub">${price(l.price)}, ${pct(l.p)}</span><br>${esc(s.why)}</p>`; }).join("") : ""}
   </div>`;
 }
 
-/* ---- track record ---- */
+/* ---- record ---- */
 function renderRecord() {
   const r = D.record || {}, rep = D.report, sr = (r.safest || {}), pr = (r.payout || {});
-  const rate = x => x && x.n ? `${x.hit} of ${x.n} (${pct(x.hit / x.n)})` : "none yet";
-  const names = { pts: "Points", reb: "Rebounds", ast: "Assists", tpm: "Threes", pra: "Pts+Reb+Ast", pr: "Pts+Reb", pa: "Pts+Ast", ra: "Reb+Ast" };
-  const b0 = rep.bets.find(b => b.min_edge === 0) || rep.bets[0];
+  const rate = x => x && x.n ? `${x.hit} of ${x.n} (${pct(x.hit / x.n)}${x.said ? ", said " + pct(x.said) : ""})` : "none yet";
+  const names = Object.fromEntries(STATS), by = rep.bayes;
   return `<div class="prose">
     <h3 style="margin-top:0">Published picks</h3>
-    ${r.days ? `<p>Graded slates: ${r.days}. "Most likely" bets hit ${rate(sr)}. "Bigger payout" bets hit ${rate(pr)}.</p>
-      <table><thead><tr><th>Parlay size</th><th class="r">Hit</th></tr></thead><tbody>${Object.entries(r.parlays || {}).map(([n, x]) => `<tr><td>First ${n} "most likely" bets</td><td class="r num">${rate(x)}</td></tr>`).join("")}</tbody></table>
+    ${r.days ? `<p>Graded slates: ${r.days}. "Most likely" bets hit ${rate(sr)}. "Bigger payout" bets hit ${rate(pr)}. "Said" is the average chance shown when they were picked.</p>
+      <table><thead><tr><th>Parlay size</th><th class="r">Hit</th></tr></thead><tbody>${Object.entries(r.parlays || {}).map(([n, x]) => `<tr><td>First ${n} "most likely" bets</td><td class="r num">${x.hit} of ${x.n}</td></tr>`).join("")}</tbody></table>
       ${(r.recent || []).map(d => `<p><b>${d.day}</b><br>${d.legs.map(l => `<span class="${l.res === "hit" ? "res-hit" : l.res === "miss" ? "res-miss" : "sub"}">${esc(l.name)} ${esc(l.text)}${l.got != null ? " (" + l.got + ")" : l.res === "void" ? " (did not play)" : ""}</span>`).join("<br>")}</p>`).join("")}`
-      : `<p class="sub">Each day's picks are saved before the first game starts and graded from the box scores the next morning. Results will show here once the first slate is graded.</p>`}
-    <h3>How the model was tested</h3>
-    <p>The projections come from models trained on ${esc(D.trained_on)}. Every number below is from games the model had not seen when it made the prediction.</p>
-    <p><b>Average miss per player, per game.</b> Lower is better. "Recent average" is roughly what the old version of this page used.</p>
+      : `<p class="sub">Picks are saved by the last full build before the first tip-off and graded from the box scores afterward.</p>`}
+    <h3>How the model tests</h3>
+    <p>Trained on ${esc(D.trained_on)}. Every number below is from games the model had not seen.</p>
+    <p><b>Average miss per player, per game</b> (lower is better).</p>
     <table><thead><tr><th>Stat</th><th class="r">Model</th><th class="r">Recent average</th></tr></thead><tbody>
     ${Object.entries(rep.avg_miss).map(([k, v]) => `<tr><td>${names[k]}</td><td class="r num">${v.model.toFixed(2)}</td><td class="r num">${v.recent_avg.toFixed(2)}</td></tr>`).join("")}</tbody></table>
-    <p><b>When it says 80%, does it happen 80% of the time?</b> Checked on "this many or more" bets set below the sportsbook's main line, across ${rep.line_games} games with DraftKings lines.</p>
+    <p><b>Do the chances hold up?</b> "This many or more" bets set below the main line, ${rep.line_games} games with DraftKings lines.</p>
     <table><thead><tr><th>Chance shown</th><th class="r">How often it hit</th><th class="r">Bets checked</th></tr></thead><tbody>
     ${rep.ladder.map(x => `<tr><td class="num">${pct(x.said)}</td><td class="r num">${pct(x.happened)}</td><td class="r num">${x.n.toLocaleString()}</td></tr>`).join("")}</tbody></table>
-    <p><b>Against the sportsbook.</b> On ${rep.lines.toLocaleString()} opening over/under lines, overs won ${pct(rep.over_rate)} of the time, so the book shades its lines high. The final chance on this page blends the model with the book's own price. In testing that blend predicted results slightly better than the book's price alone, and betting only where it disagreed with the price won ${pct(b0.won)} of ${b0.bets.toLocaleString()} bets. About ${pct(b0.under_share)} of those were unders. Two cautions: those were opening prices, which are easier to beat than the price near tip-off, and ${rep.line_games} games is a small sample.</p>
-    <h3>What Umbra Read adds</h3>
-    <p>The model sets the chance for every bet. Umbra Read then chooses and orders the legs. It reads the injury report, checks whether a bigger role has actually shown up in recent games, avoids lopsided games where starters may sit, keeps legs that work against each other apart, and writes down the main way each bet loses. It can only choose bets that are on the board at the price shown.</p>
-    <p class="sub">A parlay needs every leg to hit. Five bets at 80% each all hit about a third of the time.</p>
+    <p><b>Against the sportsbook</b> on ${rep.lines.toLocaleString()} opening over/under lines. Score is the average squared miss of the chance given, lower is better, and 0.2500 is a coin flip.</p>
+    <table><thead><tr><th>Source</th><th class="r">Score</th></tr></thead><tbody>
+    <tr><td>Model blended with the line (what this page shows)</td><td class="r num">${rep.brier.blend.toFixed(4)}</td></tr>
+    <tr><td>Sportsbook's price alone</td><td class="r num">${rep.brier.book.toFixed(4)}</td></tr>
+    <tr><td>Model alone</td><td class="r num">${rep.brier.model.toFixed(4)}</td></tr>
+    ${by ? `<tr><td>Blend plus the Bayesian player model (tested, not used)</td><td class="r num">${by.with_bayes.toFixed(4)}</td></tr>` : ""}</tbody></table>
+    <p class="sub">Overs won ${pct(rep.over_rate)} of those lines. The blend was fit on opening lines, so it is at its best early in the day. Lines near tip-off carry more news, and the build now saves them so the blend can be refit on late lines once enough have piled up.</p>
+    ${by ? `<p class="sub">A Bayesian player model (projected minutes times a per-minute rate that is updated after every game and held toward a starting estimate while a player's sample is small) is retested at every weekly retrain. Adding it to the blend moves the score by ${by.diff.toFixed(4)}, with a plausible range of ${by.low.toFixed(4)} to ${by.high.toFixed(4)}. ${by.high < 0 ? "That is a real gain, so it should be switched on." : "That range includes zero, so it adds nothing measurable and the chances on this page do not use it."}</p>` : ""}
   </div>`;
 }
 
+function renderStamps() {
+  const age = (Date.now() - Date.parse(D.generated)) / 3.6e6, old = age > 3;
+  $("#stamps").innerHTML = `<span><b>${esc(D.day)}</b></span><span>${D.games.length} game${D.games.length === 1 ? "" : "s"} to start</span>
+    <span class="${old ? "old" : ""}">Projections <b>${when(D.generated)}</b></span><span>Lines <b>${when(D.liveAt || D.generated)}</b>${D.book ? "" : " (none posted)"}</span>`;
+  const msgs = S.msgs.slice();
+  if (old && !S.busy && D.games.length) msgs.push({ c: "warn", t: `Projections are from the last full build, ${Math.round(age)} hours ago. ${store.get("ghToken") ? "Press Load lines to rebuild them." : "Lines and injuries can be reloaded any time. New projections need a full rebuild, which the button also does once a GitHub token is saved in Settings."}` });
+  $("#status").innerHTML = msgs.map(m => `<div class="${m.c}">${esc(m.t)}</div>`).join("");
+}
 function render() {
-  $("#meta").innerHTML = `<span><b>${esc(D.day)}</b></span><span>${D.games.length} game${D.games.length === 1 ? "" : "s"} still to start</span><span>Lines: ${esc(D.book || "not posted yet")}</span><span>Updated ${new Date(D.generated).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>`;
+  renderStamps();
   $("#segLegs").innerHTML = [2, 3, 4, 5, 6].map(n => `<button data-v="${n}" aria-pressed="${S.legs === n}">${n}</button>`).join("");
   document.querySelectorAll("#segStyle button").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === S.style));
   document.querySelectorAll("#tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.t === S.tab));
+  const n = (D.changes || []).length; $("#newsCnt").hidden = !n; $("#newsCnt").textContent = n;
   renderSlip();
-  $("#pane").innerHTML = S.tab === "board" ? renderBoard() : S.tab === "players" ? renderPlayers() : S.tab === "left" ? renderLeft() : renderRecord();
+  $("#pane").innerHTML = S.tab === "board" ? renderBoard() : S.tab === "players" ? renderPlayers() : S.tab === "news" ? renderNews() : renderRecord();
+}
+function say(c, t) { S.msgs = t ? [{ c, t }] : []; if (D) renderStamps(); }
+
+/* ---- Load lines: current schedule, DraftKings lines and injury report, read from ESPN by this browser ----
+   Projections stay as the last full build left them. Every chance, the candidate pools and the ranking are redone. */
+async function getJSON(url, what) { const r = await fetch(url, { cache: "no-store" }); if (r.status === 404) return null; if (!r.ok) throw new Error(what + " did not load"); return r.json(); }
+async function gameProps(id) {
+  let items = [];
+  for (let page = 1, pages = 1; page <= pages; page++) {
+    const d = await getJSON(`${CORE}/events/${id}/competitions/${id}/odds/100/propBets?limit=1000&page=${page}`, "the lines");
+    if (!d) break;
+    pages = d.pageCount || 1; items = items.concat(d.items || []);
+  }
+  return parseProps(items);
+}
+function repick(keepAI) {
+  const pool = pools(D.legs, P), base = modelRanking(pool, P), prev = S.picks || {};
+  D.pool = { safest: pool.safe.map(l => l.id), payout: pool.pay.map(l => l.id) };
+  D.prompt = Object.assign({}, D.prompt, { data: promptData(D, pool, P) });
+  const used = new Set(), poolL = Object.fromEntries(pool.safe.concat(pool.pay).map(l => [l.id, l]));
+  if (keepAI && prev.by === "ai") { // keep the analyst's picks that are still on the board, then fill from the model's ranking
+    const alive = it => L[it.id] && P[L[it.id].pid].status !== "out";
+    const safest = enforce((prev.safest || []).filter(alive), L, MAX_SAFE, used), payout = enforce((prev.payout || []).filter(alive), L, MAX_PAY, used);
+    if (safest.length < 4) safest.push(...enforce(base.safest, poolL, 4 - safest.length, used));
+    S.picks = Object.assign({}, prev, { safest, payout, skip: (prev.skip || []).filter(s => L[s.id]) });
+  } else S.picks = { by: "model", at: new Date().toISOString(), safest: enforce(base.safest, poolL, MAX_SAFE, used), payout: enforce(base.payout, poolL, MAX_PAY, used), skip: [], note: "" };
+}
+async function loadLines() {
+  // 1. a newer full build, if one has been published since this page was opened
+  const fresh = await fetch(CFG.file + "?t=" + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);
+  let base = D, swapped = false;
+  if (fresh && fresh.generated > D.generated) { base = fresh; swapped = true; }
+  if (!B) B = await fetch(CFG.bundle + "?t=" + Date.now()).then(r => { if (!r.ok) throw new Error("the model file did not load"); return r.json(); });
+  if (B.trained_on !== base.trained_on || !base.players.every(p => p.stats.pts.loc != null)) throw new Error("the board needs one full rebuild before lines can be reloaded on it");
+  // 2. schedule: which games have started, and the current spread and total
+  const day = base.date.replace(/-/g, ""), sb = await getJSON(`${SITE}/scoreboard?dates=${day}&limit=1000`, "ESPN's schedule") || {};
+  const live = {};
+  for (const e of sb.events || []) { const c = e.competitions[0], o = (c.odds || [{}])[0]; live[e.id] = { pre: e.status.type.state === "pre", total: o.overUnder, spread: o.spread }; }
+  const games = base.games.filter(g => !live[g.id] || live[g.id].pre);
+  // 3. lines for every game still to start, and the injury report
+  const lines = {}; let failed = 0;
+  const jobs = games.map(g => gameProps(g.id).then(x => { lines[g.id] = x; }).catch(() => { failed++; }));
+  let inj = null;
+  jobs.push(getJSON(SITE + "/injuries", "the injury report").then(d => { inj = d ? parseInjuries(d) : null; }).catch(() => {}));
+  await Promise.all(jobs);
+  if (games.length && failed === games.length) throw new Error("the lines did not load. Try again in a minute");
+  // nothing above changed the page; from here on the new numbers replace the old ones
+  const now = Date.now(), started = base.games.length - games.length;
+  if (swapped) { D = base; S.picks = D.picks; index(); }
+  const oldLegs = D.legs;
+  D.games = games;
+  for (const g of games) { const x = live[g.id]; if (x && x.total != null) g.total = x.total; if (x && x.spread != null) g.spread = x.spread; }
+  const open = new Set(games.map(g => g.id)), gtime = Object.fromEntries(games.map(g => [g.id, g.time]));
+  const changes = [], gone = new Set(), outBy = {};
+  if (inj) for (const p of D.players) { if (!open.has(p.gid)) continue;
+    const st = readStatus(inj[p.id], gtime[p.gid], now);
+    if (st === "out" || st === "doubtful") { gone.add(p.id); (outBy[p.team] = outBy[p.team] || []).push(p.name); changes.push(`${p.name} (${p.team}) is now ${st === "out" ? "out" : "doubtful"} and was taken off the board.`); }
+    else if (st !== p.status) { if (st === "questionable") changes.push(`${p.name} (${p.team}) is now questionable.`); else if (p.status === "questionable") changes.push(`${p.name} (${p.team}) is no longer questionable.`);
+      p.status = st; p.note = st ? (inj[p.id] || {}).note || "" : ""; }
+  }
+  D.players = D.players.filter(p => open.has(p.gid) && !gone.has(p.id));
+  for (const p of D.players) { const o = outBy[p.team];
+    p.flags = p.flags.filter(f => !f.startsWith("ruled out since the build") && !(inj && (f.startsWith("listed as questionable") || f.startsWith("on the injury report"))));
+    if (inj && p.status === "questionable") p.flags.unshift("listed as questionable" + ((inj[p.id] || {}).what ? ` (${inj[p.id].what.toLowerCase()})` : ""));
+    else if (inj && p.status === "probable") p.flags.unshift("on the injury report but expected to play");
+    if (o) p.flags.unshift("ruled out since the build: " + o.join(", ") + " (projection not yet adjusted)"); }
+  if (inj) { // the injury list by team, and anyone who was out at the build but is not now
+    const abbr = {}; for (const g of games) { abbr[g.homeName] = [g.home, g.time]; abbr[g.awayName] = [g.away, g.time]; }
+    const next = {}, rank = { out: 0, doubtful: 1, questionable: 2 }, isOut = st => st === "out" || st === "doubtful";
+    for (const [pid, i] of Object.entries(inj)) { const a = abbr[i.team]; if (!a) continue;
+      (next[a[0]] = next[a[0]] || []).push({ id: pid, name: i.name, status: readStatus(i, a[1], now) || "listed", what: i.what, note: i.note }); }
+    for (const [team, time] of Object.values(abbr)) for (const o of D.injuries[team] || []) { if (!o.id || !isOut(o.status)) continue;
+      const st = inj[o.id] ? readStatus(inj[o.id], time, now) : "";
+      if (!isOut(st)) changes.push(`${o.name} (${team}) was out at the last build and is now ${st || "off the injury report"}. He is not on the board until the next full build.`); }
+    for (const k of Object.keys(next)) next[k].sort((x, y) => (rank[x.status] ?? 3) - (rank[y.status] ?? 3));
+    D.injuries = next;
+  }
+  // 4. redo every chance against those lines
+  const legs = []; let got = 0;
+  for (const p of D.players) {
+    const gl = lines[p.gid];
+    if (!gl) { legs.push(...oldLegs.filter(l => l.pid === p.id)); continue; } // this game's lines failed to load: keep what was there
+    const rows = [];
+    for (const t of STAT_KEYS) {
+      const k = p.id + "|" + t, m = gl.main[k] || null, r = priceStat(p.stats[t], B.stats[t], B.blend, m, gl.alt[k] || []);
+      p.stats[t] = r.entry; if (m) got++;
+      for (const a of r.legs) rows.push([t].concat(a));
+    }
+    for (const a of rows) legs.push(mkLeg(p, a[0], a[1], a[2], a[3], a[4]));
+  }
+  D.legs = legs; D.book = got || legs.length ? "DraftKings" : null; D.liveAt = new Date().toISOString(); D.changes = changes;
+  S.open = null; index(); repick(true);
+  return { got, games: games.length, started, failed, changes: changes.length, inj: !!inj };
 }
 
-/* ---- fresh pick with the user's own key ---- */
-function enforce(items, limit, used) {
-  const out = [], games = {};
-  for (const it of items || []) {
-    const l = L[it.id]; if (!l || used.has(l.pid) || (games[l.gid] || 0) >= 2) continue;
-    used.add(l.pid); games[l.gid] = (games[l.gid] || 0) + 1;
-    out.push({ id: l.id, why: String(it.why || "").replace(/\s*[—–]\s*/g, ", "), risk: String(it.risk || "").replace(/\s*[—–]\s*/g, ", ") });
-    if (out.length >= limit) break;
+/* ---- full rebuild: start the build on GitHub with the saved token, wait for it, then read the new board ---- */
+async function rebuild(token, tick) {
+  const api = "https://api.github.com/repos/" + CFG.repo, h = { Authorization: "Bearer " + token, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
+  const runs = () => fetch(`${api}/actions/workflows/${CFG.workflow}/runs?event=workflow_dispatch&per_page=5`, { headers: h, cache: "no-store" }).then(r => r.ok ? r.json() : Promise.reject(new Error(r.status === 401 ? "GitHub did not accept the token" : "GitHub would not list the builds (the token needs Actions read and write on intel-suite)")));
+  const before = new Set(((await runs()).workflow_runs || []).map(x => x.id));
+  const r = await fetch(`${api}/actions/workflows/${CFG.workflow}/dispatches`, { method: "POST", headers: h, body: JSON.stringify({ ref: "main" }) });
+  if (!r.ok) throw new Error(r.status === 401 ? "GitHub did not accept the token" : "GitHub would not start the build (the token needs Actions read and write on intel-suite)");
+  const t0 = Date.now(); let run = null;
+  while (Date.now() - t0 < 6 * 60e3) {
+    await new Promise(ok => setTimeout(ok, 5000));
+    tick(Math.round((Date.now() - t0) / 1000));
+    run = ((await runs().catch(() => ({}))).workflow_runs || []).find(x => !before.has(x.id));
+    if (run && run.status === "completed") break;
   }
-  return out;
+  if (!run || run.status !== "completed") throw new Error("the build is taking longer than usual. Press Load lines again in a few minutes");
+  if (run.conclusion !== "success") throw new Error("the build failed on GitHub (" + run.conclusion + ")");
+  const d = await fetch(`${api}/contents/${CFG.file}?ref=main`, { headers: Object.assign({}, h, { Accept: "application/vnd.github.raw+json" }), cache: "no-store" }).then(r => r.ok ? r.json() : Promise.reject(new Error("the new board did not load")));
+  return d;
 }
+async function load(auto) {
+  if (S.busy) return;
+  const btn = $("#liveBtn"), token = store.get("ghToken");
+  S.busy = true; btn.disabled = true; btn.textContent = "Loading";
+  say("info", "Loading lines and the injury report.");
+  let lineMsg = "";
+  try {
+    const r = await loadLines();
+    lineMsg = !r.games ? "Every game on this slate has started." : !r.got ? "DraftKings has no player lines posted for these games right now."
+      : `Lines loaded ${tm(new Date())}: ${r.got} player lines across ${r.games} game${r.games === 1 ? "" : "s"}.` + (r.started ? ` ${r.started} game${r.started === 1 ? " has" : "s have"} started and ${r.started === 1 ? "was" : "were"} removed.` : "")
+        + (r.failed ? ` ${r.failed} game${r.failed === 1 ? "" : "s"} did not load.` : "") + (r.inj ? (r.changes ? ` ${r.changes} injury change${r.changes === 1 ? "" : "s"} since the build (Injuries tab).` : "") : " The injury report did not load.");
+    if (!r.games) lineMsg += " The next slate shows up with the next full build.";
+    say("info", lineMsg);
+    if (S.built) build(); else if ((S.picks.safest || []).length && !S.slip.length) build(); else render();
+  } catch (e) { say("err", "Could not load lines: " + e.message + "."); }
+  if (token && !auto) {
+    try {
+      say("info", (lineMsg ? lineMsg + " " : "") + "Full rebuild started.");
+      const d = await rebuild(token, s => say("info", (lineMsg ? lineMsg + " " : "") + `Full rebuild running, ${s}s. Usually done in about a minute.`));
+      if (d.generated > D.generated || !D.liveAt) { const had = S.built; start(d, true); if (had) build(); say("info", `Full rebuild finished ${tm(new Date())}. Projections, lines and injuries are current.`); }
+      else say("info", (lineMsg ? lineMsg + " " : "") + "The rebuild found no upcoming slate, so the board is unchanged.");
+    } catch (e) { say("err", (lineMsg ? lineMsg + " " : "") + "Full rebuild did not finish: " + e.message + "."); }
+  }
+  S.busy = false; btn.disabled = false; btn.textContent = "Load lines"; renderStamps();
+}
+
+/* ---- analyst pick with the user's own key, on the board as it stands ---- */
 async function fresh() {
   const key = $("#akey").value.trim(), msg = $("#freshMsg");
   if (!key) { msg.textContent = "Enter an analyst API key first."; return; }
-  try { localStorage.setItem("anthropicKey", key); } catch (e) {}
+  store.set("anthropicKey", key);
   $("#freshBtn").disabled = true; msg.textContent = "Working on it. This can take a minute or two.";
   const steer = $("#steer").value.trim();
   const prompt = D.prompt.rules + (steer ? "\n\nExtra instructions from the user for this request:\n" + steer : "") + "\n\n" + D.prompt.data;
@@ -456,7 +825,7 @@ async function fresh() {
     if (!text.trim()) throw new Error("no answer came back. Try again.");
     const r = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
     const used = new Set();
-    const safest = enforce(r.safest, 8, used), payout = enforce(r.payout, 6, used);
+    const safest = enforce(r.safest, L, MAX_SAFE, used), payout = enforce(r.payout, L, MAX_PAY, used);
     if (!safest.length && !payout.length) throw new Error("No usable picks came back.");
     S.picks = { by: "ai", at: new Date().toISOString(), safest, payout, skip: (r.skip || []).filter(s => L[s.id]).slice(0, 6), note: String(r.note || "") };
     msg.textContent = "Done."; build();
@@ -465,28 +834,39 @@ async function fresh() {
 }
 
 document.addEventListener("click", e => {
-  const t = e.target.closest("button, tr.prow"); if (!t) return;
+  const t = e.target.closest("button, tr.prow, th.sort"); if (!t || !D) return;
   if (t.dataset.add) { toggle(t.dataset.add); return; }
   if (t.dataset.rm) { toggle(t.dataset.rm); return; }
   if (t.dataset.open) { S.open = S.open === t.dataset.open ? null : t.dataset.open; render(); return; }
+  if (t.dataset.sort) { const k = t.dataset.sort; S.sort = S.sort.k === k ? { k, dir: -S.sort.dir } : { k, dir: k === "name" ? 1 : -1 }; render(); return; }
   if (t.parentElement.id === "segLegs") { S.legs = +t.dataset.v; if (S.built) build(); else render(); return; }
   if (t.parentElement.id === "segStyle") { S.style = t.dataset.v; if (S.built) build(); else render(); return; }
   if (t.parentElement.id === "segStat") { S.stat = t.dataset.v; S.open = null; render(); return; }
   if (t.parentElement.id === "tabs") { S.tab = t.dataset.t; render(); return; }
   if (t.id === "buildBtn") build();
   if (t.id === "clearBtn") { S.slip = []; S.built = null; render(); }
+  if (t.id === "copyBtn") copySlip();
+  if (t.id === "moreBtn") { S.more = true; render(); }
   if (t.id === "freshBtn") fresh();
+  if (t.id === "liveBtn") load(false);
 });
 document.addEventListener("change", e => {
-  if (e.target.id === "fGame") { S.game = e.target.value; render(); }
-  if (e.target.id === "fStat") { S.bstat = e.target.value; render(); }
-  if (e.target.id === "stake") renderSlip();
+  const t = e.target, f = S.f;
+  if (t.id === "fGame") S.game = t.value; else if (t.id === "fStat") f.stat = t.value; else if (t.id === "fKind") f.kind = t.value;
+  else if (t.id === "fMinP") f.minP = +t.value; else if (t.id === "fPrice") f.minPrice = +t.value; else if (t.id === "fBest") f.best = t.checked; else if (t.id === "fHideQ") f.hideQ = t.checked;
+  else if (t.id === "stake") { renderSlip(); return; }
+  else if (t.id === "autoLines") { store.set("autoLines", t.checked ? "1" : "0"); return; }
+  else if (t.id === "ghTok") { store.set("ghToken", t.value.trim()); renderStamps(); return; }
+  else return;
+  S.more = false; render();
 });
 
-function start(j) { D = j; index(); if ((D.picks.safest || []).length) build(); else render(); }
-try { $("#akey").value = localStorage.getItem("anthropicKey") || ""; } catch (e) {}
-$("#pane").innerHTML = '<div class="empty" style="padding:40px">Loading tonight\'s board.</div>';
-fetch("nba_parlay_data.json?t=" + Date.now()).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(start)
+function start(j, keepSlip) { D = j; if (!keepSlip) S.slip = []; S.picks = D.picks; index(); if ((D.picks.safest || []).length && !keepSlip) build(); else render(); }
+$("#akey").value = store.get("anthropicKey") || ""; $("#ghTok").value = store.get("ghToken") || "";
+$("#autoLines").checked = store.get("autoLines") !== "0";
+$("#pane").innerHTML = '<div class="empty" style="padding:40px">Loading the board.</div>';
+fetch(CFG.file + "?t=" + Date.now()).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(j => { start(j); if (store.get("autoLines") !== "0") load(true); })
   .catch(() => { $("#pane").innerHTML = '<div class="empty" style="padding:40px">Could not load the board. If you opened this file straight from your computer, open it from the Intel Suite site instead, since the page reads its data from a file next to it.</div>'; });
 </script>
 </body>

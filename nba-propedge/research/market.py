@@ -23,7 +23,7 @@ def lined_oof(d, lines, t):
     loc = oof_center(d, t)
     sm, cuts, zq = fit_shape(loc.values, d[t].values, d)
     x = d.assign(loc=loc.values); x["sc"] = scale(sm, x, x["loc"].values)
-    ln = x.merge(lines[lines.stat == t], on=["gid", "pid"])
+    ln = x.merge(lines[lines.stat == t].drop(columns=["season"], errors="ignore"), on=["gid", "pid"])
     ln["p"] = [p_over(a, b, cuts, zq, c) for a, b, c in zip(ln["loc"], ln.sc, ln.line)]
     ln["y"] = (ln[t] > ln.line).astype(int); ln["actual"] = ln[t]; ln["stat"] = t
     return ln[["gid", "pid", "t", "season", "stat", "line", "over", "under", "fair", "loc", "sc", "p", "y", "actual"]], (sm, cuts, zq)

@@ -7,13 +7,14 @@ Per stat (points, rebounds, assists, threes, and the four combinations):
 Then, across stats:
   blend   weights that combine the model's chance with the sportsbook's price (fit on DraftKings opening lines)
   links   how results move together for the same player, for teammates, and for opponents (used for parlay math)
-  report  held-out accuracy numbers shown on the page
+  report  held-out accuracy numbers shown on the page, including the standing Bayesian comparison (bayes.py)
 """
 import gzip, json, os
 import numpy as np, pandas as pd
 from train import load, load_lines, oof_center, fit_shape, fit_center, scale, FEATS, TARGETS, ROOT
 from market import cv_blend, fit_meta, bet_table
-from model import p_over, anchor, SFEATS
+from model import p_over, anchor, top_fix, logit, TOP_KNEE, SFEATS
+import bayes
 
 OUT = os.path.join(ROOT, "model")
 os.makedirs(OUT, exist_ok=True)
@@ -63,8 +64,36 @@ for r in dk.itertuples():
     for f in (0.45, 0.6, 0.75, 0.9):
         n = int(np.ceil(r.line * f))
         if n >= 1:
-            rows.append((p_over(loc2, r.sc, cuts, zq, n - 0.5, tier), int(r.actual >= n), r.gid))
-lad = pd.DataFrame(rows, columns=["p", "y", "gid"]).drop_duplicates()
+            rows.append((p_over(loc2, r.sc, cuts, zq, n - 0.5, tier), int(r.actual >= n), r.gid, r.stat, n))
+lad = pd.DataFrame(rows, columns=["p", "y", "gid", "stat", "n"]).drop_duplicates(["gid", "stat", "n", "p"])
+
+
+def fit_top(d):
+    """Strength of the high-end correction for one stat. Kept only if it also helps on time blocks it was not fit on."""
+    grid = np.round(np.arange(0, 0.81, 0.05), 2)
+    y, p = d.y.values, d.p.values
+    gids = sorted(d.gid.unique()); f = d.gid.map({g: i * 5 // len(gids) for i, g in enumerate(gids)}).values
+    x, k0 = logit(p), logit(TOP_KNEE)
+
+    def ll(c, m):  # log loss with correction c, vectorized form of top_fix
+        q = 1 / (1 + np.exp(-(x[m] - c * np.maximum(0, x[m] - k0))))
+        return float(-np.mean(y[m] * np.log(q) + (1 - y[m]) * np.log(1 - q)))
+    hi = p > TOP_KNEE
+    if hi.sum() < 300:
+        return 0.0
+    held = []
+    for k in range(5):
+        tr, te = (f != k) & hi, (f == k) & hi
+        c = grid[int(np.argmin([ll(c, tr) for c in grid]))]
+        held.append(ll(c, te) - ll(0.0, te))
+    c = float(grid[int(np.argmin([ll(c, hi) for c in grid]))])
+    return c if np.mean(held) < -0.0005 and c >= 0.1 else 0.0
+
+
+for t in TARGETS:
+    bundle["stats"][t]["top"] = fit_top(lad[lad.stat == t])
+print("high-end correction:", {t: bundle["stats"][t]["top"] for t in TARGETS})
+lad["p"] = [top_fix(p, bundle["stats"][s]["top"]) for p, s in zip(lad.p, lad.stat)]
 ladder = [{"said": round(float(g.p.mean()), 3), "happened": round(float(g.y.mean()), 3), "n": int(len(g))}
           for _, g in lad.groupby(pd.cut(lad.p, [0.5, 0.6, 0.7, 0.8, 0.9, 1.0]), observed=True)]
 main = [{"said": round(float(g.pf.mean()), 3), "happened": round(float(g.y.mean()), 3), "n": int(len(g))}
@@ -92,6 +121,11 @@ bundle["report"] = {
     "brier": {"blend": brier(dk.pf), "model": brier(dk.p), "book": brier(dk.fair), "coin": 0.25},
     "main": main, "ladder": ladder, "bets": bet_table(dk), "over_rate": round(float(dk.y.mean()), 3),
 }
+# standing test: does a Bayesian player model add anything to the blend? (see bayes.py; it is not used for the chances)
+try:
+    bundle["report"]["bayes"] = bayes.compare(df, pd.concat(lined))
+except Exception as e:  # a side comparison must never stop the retrain
+    print("Bayesian comparison skipped:", e)
 json.dump(bundle, open(os.path.join(OUT, "bundle.json"), "w"), separators=(",", ":"))
 print(json.dumps({k: bundle[k] for k in ("blend", "report", "trained_on")}, indent=1))
 print("links same pts:", same["pts"], "\nmate pts:", bundle["links"]["mate"]["pts"], "\nopp pts:", bundle["links"]["opp"]["pts"])

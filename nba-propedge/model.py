@@ -32,6 +32,18 @@ def decimal(american):
     return 1 + a / 100.0 if a > 0 else 1 + 100.0 / abs(a)
 
 
+TOP_KNEE = 0.7
+
+
+def top_fix(p, c):
+    """Pull chances above 70% down a little, for stats whose high-end chances tested too sure of themselves.
+    c is fit at each retrain (fit_models.py) and is 0 for stats that did not need it. Below 70% nothing changes."""
+    if not c or p <= TOP_KNEE:
+        return p
+    x = logit(p)
+    return float(sigmoid(x - c * (x - logit(TOP_KNEE))))
+
+
 def tier_of(cuts, loc):
     return int(np.searchsorted(cuts, loc))
 
